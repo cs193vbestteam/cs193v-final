@@ -6,6 +6,7 @@ import {
   type Constraints,
   type ConstraintsUpdate,
   ConstraintsUpdateSchema,
+  missingFields,
 } from "./constraints";
 import { extractRules, ruleReply } from "./extract-rules";
 
@@ -102,6 +103,6 @@ export async function extract(history: ChatTurn[], current: Constraints): Promis
       console.error("LLM extraction failed, falling back to rules:", (err as Error).message);
     }
   }
-  const update = extractRules(latest);
+  const update = extractRules(latest, missingFields(current)[0]);
   return { reply: ruleReply(current, update), update, source: "rules" };
 }

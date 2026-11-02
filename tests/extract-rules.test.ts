@@ -120,3 +120,68 @@ describe("ruleReply", () => {
     expect(ruleReply(c, { dietaryConfirmed: true })).toMatch(/everything I need/);
   });
 });
+
+describe("bare answers to the pending question", () => {
+  it.each([
+    ["nothing", { dietaryConfirmed: true }],
+    ["none", { dietaryConfirmed: true }],
+    ["no", { dietaryConfirmed: true }],
+    ["Nope!", { dietaryConfirmed: true }],
+    ["spicy", { dietary: ["no_spicy"] }],
+    ["seafood", { dietary: ["no_seafood"] }],
+    ["spicy, seafood", { dietary: ["no_spicy", "no_seafood"] }],
+    ["no spicy and no fish", { dietary: ["no_spicy", "no_seafood"] }],
+    ["vegan", { dietary: ["vegetarian"] }],
+    ["halal please", { dietary: ["halal"] }],
+  ])("diet: %s", (text, expected) => {
+    expect(extractRules(text, "diet")).toEqual(expected);
+  });
+
+  it("does not read a craving as a restriction", () => {
+    expect(extractRules("I love spicy food", "diet")).toEqual({});
+    expect(extractRules("spicy", "budget")).toEqual({});
+  });
+
+  it("reads a bare number as the pending numeric field only", () => {
+    expect(extractRules("40", "budget")).toEqual({ budgetMax: 40 });
+    expect(extractRules("$40", "budget")).toEqual({ budgetMax: 40 });
+    expect(extractRules("about 40 each", "budget")).toEqual({ budgetMax: 40 });
+    expect(extractRules("15", "distance")).toEqual({ maxTravelMin: 15 });
+    expect(extractRules("maybe 15 min", "distance")).toEqual({ maxTravelMin: 15 });
+    expect(extractRules("40", "time")).toEqual({});
+    expect(extractRules("40", undefined)).toEqual({});
+  });
+
+  it("prefers explicit phrasing over the pending-question fallback", () => {
+    // "20 minutes" is unambiguous even while the budget question is pending.
+    expect(extractRules("20 minutes", "budget")).toEqual({ maxTravelMin: 20 });
+  });
+
+  it("walks the whole conversation with one-word answers", () => {
+    let c = emptyConstraints();
+    for (const [text, expectedMissing] of [
+      ["saturday dinner", ["budget", "distance", "diet"]],
+      ["40", ["distance", "diet"]],
+      ["15", ["diet"]],
+      ["nothing", []],
+    ] as const) {
+      const pending = (["time", "budget", "distance", "diet"] as const).find((f) => {
+        const missing = new Set(["time", "budget", "distance", "diet"].filter((x) => {
+          if (x === "time") return !c.availableSlots?.length;
+          if (x === "budget") return c.budgetMax === null;
+          if (x === "distance") return c.maxTravelMin === null;
+          return !c.dietaryConfirmed;
+        }));
+        return missing.has(f);
+      });
+      const update = extractRules(text, pending);
+      const reply = ruleReply(c, update);
+      expect(reply).toContain("Got it");
+      c = mergeConstraints(c, update);
+      void expectedMissing;
+    }
+    expect(c.dietaryConfirmed).toBe(true);
+    expect(c.budgetMax).toBe(40);
+    expect(c.maxTravelMin).toBe(15);
+  });
+});

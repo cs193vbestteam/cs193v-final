@@ -5,6 +5,7 @@ import {
   type ConstraintsUpdate,
   type Cuisine,
   type Dietary,
+  type MissingField,
   type Slot,
   mergeConstraints,
   missingFields,
@@ -152,8 +153,69 @@ export function extractDietary(text: string): { dietary?: Dietary[]; dietaryConf
   if (/\b(no seafood|seafood allerg\w*|allergic to (seafood|shellfish|fish)|no fish|no shellfish)\b/i.test(text)) found.push("no_seafood");
   if (/\bhalal\b/i.test(text)) found.push("halal");
   if (found.length) return { dietary: found };
-  if (/\b(no (dietary )?restrictions?|no allergies|eat anything|anything('s| is)? fine|nothing special)\b/i.test(text)) {
+  if (
+    /\b(no (dietary )?restrictions?|no allergies|eat anything|anything('s| is)? fine|nothing special|not picky|no preferences?|all good|i'?m (easy|good|fine))\b/i.test(text)
+  ) {
     return { dietaryConfirmed: true };
+  }
+  return {};
+}
+
+/** Words a person types when answering the diet question with a bare list ("spicy, seafood"). */
+const DIET_TOKENS: [RegExp, Dietary | "none"][] = [
+  [/^(spicy|spice|hot|heat|chili|chilli)$/, "no_spicy"],
+  [/^(seafood|sea food|fish|shellfish|shrimp)$/, "no_seafood"],
+  [/^(vegetarian|vegan|veggie|veg)$/, "vegetarian"],
+  [/^halal$/, "halal"],
+  [/^(nothing|none|no|nope|nah|neither|na|n\/a|zero|nil)$/, "none"],
+];
+const POSITIVE = /\b(love|like|want|prefer|enjoy|into|fan of|crave|craving)\b/i;
+
+/**
+ * A short reply that only makes sense as an answer to the question we just asked.
+ * Context-free parsing can't tell "40" (budget) from "40" (minutes), or "spicy"
+ * (a restriction) from "spicy" (a craving), so the pending question decides.
+ */
+export function extractBareAnswer(text: string, pending: MissingField | undefined): ConstraintsUpdate {
+  if (!pending) return {};
+  const bare = text
+    .trim()
+    .toLowerCase()
+    .replace(/^(about|around|roughly|maybe|like|say|probably|approx\.?|~|i'?d say|i think)\s+/g, "")
+    .replace(/[.!?]+$/g, "")
+    .trim();
+  if (!bare) return {};
+
+  if (pending === "budget") {
+    const m = bare.match(/^\$?\s*(\d{1,4})\s*(?:dollars|bucks|usd)?\s*(?:per person|pp|each|a head|max|tops)?$/);
+    if (m && parseInt(m[1], 10) > 0) return { budgetMax: parseInt(m[1], 10) };
+    return {};
+  }
+  if (pending === "distance") {
+    const m = bare.match(/^(\d{1,3})\s*(?:min|mins|minutes|m)?\s*(?:max|tops|away)?$/);
+    if (m && parseInt(m[1], 10) > 0) return { maxTravelMin: parseInt(m[1], 10) };
+    return {};
+  }
+  if (pending === "diet") {
+    if (POSITIVE.test(bare)) return {};
+    const tokens = bare
+      .replace(/\b(no|not|and|or|please|pls|thanks|thx|for me|i'?m|i am|just)\b/g, " ")
+      .split(/[\s,/&+]+/)
+      .filter(Boolean);
+    if (tokens.length === 0) {
+      // "no" / "none" alone were stripped above; treat the original as the answer.
+      return /^(no|nope|nah|none|nothing)$/.test(bare) ? { dietaryConfirmed: true } : {};
+    }
+    const found: Dietary[] = [];
+    let none = false;
+    for (const t of tokens) {
+      const hit = DIET_TOKENS.find(([re]) => re.test(t));
+      if (!hit) return {}; // an unknown word means this wasn't a bare diet answer
+      if (hit[1] === "none") none = true;
+      else found.push(hit[1]);
+    }
+    if (found.length) return { dietary: Array.from(new Set(found)) };
+    if (none) return { dietaryConfirmed: true };
   }
   return {};
 }
@@ -173,7 +235,7 @@ export function extractCuisines(text: string): { likedCuisines?: Cuisine[]; disl
   return out;
 }
 
-export function extractRules(text: string): ConstraintsUpdate {
+export function extractRules(text: string, pending?: MissingField): ConstraintsUpdate {
   const update: ConstraintsUpdate = {};
   const slots = extractTime(text);
   if (slots) update.availableSlots = slots;
@@ -182,6 +244,7 @@ export function extractRules(text: string): ConstraintsUpdate {
   if (dist !== undefined) update.maxTravelMin = dist;
   Object.assign(update, extractDietary(text));
   Object.assign(update, extractCuisines(text));
+  if (Object.keys(update).length === 0) Object.assign(update, extractBareAnswer(text, pending));
   return update;
 }
 
