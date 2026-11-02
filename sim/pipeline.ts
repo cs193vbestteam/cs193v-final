@@ -3,7 +3,8 @@ import type { Constraints } from "../src/lib/constraints";
 import { negotiate, type NegotiateOptions, type NegotiationResult } from "../src/lib/negotiate";
 import { compile, type Preferences } from "../src/lib/preferences";
 import type { Restaurant } from "../src/lib/restaurants";
-import { metricsFor, summarize, type GroupMetrics, type Summary } from "./metrics";
+import { llmBaselinePick, mapWithConcurrency, DEFAULT_LLM_MODEL, DEFAULT_LLM_TIMEOUT_MS } from "./llm-baseline";
+import { metricsFor, outcomeFor, summarize, type GroupMetrics, type LlmOutcome, type Summary } from "./metrics";
 import { oracle } from "./oracle";
 import { makeRng, type Rng } from "./rng";
 import { synthGroup, synthRestaurants } from "./synth";
@@ -14,6 +15,7 @@ import { synthGroup, synthRestaurants } from "./synth";
  *   for each group: synth people + a fresh restaurant pool
  *                   oracle (reads everything)  vs  negotiate (reads nothing)
  *                   score both, plus the naive round-1 baseline
+ *   optionally: the LLM "no privacy" baseline on the first N groups (key-gated)
  *   aggregate overall and by group size
  */
 
@@ -25,7 +27,24 @@ export type SimOptions = {
   minSize?: number;
   maxSize?: number;
   negotiate?: Pick<NegotiateOptions, "maxRounds" | "perRound" | "concessionFrom" | "finalists">;
+  /** When set, the LLM baseline runs on groups 0..groups-1 (default 40). Off = fully deterministic report. */
+  llm?: LlmRunOptions;
 };
+
+export type LlmRunOptions = {
+  apiKey: string;
+  model?: string;
+  /** How many groups (a prefix, ids 0..N-1) get the LLM call. */
+  groups?: number;
+  /** Requests in flight at once. */
+  concurrency?: number;
+  timeoutMs?: number;
+  /** Progress hook, called after each call. */
+  onProgress?: (done: number, total: number) => void;
+};
+
+export const DEFAULT_LLM_GROUPS = 40;
+export const DEFAULT_LLM_CONCURRENCY = 2;
 
 export type SimCase = {
   id: number;
@@ -42,6 +61,8 @@ export type SimReport = {
     sizeRange: [number, number];
     negotiate: Required<NonNullable<SimOptions["negotiate"]>>;
     generatedAt: string;
+    /** Present only when the LLM baseline ran. */
+    llm?: { model: string; groupsRequested: number; groupIds: number[]; concurrency: number; timeoutMs: number };
   };
   overall: Summary;
   bySize: Summary[];
@@ -95,11 +116,15 @@ export async function runSim(opts: SimOptions): Promise<SimReport> {
   const negotiateOpts = { ...DEFAULT_NEGOTIATE, ...(opts.negotiate ?? {}) };
   const rng = makeRng(opts.seed);
   const groups: GroupMetrics[] = [];
+  const llmCount = opts.llm ? Math.max(0, Math.min(opts.groups, opts.llm.groups ?? DEFAULT_LLM_GROUPS)) : 0;
+  const llmCases: SimCase[] = [];
   for (let i = 0; i < opts.groups; i++) {
     const c = synthCase(rng, i, { restaurants, minSize, maxSize });
     const { metrics } = await runCase(c, negotiateOpts);
     groups.push(metrics);
+    if (i < llmCount) llmCases.push(c);
   }
+  const llmMeta = opts.llm ? await runLlmBaseline(llmCases, groups, opts.llm) : undefined;
   const sizes = Array.from(new Set(groups.map((g) => g.size))).sort((a, b) => a - b);
   return {
     meta: {
@@ -109,9 +134,37 @@ export async function runSim(opts: SimOptions): Promise<SimReport> {
       sizeRange: [minSize, maxSize],
       negotiate: negotiateOpts,
       generatedAt: "", // filled in by the CLI; kept empty here so the report is a pure function of (seed, options)
+      ...(llmMeta ? { llm: llmMeta } : {}),
     },
     overall: summarize("all", groups),
     bySize: sizes.map((s) => summarize(`size ${s}`, groups.filter((g) => g.size === s))),
     groups,
   };
+}
+
+/**
+ * The LLM baseline pass. Runs after the deterministic part so that nothing
+ * about the protocol's numbers depends on the network; attaches an `llm`
+ * outcome to each group it was asked about and returns the meta block.
+ */
+async function runLlmBaseline(cases: SimCase[], groups: GroupMetrics[], opts: LlmRunOptions): Promise<NonNullable<SimReport["meta"]["llm"]>> {
+  const model = opts.model || process.env.ANTHROPIC_MODEL || DEFAULT_LLM_MODEL;
+  const concurrency = opts.concurrency ?? DEFAULT_LLM_CONCURRENCY;
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_LLM_TIMEOUT_MS;
+  let done = 0;
+  await mapWithConcurrency(cases, concurrency, async (c) => {
+    const m = groups[c.id];
+    let proposal = null;
+    let error: string | undefined;
+    try {
+      proposal = await llmBaselinePick({ prefs: c.prefs, restaurants: c.restaurants }, { apiKey: opts.apiKey, model, timeoutMs });
+    } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+    }
+    const outcome: LlmOutcome = { ...outcomeFor(c.prefs, c.restaurants, proposal, m.oracle), model, ...(error ? { error } : {}) };
+    m.llm = outcome;
+    done++;
+    opts.onProgress?.(done, cases.length);
+  });
+  return { model, groupsRequested: cases.length, groupIds: cases.map((c) => c.id), concurrency, timeoutMs };
 }

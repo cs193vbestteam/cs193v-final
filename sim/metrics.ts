@@ -42,7 +42,15 @@ export type GroupMetrics = {
   leakedPerPersonPerRound: number;
   /** Dimension names the agents actually returned, counted by wrapping them (undefined when not wrapped). */
   observedDims: number | undefined;
+  /**
+   * The "no privacy" LLM baseline (sim/llm-baseline.ts), only on groups the
+   * run sent to the model. `error` is set when the call failed outright (the
+   * outcome then counts as no plan); an invalid pick is a plain `found: false`.
+   */
+  llm?: LlmOutcome;
 };
+
+export type LlmOutcome = Outcome & { model: string; error?: string };
 
 function ratio(value: number, best: number, feasible: boolean): number | undefined {
   if (!feasible || best <= 0) return undefined;
@@ -158,6 +166,31 @@ export type Summary = {
   observedDims: Stat;
   /** share of groups whose chosen plan is exactly the oracle's Nash optimum */
   protocolHitsOptimum: number | null;
+  /** Present only when at least one group in this summary carries an LLM baseline outcome. */
+  llm?: LlmSummary;
+};
+
+/**
+ * Aggregates for the LLM baseline, over the groups that had the call. The
+ * `protocol*` / `naive*` fields here are recomputed on that same subset so the
+ * comparison is like for like (the LLM usually runs on a prefix of the groups).
+ */
+export type LlmSummary = {
+  /** groups that had an LLM call */
+  groups: number;
+  /** of those, groups where the oracle found something feasible (ratios are over these) */
+  feasible: number;
+  /** calls that failed (timeout, HTTP error); counted as no plan */
+  errors: number;
+  /** P(LLM produced a feasible plan | oracle feasible) */
+  foundGivenFeasible: number | null;
+  nashRatio: Stat;
+  maxMinRatio: Stat;
+  hitsOptimum: number | null;
+  protocolNashRatio: Stat;
+  protocolMaxMinRatio: Stat;
+  protocolHitsOptimum: number | null;
+  naiveNashRatio: Stat;
 };
 
 const defined = (xs: readonly (number | undefined)[]): number[] => xs.filter((x): x is number => x !== undefined);
@@ -181,6 +214,7 @@ export function summarize(label: string, ms: readonly GroupMetrics[]): Summary {
     }
   }
   const rate = (k: number) => (n ? k / n : 0);
+  const withLlm = ms.filter((m): m is WithLlm => m.llm !== undefined);
   return {
     label,
     groups: n,
@@ -200,5 +234,32 @@ export function summarize(label: string, ms: readonly GroupMetrics[]): Summary {
     leakedPerPersonPerRound: stat(ms.map((m) => m.leakedPerPersonPerRound)),
     observedDims: stat(defined(ms.map((m) => m.observedDims))),
     protocolHitsOptimum: feasible ? hits / feasible : null,
+    ...(withLlm.length ? { llm: summarizeLlm(withLlm) } : {}),
+  };
+}
+
+type WithLlm = GroupMetrics & { llm: LlmOutcome };
+
+const hitsOptimum = (ms: readonly WithLlm[], pick: (m: WithLlm) => Outcome): number =>
+  ms.filter((m) => {
+    const r = pick(m).nashRatio;
+    return r !== undefined && r >= 1 - 1e-12;
+  }).length;
+
+function summarizeLlm(ms: readonly WithLlm[]): LlmSummary {
+  const feasible = ms.filter((m) => m.oracle.feasibleCount > 0);
+  const nf = feasible.length;
+  return {
+    groups: ms.length,
+    feasible: nf,
+    errors: ms.filter((m) => m.llm.error !== undefined).length,
+    foundGivenFeasible: nf ? feasible.filter((m) => m.llm.found).length / nf : null,
+    nashRatio: stat(defined(ms.map((m) => m.llm.nashRatio))),
+    maxMinRatio: stat(defined(ms.map((m) => m.llm.maxMinRatio))),
+    hitsOptimum: nf ? hitsOptimum(feasible, (m) => m.llm) / nf : null,
+    protocolNashRatio: stat(defined(ms.map((m) => m.protocol.nashRatio))),
+    protocolMaxMinRatio: stat(defined(ms.map((m) => m.protocol.maxMinRatio))),
+    protocolHitsOptimum: nf ? hitsOptimum(feasible, (m) => m.protocol) / nf : null,
+    naiveNashRatio: stat(defined(ms.map((m) => m.naive.nashRatio))),
   };
 }

@@ -23,14 +23,22 @@ export function toMarkdown(report: SimReport): string {
   lines.push("");
   lines.push("Ratios are relative to the oracle optimum (1.0 = as good as a planner who reads every preference). `mean / median` over groups where the oracle found a feasible plan.");
   lines.push("");
-  lines.push("| group | n | agreed | any plan | oracle feasible | agreed given feasible | plan given feasible | Nash ratio protocol | Nash ratio naive | max-min ratio protocol | max-min ratio naive | hits optimum | leaked dims (mean) | leaked / person / round |");
-  lines.push("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
+  const hasLlm = overall.llm !== undefined;
+  const llmCols = hasLlm ? " Nash ratio LLM (no privacy) | max-min ratio LLM (no privacy) | LLM hits optimum |" : "";
+  const llmAlign = hasLlm ? "---:|---:|---:|" : "";
+  lines.push(`| group | n | agreed | any plan | oracle feasible | agreed given feasible | plan given feasible | Nash ratio protocol | Nash ratio naive |${llmCols} max-min ratio protocol | max-min ratio naive | hits optimum | leaked dims (mean) | leaked / person / round |`);
+  lines.push(`|---|---:|---:|---:|---:|---:|---:|---:|---:|${llmAlign}---:|---:|---:|---:|---:|`);
   for (const s of rows) {
+    const llmCells = hasLlm ? ` ${s.llm ? meanMedian(s.llm.nashRatio) : "-"} | ${s.llm ? meanMedian(s.llm.maxMinRatio) : "-"} | ${s.llm ? pct(s.llm.hitsOptimum) : "-"} |` : "";
     lines.push(
       `| ${s.label} | ${s.groups} | ${pct(s.convergenceRate)} | ${pct(s.anyPlanRate)} | ${pct(s.oracleFeasibleRate)} | ${pct(s.convergenceGivenFeasible)} | ${pct(s.anyPlanGivenFeasible)} | ` +
-        `${meanMedian(s.protocolNashRatio)} | ${meanMedian(s.naiveNashRatio)} | ${meanMedian(s.protocolMaxMinRatio)} | ${meanMedian(s.naiveMaxMinRatio)} | ${pct(s.protocolHitsOptimum)} | ` +
+        `${meanMedian(s.protocolNashRatio)} | ${meanMedian(s.naiveNashRatio)} |${llmCells} ${meanMedian(s.protocolMaxMinRatio)} | ${meanMedian(s.naiveMaxMinRatio)} | ${pct(s.protocolHitsOptimum)} | ` +
         `${num(s.leakedDims.mean, 1)} | ${num(s.leakedPerPersonPerRound.mean, 2)} |`,
     );
+  }
+  if (hasLlm) {
+    lines.push("");
+    lines.push("The LLM columns cover only the groups listed under \"LLM baseline\" below; the LLM section compares all methods on exactly those groups.");
   }
   lines.push("");
   lines.push("## Outcomes");
@@ -56,14 +64,47 @@ export function toMarkdown(report: SimReport): string {
   lines.push("| group | leakedDims reported (mean) | dims agents actually returned (mean) |");
   lines.push("|---|---:|---:|");
   for (const s of rows) lines.push(`| ${s.label} | ${num(s.leakedDims.mean, 2)} | ${num(s.observedDims.mean, 2)} |`);
+  if (meta.llm && overall.llm) {
+    lines.push("");
+    lines.push("## LLM baseline (no privacy)");
+    lines.push("");
+    lines.push(
+      `Model \`${meta.llm.model}\` was given every member's preference JSON and the full candidate list and asked for one plan, on ${meta.llm.groupsRequested} of ${meta.groups} groups ` +
+        `(ids ${describeIds(meta.llm.groupIds)}), ${meta.llm.concurrency} requests in flight, ${meta.llm.timeoutMs} ms timeout per call. ` +
+        `A pick that violates someone's hard rule, or is not a real candidate, counts as no plan. Calls that failed: ${overall.llm.errors}.`,
+    );
+    lines.push("");
+    lines.push("All three methods on exactly these groups (ratios over the groups where the oracle found a feasible plan):");
+    lines.push("");
+    lines.push("| group | n (LLM) | oracle feasible | LLM plan given feasible | Nash ratio LLM | Nash ratio protocol | Nash ratio naive | max-min ratio LLM | max-min ratio protocol | LLM hits optimum | protocol hits optimum |");
+    lines.push("|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|");
+    for (const s of rows) {
+      const l = s.llm;
+      if (!l) continue;
+      lines.push(
+        `| ${s.label} | ${l.groups} | ${l.feasible} | ${pct(l.foundGivenFeasible)} | ${meanMedian(l.nashRatio)} | ${meanMedian(l.protocolNashRatio)} | ${meanMedian(l.naiveNashRatio)} | ` +
+          `${meanMedian(l.maxMinRatio)} | ${meanMedian(l.protocolMaxMinRatio)} | ${pct(l.hitsOptimum)} | ${pct(l.protocolHitsOptimum)} |`,
+      );
+    }
+  }
   lines.push("");
   lines.push("See report.svg for the chart and report.json for every group.");
   return lines.join("\n") + "\n";
 }
 
+/** "0..39" for a contiguous run, otherwise the list (abbreviated when long). */
+function describeIds(ids: readonly number[]): string {
+  if (ids.length === 0) return "none";
+  const sorted = [...ids].sort((a, b) => a - b);
+  const contiguous = sorted.every((v, i) => i === 0 || v === sorted[i - 1] + 1);
+  if (contiguous) return sorted.length === 1 ? String(sorted[0]) : `${sorted[0]}..${sorted[sorted.length - 1]}`;
+  return sorted.length <= 20 ? sorted.join(", ") : `${sorted.slice(0, 20).join(", ")}, ... (${sorted.length} total)`;
+}
+
 /** Compact fixed-width table for the terminal. */
 export function toStdout(report: SimReport): string {
   const rows = [report.overall, ...report.bySize];
+  const hasLlm = report.overall.llm !== undefined;
   const cols: [string, (s: Summary) => string][] = [
     ["group", (s) => s.label],
     ["n", (s) => String(s.groups)],
@@ -73,6 +114,7 @@ export function toStdout(report: SimReport): string {
     ["agreed|OK", (s) => pct(s.convergenceGivenFeasible)],
     ["nashP", (s) => meanMedian(s.protocolNashRatio)],
     ["nashNaive", (s) => meanMedian(s.naiveNashRatio)],
+    ...(hasLlm ? ([["nashLLM", (s) => (s.llm ? meanMedian(s.llm.nashRatio) : "-")]] as [string, (s: Summary) => string][]) : []),
     ["maxminP", (s) => meanMedian(s.protocolMaxMinRatio)],
     ["maxminNaive", (s) => meanMedian(s.naiveMaxMinRatio)],
     ["optimum", (s) => pct(s.protocolHitsOptimum)],
@@ -86,6 +128,14 @@ export function toStdout(report: SimReport): string {
   const hist = Array.from({ length: report.meta.negotiate.maxRounds }, (_, i) => `r${i + 1}=${report.overall.roundsHistogram[String(i + 1)] ?? 0}`).join("  ");
   out.push("");
   out.push(`rounds to agreement (all groups): ${hist}  | compromise=${report.overall.statusCounts.compromise}  no_deal=${report.overall.statusCounts.no_deal}`);
+  if (report.meta.llm && report.overall.llm) {
+    const l = report.overall.llm;
+    out.push(
+      `LLM baseline (no privacy, ${report.meta.llm.model}) on ${l.groups} groups (ids ${describeIds(report.meta.llm.groupIds)}): ` +
+        `nash LLM ${meanMedian(l.nashRatio)} vs protocol ${meanMedian(l.protocolNashRatio)} on the same groups; ` +
+        `LLM hits optimum ${pct(l.hitsOptimum)} vs protocol ${pct(l.protocolHitsOptimum)}; errors ${l.errors}`,
+    );
+  }
   return out.join("\n");
 }
 
@@ -99,6 +149,7 @@ const MUTED = "#6b7280";
 const GRID = "#e5e7eb";
 const NAIVE = "#b8c4d6";
 const PROTO = "#2f6fed";
+const LLM = "#7c3aed";
 const ORACLE = "#d9480f";
 const COMPROMISE = "#f5b84a";
 const NODEAL = "#c0392b";
@@ -140,16 +191,21 @@ export function toSvg(report: SimReport): string {
     parts.push(`<line x1="${plotLeft}" y1="${f2(sy(1))}" x2="${plotRight}" y2="${f2(sy(1))}" stroke="${ORACLE}" stroke-width="1.5" stroke-dasharray="6 4"/>`);
     parts.push(`<text x="${plotRight - 4}" y="${f2(sy(1) - 6)}" text-anchor="end" fill="${ORACLE}" font-size="11">oracle = 1.0</text>`);
     const sizes = report.bySize;
+    const hasLlm = report.overall.llm !== undefined;
+    const nBars = hasLlm ? 3 : 2;
     const slot = (plotRight - plotLeft) / Math.max(1, sizes.length);
-    const barW = Math.min(36, slot * 0.32);
+    const barW = Math.min(36, (slot * 0.64) / nBars);
+    const gap = 6;
     sizes.forEach((s, i) => {
       const cx = plotLeft + slot * (i + 0.5);
       const bars: [number | null, string, string][] = [
         [s.naiveNashRatio.mean, NAIVE, "naive"],
         [s.protocolNashRatio.mean, PROTO, "protocol"],
       ];
+      if (hasLlm) bars.push([s.llm ? s.llm.nashRatio.mean : null, LLM, "llm"]);
+      const groupW = nBars * barW + (nBars - 1) * gap;
       bars.forEach(([v, color], j) => {
-        const bx = cx - barW - 3 + j * (barW + 6);
+        const bx = cx - groupW / 2 + j * (barW + gap);
         const val = v ?? 0;
         const by = sy(val);
         parts.push(`<rect x="${f2(bx)}" y="${f2(by)}" width="${f2(barW)}" height="${f2(plotBottom - by)}" fill="${color}" rx="2"/>`);
@@ -166,6 +222,7 @@ export function toSvg(report: SimReport): string {
     const ly = y0 + 30;
     parts.push(`<rect x="${lx}" y="${ly}" width="12" height="12" fill="${NAIVE}" rx="2"/><text x="${lx + 17}" y="${ly + 10}" font-size="11">naive (round-1 vote)</text>`);
     parts.push(`<rect x="${lx + 130}" y="${ly}" width="12" height="12" fill="${PROTO}" rx="2"/><text x="${lx + 147}" y="${ly + 10}" font-size="11">protocol</text>`);
+    if (hasLlm) parts.push(`<rect x="${lx + 200}" y="${ly}" width="12" height="12" fill="${LLM}" rx="2"/><text x="${lx + 217}" y="${ly + 10}" font-size="11">LLM (no privacy)</text>`);
   }
 
   // ---- Panel (b): convergence by round --------------------------------------
@@ -210,7 +267,8 @@ export function toSvg(report: SimReport): string {
   }
 
   parts.push(`<text x="24" y="${H - 30}" fill="${MUTED}" font-size="11">Nash ratio = product of true utilities of the chosen plan / best product over all feasible (restaurant, slot) pairs.</text>`);
-  parts.push(`<text x="24" y="${H - 14}" fill="${MUTED}" font-size="11">Groups with no feasible plan are excluded from the ratios. Naive = the round-1 candidate with the most accepts, taken as-is.</text>`);
+  const llmNote = report.meta.llm ? ` LLM (no privacy) = ${report.meta.llm.model} reading every preference, on ${report.meta.llm.groupsRequested} groups only.` : "";
+  parts.push(`<text x="24" y="${H - 14}" fill="${MUTED}" font-size="11">Groups with no feasible plan are excluded from the ratios. Naive = the round-1 candidate with the most accepts, taken as-is.${llmNote}</text>`);
   parts.push(`</svg>`);
   return parts.join("\n") + "\n";
 }
