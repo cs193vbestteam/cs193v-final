@@ -70,7 +70,7 @@ async function addMember(eventId: string, userId: string) {
   const client = await db();
   const now = Date.now();
   await client.execute({
-    sql: "INSERT OR IGNORE INTO members (event_id, user_id, constraints_enc, ready, joined_at) VALUES (?, ?, ?, 0, ?)",
+    sql: "INSERT INTO members (event_id, user_id, constraints_enc, ready, joined_at) VALUES (?, ?, ?, 0, ?) ON CONFLICT DO NOTHING",
     args: [eventId, userId, encryptJson(emptyConstraints()), now],
   });
   const { rows } = await client.execute({

@@ -11,6 +11,7 @@ next-env.d.ts
 # local database
 *.db
 *.db-journal
+.pglite/
 
 .DS_Store
 .vercel
@@ -19,3 +20,5 @@ coverage/
 
 # simulation output
 sim/out/
+.env*
+!.env.example

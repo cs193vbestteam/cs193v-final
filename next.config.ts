@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // @libsql/client ships native bindings; keep it out of the server bundle.
-  serverExternalPackages: ["@libsql/client"],
+  // Database drivers load files at runtime (PGlite's WebAssembly); keep them out of the bundle.
+  serverExternalPackages: ["pg", "@electric-sql/pglite"],
 };
 
 export default nextConfig;

@@ -53,7 +53,7 @@ CI runs both on every PR (`.github/workflows/ci.yml`).
 
 ## Deploy
 
-- **Database:** create a free [Turso](https://turso.tech) database and set `DATABASE_URL=libsql://...` and `DATABASE_AUTH_TOKEN`. The schema is created automatically on first request.
+- **Database:** any Postgres (Neon, Supabase, Vercel Postgres...). Set `DATABASE_URL=postgresql://...`. The tables are created automatically on the first request. Locally, no database server is needed: without a Postgres URL the app uses [PGlite](https://pglite.dev) (Postgres in WebAssembly) and stores data in `./.pglite`.
 - **Host:** Vercel (one person deploys; see the course note about commit authors) or another Node host. Set `ENCRYPTION_KEY`, the database variables and, optionally, `ANTHROPIC_API_KEY` (LLM elicitation), `GOOGLE_PLACES_API_KEY` (real restaurants near the plan's location) and `SETTLE_LLM_MEDIATOR=1` (LLM re-ranking of the mediator's shortlist).
 - ⚠️ Never change `ENCRYPTION_KEY` after launch, or existing data can no longer be decrypted.
 
@@ -77,7 +77,7 @@ src/
     restaurants.ts     seed pool (used when Places is off)
     crypto.ts          AES-GCM, blind index, tokens
     auth.ts, session.ts
-    db.ts, events.ts   libSQL schema + data access with membership checks
+    db.ts, events.ts   Postgres schema + data access with membership checks
 sim/                   synthetic-group evaluation (oracle, baselines, report + chart)
 docs/evaluation.md     the evaluation chapter of the report
 tests/                 vitest suites
