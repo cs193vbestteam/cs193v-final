@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { runNegotiationAction } from "@/app/actions";
 
 export function NegotiateButton({ eventId, inviteCode, readyCount, memberCount, decided }: { eventId: string; inviteCode: string; readyCount: number; memberCount: number; decided: boolean }) {
@@ -31,18 +31,50 @@ export function NegotiateButton({ eventId, inviteCode, readyCount, memberCount, 
 }
 
 export function CopyInvite({ url }: { url: string }) {
-  const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<{ url: string; status: "copying" | "copied" | "failed" } | null>(null);
+  const request = useRef(0);
+  const status = feedback?.url === url ? feedback.status : null;
+
+  useEffect(() => {
+    setFeedback(null);
+    // Ignore results from a previous URL or an unmounted component.
+    return () => { request.current += 1; };
+  }, [url]);
+
+  useEffect(() => {
+    if (status !== "copied") return;
+    const timer = setTimeout(() => setFeedback(null), 1500);
+    return () => clearTimeout(timer);
+  }, [status, url]);
+
+  async function copy() {
+    const attempt = ++request.current;
+    setFeedback({ url, status: "copying" });
+    try {
+      if (typeof navigator.clipboard?.writeText !== "function") throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(url);
+      if (attempt === request.current) setFeedback({ url, status: "copied" });
+    } catch {
+      if (attempt === request.current) setFeedback({ url, status: "failed" });
+    }
+  }
+
   return (
-    <button
-      className="btn-ghost w-full truncate text-xs"
-      onClick={async () => {
-        await navigator.clipboard.writeText(url);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
-      }}
-    >
-      {copied ? "Copied!" : `Copy invite link`}
-    </button>
+    <div className="space-y-2">
+      <button type="button" className="btn-ghost w-full truncate text-xs" disabled={status === "copying"} onClick={copy}>
+        {status === "copied" ? "Copied!" : status === "copying" ? "Copying…" : "Copy invite link"}
+      </button>
+      <div role="status" className="text-xs text-muted">
+        {status === "copied" && "Invitation link copied."}
+        {status === "failed" && "Couldn't copy automatically. Copy the invitation link below, or try again."}
+      </div>
+      {status === "failed" && (
+        <label className="block text-xs text-muted">
+          Invitation link
+          <input className="input mt-1" type="text" readOnly value={url} onFocus={(event) => event.currentTarget.select()} />
+        </label>
+      )}
+    </div>
   );
 }
 
