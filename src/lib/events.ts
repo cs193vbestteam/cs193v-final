@@ -8,11 +8,11 @@ import {
   mergeConstraints,
   missingFields,
 } from "./constraints";
-import { evaluate } from "./evaluate";
 import { extract, type ChatTurn } from "./extract";
 import { OPENING_MESSAGE } from "./extract-rules";
-import { negotiate, type Assistant, type NegotiationResult } from "./negotiate";
-import { getRestaurant } from "./restaurants";
+import { configuredSelector } from "./mediator-llm";
+import { negotiate, type NegotiationResult } from "./negotiate";
+import { agentsForEvent } from "./vault";
 
 /**
  * Data access for plans ("events"). Every function takes the acting userId explicitly
@@ -23,7 +23,8 @@ export class AccessError extends Error {}
 
 export type EventSummary = { id: string; title: string; inviteCode: string; creatorId: string; decided: boolean };
 export type Member = { userId: string; displayName: string; ready: boolean };
-export type StoredResult = NegotiationResult & { participants: number; decidedAt: number };
+/** What the group sees. `memberNames` lets the UI name a reservation ("Sam: timing") without exposing ids. */
+export type StoredResult = NegotiationResult & { participants: number; memberNames: string[]; decidedAt: number };
 
 export const TitleSchema = z.string().trim().min(1, "Give your plan a name").max(80, "Name is too long");
 export const MessageSchema = z.string().trim().min(1).max(1000, "Message is too long");
@@ -202,31 +203,26 @@ export async function setReady(eventId: string, userId: string, ready: boolean):
 
 /**
  * Runs the negotiation only when every joined member is ready.
- * Each member's constraints are decrypted here, server-side, and wrapped in an
- * opaque Assistant closure. The negotiation engine never sees the constraints.
+ * The vault decrypts each member's preferences and wraps them in an opaque
+ * Agent. This function, and the negotiation engine below it, never see them.
  */
 export async function runNegotiation(eventId: string, userId: string): Promise<StoredResult> {
   await requireMember(eventId, userId);
-  const client = await db();
-  const { rows } = await client.execute({
-    sql: "SELECT constraints_enc, ready FROM members WHERE event_id = ?",
-    args: [eventId],
-  });
-  const readyCount = rows.filter((row) => Number(row.ready) === 1).length;
+  const { agents, userIds, readyCount } = await agentsForEvent(eventId);
   if (readyCount < 2) throw new AccessError("At least 2 people need to be ready first");
-  if (readyCount !== rows.length) {
+  if (readyCount !== agents.length) {
     throw new AccessError("Everyone who joined must be ready before finding a plan");
   }
+  const members = await listMembers(eventId, userId);
+  const memberNames = userIds.map((id) => members.find((m) => m.userId === id)?.displayName ?? "Someone");
 
-  const assistants: Assistant[] = rows.map((r) => {
-    const c = ConstraintsSchema.parse(decryptJson(String(r.constraints_enc)));
-    return (p) => {
-      const restaurant = getRestaurant(p.restaurantId);
-      return restaurant ? evaluate(c, restaurant, p.slot) : { verdict: "no" };
-    };
-  });
-
-  const result: StoredResult = { ...negotiate(assistants, { maxRounds: 6 }), participants: rows.length, decidedAt: Date.now() };
+  const result: StoredResult = {
+    ...(await negotiate(agents, { maxRounds: 6, perRound: 5, selector: configuredSelector() })),
+    participants: agents.length,
+    memberNames,
+    decidedAt: Date.now(),
+  };
+  const client = await db();
   await client.execute({
     sql: "UPDATE events SET result_json = ?, decided_at = ? WHERE id = ?",
     args: [JSON.stringify(result), result.decidedAt, eventId],
@@ -239,5 +235,31 @@ export async function getResult(eventId: string, userId: string): Promise<Stored
   const client = await db();
   const { rows } = await client.execute({ sql: "SELECT result_json FROM events WHERE id = ?", args: [eventId] });
   const raw = rows[0]?.result_json;
-  return raw ? (JSON.parse(String(raw)) as StoredResult) : null;
+  return raw ? upgradeResult(JSON.parse(String(raw))) : null;
+}
+
+type LegacyTally = { yes: number; meh: number; no: number; reasons: Record<string, number> };
+const isLegacyTally = (t: unknown): t is LegacyTally => !!t && typeof t === "object" && "yes" in (t as object);
+
+/** Results stored before the utility-based protocol used yes/meh/no tallies. Map them so old plans still render. */
+export function upgradeResult(raw: Record<string, unknown>): StoredResult {
+  const fix = (t: unknown) =>
+    isLegacyTally(t) ? { accept: t.yes, reluctant: t.meh, reject: t.no, dims: t.reasons ?? {}, rejectDims: {} } : t;
+  const rounds = ((raw.rounds as { round: number; level?: number; proposals: { proposal: unknown; tally: unknown }[] }[]) ?? []).map((r) => ({
+    round: r.round,
+    level: r.level ?? 0,
+    proposals: r.proposals.map((p) => ({ ...p, tally: fix(p.tally) })),
+  }));
+  return {
+    ...(raw as object),
+    status: raw.status === "no_option" ? "no_deal" : raw.status,
+    tally: fix(raw.tally),
+    rounds,
+    concessionLevel: (raw.concessionLevel as number) ?? 0,
+    finalists: (raw.finalists as StoredResult["finalists"]) ?? [],
+    reservations: (raw.reservations as StoredResult["reservations"]) ?? [],
+    conflicts: (raw.conflicts as StoredResult["conflicts"]) ?? [],
+    leakedDims: (raw.leakedDims as number) ?? 0,
+    memberNames: (raw.memberNames as string[]) ?? [],
+  } as StoredResult;
 }

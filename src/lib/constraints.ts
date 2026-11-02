@@ -41,6 +41,21 @@ export const CUISINES = [
 ] as const;
 export type Cuisine = (typeof CUISINES)[number];
 
+/** Dimensions a person can trade off or concede. Time and diet are hard-only. */
+export const SOFT_DIMS = ["budget", "travel", "cuisine"] as const;
+export type SoftDim = (typeof SOFT_DIMS)[number];
+export const SOFT_DIM_LABELS: Record<SoftDim, string> = { budget: "budget", travel: "distance", cuisine: "cuisine" };
+
+export const DEFAULT_WEIGHTS: Record<SoftDim, number> = { budget: 0.35, travel: 0.3, cuisine: 0.35 };
+export const DEFAULT_CONCESSION_ORDER: SoftDim[] = ["cuisine", "travel", "budget"];
+
+/** Extra questions the assistant asks once the essentials are known. */
+export const PROBES = ["tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"] as const;
+export type Probe = (typeof PROBES)[number];
+/** Questions that need the next answer read in context: a vague-answer follow-up, or a probe. */
+export const PENDING = ["vague_budget", "vague_distance", ...PROBES] as const;
+export type Pending = (typeof PENDING)[number];
+
 export const ConstraintsSchema = z.object({
   /** Hard ceiling, in dollars per person. */
   budgetMax: z.number().int().positive().nullable(),
@@ -55,10 +70,20 @@ export const ConstraintsSchema = z.object({
   maxTravelMin: z.number().int().positive().nullable(),
   likedCuisines: z.array(z.enum(CUISINES)),
   dislikedCuisines: z.array(z.enum(CUISINES)),
+  /** Relative importance of each soft dimension (normalised at compile time). */
+  weights: z.object({ budget: z.number().min(0), travel: z.number().min(0), cuisine: z.number().min(0) }).default({ ...DEFAULT_WEIGHTS }),
+  /** "If something has to give, what goes first?" null = not asked yet. */
+  concessionOrder: z.array(z.enum(SOFT_DIMS)).nullable().default(null),
+  /** Follow-up questions already asked, so the assistant never nags twice. */
+  probesAsked: z.array(z.enum(PROBES)).default([]),
+  /** The question the assistant asked last and is still waiting on. */
+  pending: z.enum(PENDING).nullable().default(null),
 });
 export type Constraints = z.infer<typeof ConstraintsSchema>;
 
-export const ConstraintsUpdateSchema = ConstraintsSchema.partial();
+export const ConstraintsUpdateSchema = ConstraintsSchema.partial().extend({
+  weights: z.object({ budget: z.number().min(0), travel: z.number().min(0), cuisine: z.number().min(0) }).partial().optional(),
+});
 export type ConstraintsUpdate = z.infer<typeof ConstraintsUpdateSchema>;
 
 export function emptyConstraints(): Constraints {
@@ -71,6 +96,10 @@ export function emptyConstraints(): Constraints {
     maxTravelMin: null,
     likedCuisines: [],
     dislikedCuisines: [],
+    weights: { ...DEFAULT_WEIGHTS },
+    concessionOrder: null,
+    probesAsked: [],
+    pending: null,
   };
 }
 
@@ -98,6 +127,12 @@ export function mergeConstraints(base: Constraints, update: ConstraintsUpdate): 
     next.dislikedCuisines = uniq([...next.dislikedCuisines, ...update.dislikedCuisines]);
     next.likedCuisines = next.likedCuisines.filter((c) => !update.dislikedCuisines!.includes(c));
   }
+  if (update.weights !== undefined) next.weights = { ...base.weights, ...update.weights };
+  if (update.concessionOrder !== undefined) {
+    next.concessionOrder = update.concessionOrder === null ? null : uniq(update.concessionOrder);
+  }
+  if (update.probesAsked !== undefined) next.probesAsked = uniq([...base.probesAsked, ...update.probesAsked]);
+  if (update.pending !== undefined) next.pending = update.pending;
   return ConstraintsSchema.parse(next);
 }
 
@@ -124,5 +159,18 @@ export function describeConstraints(c: Constraints): string[] {
     lines.push(`Diet: ${c.dietary.length ? c.dietary.map((d) => DIETARY_LABELS[d]).join(", ") : "no restrictions"}`);
   if (c.likedCuisines.length) lines.push(`Would like: ${c.likedCuisines.join(", ")}`);
   if (c.dislikedCuisines.length) lines.push(`Rather not: ${c.dislikedCuisines.join(", ")}`);
+  if (c.probesAsked.some((p) => p.startsWith("tradeoff"))) {
+    const top = (Object.entries(c.weights) as [SoftDim, number][]).sort((a, b) => b[1] - a[1])[0][0];
+    lines.push(`Cares most about: ${SOFT_DIM_LABELS[top]}`);
+  }
+  if (c.concessionOrder && c.concessionOrder.length) {
+    lines.push(`Would give up first: ${c.concessionOrder.map((d) => SOFT_DIM_LABELS[d]).join(", then ")}`);
+  }
   return lines;
+}
+
+/** The next optional question worth asking once the essentials are in. */
+export function nextProbe(c: Constraints): Probe | null {
+  if (missingFields(c).length > 0) return null;
+  return PROBES.find((p) => !c.probesAsked.includes(p)) ?? null;
 }

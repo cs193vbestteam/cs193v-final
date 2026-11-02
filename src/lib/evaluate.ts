@@ -1,58 +1,125 @@
-import type { Constraints, Slot } from "./constraints";
+import type { Slot } from "./constraints";
+import { NEUTRAL_CUISINE, relax, type Preferences, type SoftRule } from "./preferences";
 import type { Restaurant } from "./restaurants";
 
 /**
  * A member's assistant judging one proposal.
- * Deterministic and LLM-free on purpose: no private numbers ever leave this function,
- * only a verdict and (optionally) a coarse reason category.
+ *
+ * Deterministic and LLM-free on purpose. The only thing that ever leaves this
+ * module is a verdict and (optionally) ONE dimension name: never a number,
+ * never the preferences themselves.
+ *
+ *   utility = weighted mean of soft satisfactions, 0..1
+ *   >= ACCEPT_AT    → accept
+ *   >= RELUCTANT_AT → reluctant (+ weakest dimension)
+ *   otherwise       → reject    (+ weakest dimension)
+ *   any hard rule violated → reject (+ that dimension), utility not consulted
  */
 
 export type Proposal = { restaurantId: string; slot: Slot };
 
-export type Verdict = "yes" | "meh" | "no";
-export type Reason = "time" | "price" | "diet" | "distance" | "cuisine";
+export type Verdict = "accept" | "reluctant" | "reject";
+export type Dim = "time" | "price" | "diet" | "distance" | "cuisine";
+export type Judgement = { verdict: Verdict; dim?: Dim };
 
-export type Judgement = { verdict: Verdict; reason?: Reason };
+export const ACCEPT_AT = 0.7;
+export const RELUCTANT_AT = 0.4;
 
-/** Minutes past maxTravelMin that still count as "a stretch, but OK". */
-export const TRAVEL_GRACE_MIN = 10;
+export type Bucket = 1 | 2 | 3 | 4 | 5;
 
-const RANK: Record<Verdict, number> = { yes: 0, meh: 1, no: 2 };
-
-export function evaluate(c: Constraints, restaurant: Restaurant, slot: Slot): Judgement {
-  const issues: Judgement[] = [];
-
-  // Time (hard)
-  if (!restaurant.open.includes(slot)) issues.push({ verdict: "no", reason: "time" });
-  if (c.availableSlots && !c.availableSlots.includes(slot)) issues.push({ verdict: "no", reason: "time" });
-
-  // Diet (hard)
-  const d = c.dietary;
-  if (
-    (d.includes("no_spicy") && restaurant.spicy) ||
-    (d.includes("vegetarian") && !restaurant.vegetarianFriendly) ||
-    (d.includes("no_seafood") && restaurant.seafoodHeavy) ||
-    (d.includes("halal") && !restaurant.halal)
-  ) {
-    issues.push({ verdict: "no", reason: "diet" });
+function violated(p: Preferences, r: Restaurant, slot: Slot): Dim | null {
+  if (!r.open.includes(slot)) return "time";
+  for (const h of p.hard) {
+    switch (h.dim) {
+      case "time":
+        if (!h.val.includes(slot)) return "time";
+        break;
+      case "diet":
+        for (const d of h.val) {
+          if (
+            (d === "no_spicy" && r.spicy) ||
+            (d === "vegetarian" && !r.vegetarianFriendly) ||
+            (d === "no_seafood" && r.seafoodHeavy) ||
+            (d === "halal" && !r.halal)
+          )
+            return "diet";
+        }
+        break;
+      case "price":
+        if (r.pricePerPerson > h.val) return "price";
+        break;
+      case "distance":
+        if (r.travelMin > h.val) return "distance";
+        break;
+    }
   }
+  return null;
+}
 
-  // Price (soft up to budgetFlex)
-  if (c.budgetMax !== null && restaurant.pricePerPerson > c.budgetMax) {
-    const verdict = restaurant.pricePerPerson <= c.budgetMax + c.budgetFlex ? "meh" : "no";
-    issues.push({ verdict, reason: "price" });
+/** 1 at or below ideal, then linear to 0 at ideal + tolerance. */
+function ramp(x: number, ideal: number, tolerance: number): number {
+  if (x <= ideal) return 1;
+  if (tolerance <= 0) return 0;
+  return Math.max(0, 1 - (x - ideal) / tolerance);
+}
+
+export function satisfaction(s: SoftRule, r: Restaurant): number {
+  switch (s.dim) {
+    case "price":
+      return ramp(r.pricePerPerson, s.ideal, s.tolerance);
+    case "distance":
+      return ramp(r.travelMin, s.ideal, s.tolerance);
+    case "cuisine":
+      if (s.prefer.includes(r.cuisine)) return 1;
+      if (s.avoid.includes(r.cuisine)) return s.avoidScore;
+      return NEUTRAL_CUISINE;
   }
+}
 
-  // Distance (soft up to grace)
-  if (c.maxTravelMin !== null && restaurant.travelMin > c.maxTravelMin) {
-    const verdict = restaurant.travelMin <= c.maxTravelMin + TRAVEL_GRACE_MIN ? "meh" : "no";
-    issues.push({ verdict, reason: "distance" });
+export type Utility = { value: number; perDim: Partial<Record<Dim, number>>; violated: Dim | null };
+
+/** The full picture. Stays inside the assistant; only evaluate()/bucket() leave. */
+export function utility(p: Preferences, r: Restaurant, slot: Slot): Utility {
+  const v = violated(p, r, slot);
+  const perDim: Partial<Record<Dim, number>> = {};
+  let num = 0;
+  let den = 0;
+  for (const s of p.soft) {
+    const sat = satisfaction(s, r);
+    perDim[s.dim] = sat;
+    num += s.weight * sat;
+    den += s.weight;
   }
+  const value = v ? 0 : den > 0 ? num / den : 1;
+  return { value, perDim, violated: v };
+}
 
-  // Cuisine (preference only)
-  if (c.dislikedCuisines.includes(restaurant.cuisine)) issues.push({ verdict: "meh", reason: "cuisine" });
+function weakest(p: Preferences, u: Utility): Dim | undefined {
+  let worst: { dim: Dim; shortfall: number } | null = null;
+  for (const s of p.soft) {
+    const shortfall = s.weight * (1 - (u.perDim[s.dim] ?? 1));
+    if (!worst || shortfall > worst.shortfall) worst = { dim: s.dim, shortfall };
+  }
+  return worst && worst.shortfall > 0 ? worst.dim : undefined;
+}
 
-  if (issues.length === 0) return { verdict: "yes" };
-  // Report only the single worst issue: the system learns as little as possible.
-  return issues.reduce((worst, j) => (RANK[j.verdict] > RANK[worst.verdict] ? j : worst));
+/**
+ * The verdict the mediator is allowed to see.
+ * `level` is how many concession steps this person has been asked to make.
+ */
+export function evaluate(prefs: Preferences, r: Restaurant, slot: Slot, level = 0): Judgement {
+  const p = relax(prefs, level);
+  const u = utility(p, r, slot);
+  if (u.violated) return { verdict: "reject", dim: u.violated };
+  if (u.value >= ACCEPT_AT) return { verdict: "accept" };
+  const dim = weakest(p, u);
+  if (u.value >= RELUCTANT_AT) return { verdict: "reluctant", dim };
+  return { verdict: "reject", dim };
+}
+
+/** Coarse utility for the final fairness step: 5 buckets, never the number. */
+export function bucket(prefs: Preferences, r: Restaurant, slot: Slot, level = 0): Bucket {
+  const u = utility(relax(prefs, level), r, slot);
+  if (u.violated) return 1;
+  return Math.min(5, Math.floor(u.value * 5 + 1e-9) + 1) as Bucket;
 }

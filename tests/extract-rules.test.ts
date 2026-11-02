@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyConstraints, mergeConstraints } from "@/lib/constraints";
+import { emptyConstraints, mergeConstraints, missingFields } from "@/lib/constraints";
 import {
   extractBudget,
   extractCuisines,
@@ -8,6 +8,7 @@ import {
   extractRules,
   extractTime,
   ruleReply,
+  ruleTurn,
 } from "@/lib/extract-rules";
 
 describe("extractTime", () => {
@@ -183,5 +184,83 @@ describe("bare answers to the pending question", () => {
     expect(c.dietaryConfirmed).toBe(true);
     expect(c.budgetMax).toBe(40);
     expect(c.maxTravelMin).toBe(15);
+  });
+});
+
+describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
+  const essentials = { availableSlots: ["sat_dinner" as const], budgetMax: 40, maxTravelMin: 15, dietaryConfirmed: true };
+  const start = (o: Parameters<typeof mergeConstraints>[1] = {}) => mergeConstraints(emptyConstraints(), o);
+
+  it("turns a vague budget into an either/or and reads the answer", () => {
+    const c0 = start({ availableSlots: ["sat_dinner"] });
+    const t1 = ruleTurn("whatever, I don't really care", c0);
+    expect(t1.update).toEqual({ pending: "vague_budget" });
+    expect(t1.reply).toMatch(/\$45 a head.*\$25 a head/);
+    const c1 = mergeConstraints(c0, t1.update);
+    const t2 = ruleTurn("45 would bother me", c1);
+    expect(t2.update).toMatchObject({ budgetMax: 30, budgetFlex: 10, pending: null });
+    expect(t2.reply).toMatch(/Noted\./);
+    expect(t2.reply).toMatch(/How far/);
+  });
+
+  it("a vague distance answer gets the distance either/or", () => {
+    const c0 = start({ availableSlots: ["sat_dinner"], budgetMax: 40 });
+    const t1 = ruleTurn("don't really care honestly", c0);
+    expect(t1.update).toEqual({ pending: "vague_distance" });
+    const t2 = ruleTurn("the so-so place nearby would be worse", mergeConstraints(c0, t1.update));
+    expect(t2.update).toMatchObject({ maxTravelMin: 40, pending: null });
+  });
+
+  it("a concrete number also clears a pending either/or", () => {
+    const c0 = start({ availableSlots: ["sat_dinner"], pending: "vague_budget" });
+    const t = ruleTurn("ok, 35", c0);
+    expect(t.update).toMatchObject({ budgetMax: 35, pending: null });
+  });
+
+  it("asks the two trade-offs and the concession question once the essentials are in, each exactly once", () => {
+    let c = start(essentials);
+    const t1 = ruleTurn("nothing", start({ ...essentials, dietaryConfirmed: false }));
+    expect(t1.update).toMatchObject({ dietaryConfirmed: true, pending: "tradeoff_budget_travel", probesAsked: ["tradeoff_budget_travel"] });
+    expect(t1.reply).toMatch(/paying \$10 over/);
+    c = mergeConstraints(c, t1.update);
+
+    const t2 = ruleTurn("paying more is worse", c);
+    expect(t2.update.weights).toMatchObject({ budget: 0.5, travel: 0.2 });
+    expect(t2.update).toMatchObject({ pending: "tradeoff_cuisine_travel", probesAsked: ["tradeoff_cuisine_travel"] });
+    c = mergeConstraints(c, t2.update);
+
+    const t3 = ruleTurn("the travel", c);
+    expect(t3.update.weights).toMatchObject({ travel: 0.35, cuisine: 0.25 });
+    expect(t3.update).toMatchObject({ pending: "concession" });
+    c = mergeConstraints(c, t3.update);
+
+    const t4 = ruleTurn("I'd give up the cuisine first, then distance, budget last", c);
+    expect(t4.update).toMatchObject({ concessionOrder: ["cuisine", "travel", "budget"], pending: null });
+    expect(t4.reply).toMatch(/That's everything I need/);
+    c = mergeConstraints(c, t4.update);
+    expect(c.probesAsked).toEqual(["tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"]);
+
+    const t5 = ruleTurn("also I love thai", c);
+    expect(t5.update).toMatchObject({ likedCuisines: ["thai"] });
+    expect(t5.reply).not.toMatch(/Which is worse/);
+  });
+
+  it("'neither' on a trade-off leaves the weights alone", () => {
+    const c = start({ ...essentials, pending: "tradeoff_budget_travel", probesAsked: ["tradeoff_budget_travel"] });
+    const t = ruleTurn("neither really", c);
+    expect(t.update.weights).toEqual(c.weights);
+    expect(t.update.pending).toBe("tradeoff_cuisine_travel");
+  });
+
+  it("an off-topic message while a probe is pending is still understood, and the probe is repeated", () => {
+    const c = start({ ...essentials, pending: "concession", probesAsked: ["tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"] });
+    const t = ruleTurn("actually no seafood for me", c);
+    expect(t.update).toMatchObject({ dietary: ["no_seafood"] });
+    expect(t.reply).toMatch(/what goes first/);
+  });
+
+  it("still gates readiness on the four essentials only", () => {
+    const c = mergeConstraints(start(essentials), { pending: "concession" });
+    expect(missingFields(c)).toEqual([]);
   });
 });

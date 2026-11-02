@@ -79,20 +79,20 @@ const STEPS = [
   {
     n: "02",
     title: "Assistants answer, never explain",
-    body: "The system proposes a plan and asks every assistant the same question. Each one says yes, meh or no, and at most why. Never a number.",
+    body: "The mediator proposes five options and asks every assistant the same question. Each one says accept, reluctant or reject, and at most which dimension. Never a number.",
     demo: (
       <div className="flex flex-wrap gap-2 font-mono text-xs">
-        <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">yes</span>
-        <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-1 text-amber">meh · price</span>
-        <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">yes</span>
-        <span className="rounded-md border border-seal/30 bg-seal-soft px-2 py-1 text-seal">no · time</span>
+        <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">accept</span>
+        <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-1 text-amber">reluctant · price</span>
+        <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">accept</span>
+        <span className="rounded-md border border-seal/30 bg-seal-soft px-2 py-1 text-seal">reject · time</span>
       </div>
     ),
   },
   {
     n: "03",
     title: "One line to the group",
-    body: "Two or three rounds later there's a plan everyone can live with. The group chat gets the answer and nothing else.",
+    body: "A few rounds later, with small concessions nobody else sees, there's a plan everyone can live with. The group chat gets the answer and nothing else.",
     demo: (
       <div className="rounded-xl border border-ink bg-ink px-3 py-2 text-paper">
         <div className="font-serif text-lg leading-tight">Sat 7pm · Olive Tree Mezze</div>
@@ -177,8 +177,8 @@ function Landing() {
             Private <em>by construction</em>, not by promise.
           </h2>
           <p className="lede mt-4 max-w-2xl">
-            The negotiation engine never receives anyone&apos;s constraints. It only gets one opaque assistant per
-            person, and every assistant answers with a verdict. Here is what that looks like.
+            The mediator never receives anyone&apos;s constraints. It only gets one opaque assistant per person, and
+            every assistant answers with a verdict and at most one dimension name. Here is what that looks like.
           </p>
         </Reveal>
         <Reveal delay={0.1} className="mt-10 overflow-hidden rounded-[1.5rem] border border-line bg-surface shadow-[var(--shadow-card)]">
@@ -195,9 +195,9 @@ function Landing() {
                 <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-ink-3 sm:hidden">group sees</span>
                 <span className="redact" style={{ width: `${row.width * 3.5 + 2}rem` }} />
                 {row.verdict === "yes" ? (
-                  <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-0.5 font-mono text-xs text-moss">yes</span>
+                  <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-0.5 font-mono text-xs text-moss">accept</span>
                 ) : (
-                  <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-0.5 font-mono text-xs text-amber">meh · price</span>
+                  <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-0.5 font-mono text-xs text-amber">reluctant · price</span>
                 )}
               </div>
             </div>

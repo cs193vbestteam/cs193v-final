@@ -1,18 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { type Constraints, emptyConstraints, mergeConstraints } from "@/lib/constraints";
+import { makeAgent, type Agent } from "@/lib/agent";
+import { type Constraints, type ConstraintsUpdate, emptyConstraints, mergeConstraints } from "@/lib/constraints";
 import { evaluate } from "@/lib/evaluate";
-import { type Assistant, negotiate } from "@/lib/negotiate";
+import { nashProduct, negotiate } from "@/lib/negotiate";
+import { compile } from "@/lib/preferences";
 import { RESTAURANTS, getRestaurant } from "@/lib/restaurants";
 
-const c = (o: Partial<Constraints>) => mergeConstraints(emptyConstraints(), { dietaryConfirmed: true, ...o });
-const assistantFor = (cons: Constraints): Assistant => (p) => evaluate(cons, getRestaurant(p.restaurantId)!, p.slot);
+const c = (o: ConstraintsUpdate) => mergeConstraints(emptyConstraints(), { dietaryConfirmed: true, ...o });
+const agentFor = (cons: Constraints): Agent => makeAgent(compile(cons));
 
 describe("negotiate", () => {
-  it("returns no_option with nobody", () => {
-    expect(negotiate([]).status).toBe("no_option");
+  it("returns no_deal with nobody", async () => {
+    expect((await negotiate([])).status).toBe("no_deal");
   });
 
-  it("finds a plan everyone says yes to (the 5-friends example)", () => {
+  it("finds a plan everyone accepts (the 5-friends example)", async () => {
     const people = [
       c({ availableSlots: ["sat_dinner", "sun_dinner"] }), // A: "whatever", but busy daytime
       c({ budgetMax: 30 }), // B: not too expensive
@@ -20,62 +22,118 @@ describe("negotiate", () => {
       c({ dietary: ["no_spicy"], maxTravelMin: 15 }), // D
       c({ dislikedCuisines: ["american"] }), // E
     ];
-    const result = negotiate(people.map(assistantFor));
+    const result = await negotiate(people.map(agentFor));
     expect(result.status).toBe("agreed");
-    expect(result.tally?.yes).toBe(5);
-    // The agreed plan really does satisfy everyone.
+    expect(result.tally?.accept).toBe(5);
+    expect(result.reservations).toEqual([]);
     for (const p of people) {
-      expect(evaluate(p, getRestaurant(result.proposal!.restaurantId)!, result.proposal!.slot).verdict).toBe("yes");
+      expect(evaluate(compile(p), getRestaurant(result.proposal!.restaurantId)!, result.proposal!.slot).verdict).toBe("accept");
     }
   });
 
-  it("adapts across rounds instead of proposing the same things", () => {
+  it("adapts across rounds instead of proposing the same things", async () => {
     const people = [c({ budgetMax: 16, availableSlots: ["sun_dinner"] }), c({ maxTravelMin: 6 })];
-    const result = negotiate(people.map(assistantFor), { maxRounds: 10 });
+    const result = await negotiate(people.map(agentFor), { maxRounds: 10 });
     expect(result.status).toBe("agreed");
     const keys = result.rounds.flatMap((r) => r.proposals.map((p) => `${p.proposal.restaurantId}@${p.proposal.slot}`));
     expect(new Set(keys).size).toBe(keys.length);
   });
 
-  it("falls back to a compromise when nothing gets unanimous yes", () => {
+  it("first round is a diverse spread, not five variations of one idea", async () => {
+    const result = await negotiate([agentFor(c({ budgetMax: 1 }))], { maxRounds: 1 });
+    const first = result.rounds[0].proposals.map((p) => getRestaurant(p.proposal.restaurantId)!);
+    expect(first).toHaveLength(5);
+    expect(new Set(first.map((r) => r.cuisine)).size).toBeGreaterThanOrEqual(4);
+  });
+
+  it("falls back to a compromise when nothing gets unanimous accept", async () => {
     // Only Taqueria Sol is cheap/close enough, and one person mildly dislikes Mexican.
-    const people = [c({ budgetMax: 15, maxTravelMin: 5 }), c({ dislikedCuisines: ["mexican"] })];
-    const result = negotiate(people.map(assistantFor), { maxRounds: 30 });
+    const people = [c({ budgetMax: 15, maxTravelMin: 5 }), c({ budgetMax: 60, maxTravelMin: 60, dislikedCuisines: ["mexican"] })];
+    const result = await negotiate(people.map(agentFor), { concessionFrom: 99 });
     expect(result.status).toBe("compromise");
-    expect(result.tally?.no).toBe(0);
+    expect(result.tally?.reject).toBe(0);
     expect(result.proposal?.restaurantId).toBe("taqueria-sol");
+    expect(result.reservations).toEqual([{ member: 1, dim: "cuisine" }]);
   });
 
-  it("reports no_option for impossible constraints", () => {
+  it("concessions from round 4 turn a lasting compromise into agreement", async () => {
+    const people = [c({ budgetMax: 15, maxTravelMin: 5 }), c({ budgetMax: 60, maxTravelMin: 60, dislikedCuisines: ["mexican"], concessionOrder: ["cuisine"] })];
+    const without = await negotiate(people.map(agentFor), { concessionFrom: 99 });
+    expect(without.status).toBe("compromise");
+    const result = await negotiate(people.map(agentFor));
+    expect(result.status).toBe("agreed");
+    expect(result.concessionLevel).toBeGreaterThanOrEqual(1);
+    expect(result.rounds.find((r) => r.round === 4)?.level).toBe(1);
+    expect(result.rounds.find((r) => r.round === 3)?.level).toBe(0);
+  });
+
+  it("reports no_deal with the conflicting dimensions for impossible constraints", async () => {
     const people = [c({ availableSlots: ["sat_lunch"] }), c({ availableSlots: ["sun_dinner"] })];
-    const result = negotiate(people.map(assistantFor), { maxRounds: 3 });
-    expect(result.status).toBe("no_option");
+    const result = await negotiate(people.map(agentFor), { maxRounds: 3 });
+    expect(result.status).toBe("no_deal");
+    expect(result.proposal).toBeNull();
+    expect(result.conflicts[0]).toBe("time");
   });
 
-  it("round logs contain only aggregate counts, never per-person data", () => {
+  it("round logs contain only aggregate counts, never per-person data", async () => {
     const people = [c({ budgetMax: 20 }), c({ dietary: ["vegetarian"] })];
-    const result = negotiate(people.map(assistantFor));
+    const result = await negotiate(people.map(agentFor));
     for (const round of result.rounds) {
       for (const p of round.proposals) {
-        expect(Object.keys(p.tally).sort()).toEqual(["meh", "no", "reasons", "yes"]);
-        expect(p.tally.yes + p.tally.meh + p.tally.no).toBe(2);
+        expect(Object.keys(p.tally).sort()).toEqual(["accept", "dims", "reject", "rejectDims", "reluctant"]);
+        expect(p.tally.accept + p.tally.reluctant + p.tally.reject).toBe(2);
       }
+    }
+    expect(JSON.stringify(result)).not.toMatch(/budget|utility|weight/);
+  });
+
+  it("finalist buckets are sorted, so they cannot be mapped back to members", async () => {
+    const people = [c({ budgetMax: 60 }), c({ budgetMax: 22, budgetFlex: 10 }), c({ budgetMax: 60 })];
+    const result = await negotiate(people.map(agentFor));
+    expect(result.finalists.length).toBeGreaterThan(0);
+    for (const f of result.finalists) {
+      expect(f.buckets).toHaveLength(3);
+      expect([...f.buckets].sort((a, b) => b - a)).toEqual(f.buckets);
+      expect(f.nash).toBe(nashProduct(f.buckets));
     }
   });
 
-  it("only ever calls assistants with valid proposals", () => {
-    const seen: string[] = [];
-    const spy: Assistant = (p) => {
-      seen.push(p.restaurantId);
-      return { verdict: "no", reason: "price" };
-    };
-    negotiate([spy], { maxRounds: 2 });
-    const ids = new Set(RESTAURANTS.map((r) => r.id));
-    expect(seen.every((id) => ids.has(id))).toBe(true);
+  it("chooses the finalist with the highest Nash product", async () => {
+    const people = [c({ budgetMax: 25, budgetFlex: 15 }), c({ budgetMax: 25, budgetFlex: 15, likedCuisines: ["vietnamese"] })];
+    const result = await negotiate(people.map(agentFor));
+    const best = Math.max(...result.finalists.map((f) => f.nash));
+    expect(result.finalists.find((f) => f.proposal.restaurantId === result.proposal!.restaurantId)!.nash).toBe(best);
   });
 
-  it("is deterministic", () => {
-    const people = [c({ budgetMax: 25 }), c({ maxTravelMin: 10 })].map(assistantFor);
-    expect(negotiate(people)).toEqual(negotiate(people));
+  it("only ever calls agents with valid proposals, and counts leaked dimension names", async () => {
+    const seen: string[] = [];
+    const spy: Agent = {
+      judge: (p) => {
+        seen.push(p.restaurantId);
+        return { verdict: "reject", dim: "price" };
+      },
+      bucket: () => 1,
+    };
+    const result = await negotiate([spy], { maxRounds: 2 });
+    const ids = new Set(RESTAURANTS.map((r) => r.id));
+    expect(seen.every((id) => ids.has(id))).toBe(true);
+    expect(result.leakedDims).toBe(seen.length);
+  });
+
+  it("is deterministic", async () => {
+    const people = [c({ budgetMax: 25 }), c({ maxTravelMin: 10 })].map(agentFor);
+    expect(await negotiate(people)).toEqual(await negotiate(people));
+  });
+
+  it("lets a selector re-rank the shortlist but never widen it", async () => {
+    const people = [c({ budgetMax: 40 })].map(agentFor);
+    const rogue = { r: RESTAURANTS[0], slot: "sat_dinner" as const };
+    const result = await negotiate(people, {
+      maxRounds: 1,
+      selector: (list) => [rogue, rogue, ...list.slice().reverse()],
+    });
+    const proposed = result.rounds[0].proposals.map((p) => p.proposal.restaurantId);
+    expect(new Set(proposed).size).toBe(proposed.length);
+    expect(proposed).toHaveLength(5);
   });
 });

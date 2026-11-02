@@ -6,9 +6,12 @@ import {
   type Constraints,
   type ConstraintsUpdate,
   ConstraintsUpdateSchema,
-  missingFields,
+  PENDING,
+  PROBES,
+  SOFT_DIMS,
+  nextProbe,
 } from "./constraints";
-import { extractRules, ruleReply } from "./extract-rules";
+import { ruleTurn } from "./extract-rules";
 
 /**
  * Private-chat extraction: turn what a user says into structured constraints.
@@ -28,6 +31,16 @@ Hard constraints to collect (ask for whichever is missing, one at a time):
 - distance: max one-way travel minutes
 - diet: restrictions (${DIETARY.join(", ")}), or confirm none (dietaryConfirmed=true)
 Soft preferences: liked/disliked cuisines (${CUISINES.join(", ")}).
+
+Once the essentials are known, ask these follow-ups ONE at a time, each exactly once (track them in probesAsked):
+- tradeoff_budget_travel: "Which is worse: paying $10 over budget, or travelling 10 minutes further?" → nudge weights (+0.15 to what they protect, -0.1 to the other; keep each within 0.1..0.7).
+- tradeoff_cuisine_travel: same shape for cuisine vs travel.
+- concession: "If something has to give, what goes first: cuisine, distance or budget?" → concessionOrder, in the order they give (${SOFT_DIMS.join(", ")}; "distance" = travel).
+Set "pending" to the question you just asked (${PENDING.join(", ")}) and back to null once answered.
+
+Never accept "whatever" / "anything" / "don't care" for budget or distance. Reply with an either/or instead
+("Which would bother you more: $45 a head, or $25 a head somewhere less exciting?") and set pending to vague_budget / vague_distance;
+infer a number from their answer ($45 bothers them → budgetMax 30, budgetFlex 10; otherwise 60/15. 30 min bothers them → maxTravelMin 15; otherwise 40).
 
 Rules:
 - Reassure them numbers stay private when asking about money.
@@ -54,6 +67,13 @@ const TOOL = {
           maxTravelMin: { type: "integer" },
           likedCuisines: { type: "array", items: { type: "string", enum: [...CUISINES] } },
           dislikedCuisines: { type: "array", items: { type: "string", enum: [...CUISINES] } },
+          weights: {
+            type: "object",
+            properties: { budget: { type: "number" }, travel: { type: "number" }, cuisine: { type: "number" } },
+          },
+          concessionOrder: { type: "array", items: { type: "string", enum: [...SOFT_DIMS] } },
+          probesAsked: { type: "array", items: { type: "string", enum: [...PROBES] } },
+          pending: { type: ["string", "null"], enum: [...PENDING, null] },
         },
       },
     },
@@ -79,7 +99,7 @@ async function extractWithLLM(history: ChatTurn[], current: Constraints, apiKey:
     body: JSON.stringify({
       model,
       max_tokens: 512,
-      system: `${SYSTEM_PROMPT}\n\nWhat you already know about this person (JSON): ${JSON.stringify(current)}`,
+      system: `${SYSTEM_PROMPT}\n\nWhat you already know about this person (JSON): ${JSON.stringify(current)}\nNext follow-up to ask once essentials are complete: ${nextProbe(current) ?? "none"}`,
       tools: [TOOL],
       tool_choice: { type: "tool", name: TOOL.name },
       messages,
@@ -103,6 +123,6 @@ export async function extract(history: ChatTurn[], current: Constraints): Promis
       console.error("LLM extraction failed, falling back to rules:", (err as Error).message);
     }
   }
-  const update = extractRules(latest, missingFields(current)[0]);
-  return { reply: ruleReply(current, update), update, source: "rules" };
+  const { update, reply } = ruleTurn(latest, current);
+  return { reply, update, source: "rules" };
 }

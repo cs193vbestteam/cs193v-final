@@ -6,9 +6,13 @@ import {
   type Cuisine,
   type Dietary,
   type MissingField,
+  type Pending,
+  type Probe,
   type Slot,
+  type SoftDim,
   mergeConstraints,
   missingFields,
+  nextProbe,
 } from "./constraints";
 
 /**
@@ -178,12 +182,9 @@ const POSITIVE = /\b(love|like|want|prefer|enjoy|into|fan of|crave|craving)\b/i;
  */
 export function extractBareAnswer(text: string, pending: MissingField | undefined): ConstraintsUpdate {
   if (!pending) return {};
-  const bare = text
-    .trim()
-    .toLowerCase()
-    .replace(/^(about|around|roughly|maybe|like|say|probably|approx\.?|~|i'?d say|i think)\s+/g, "")
-    .replace(/[.!?]+$/g, "")
-    .trim();
+  const FILLER = /^(ok(ay)?|sure|fine|well|hmm+|umm*|uh|yeah|yes|so|let'?s say|i guess|i'?d say|i think|about|around|roughly|maybe|like|say|probably|approx\.?|~)[\s,:-]+/i;
+  let bare = text.trim().toLowerCase().replace(/[.!?]+$/g, "").trim();
+  for (let i = 0; i < 4 && FILLER.test(bare); i++) bare = bare.replace(FILLER, "").trim();
   if (!bare) return {};
 
   if (pending === "budget") {
@@ -270,3 +271,116 @@ export function ruleReply(before: Constraints, update: ConstraintsUpdate): strin
 export const OPENING_MESSAGE =
   "Hi! I'm your private assistant for this plan. Only you can see this chat, and I'll never share your numbers with the group. I'll only ever answer \"works / a stretch / doesn't work\" on your behalf. " +
   QUESTIONS.time;
+
+
+/* ── Follow-up questions ────────────────────────────────────────────────
+   "Whatever" is not an answer. A vague reply to a numeric question becomes an
+   either/or; once the essentials are in, two trade-offs set the weights and
+   one last question sets the concession order. */
+
+const VAGUE = /\b(whatever|anything|any|don'?t (really )?(care|mind)|no (real )?(limit|preference)|idk|dunno|not sure|up to you|flexible|depends|easy|随便|都行|无所谓)\b/i;
+
+export const PENDING_QUESTIONS: Record<Pending, string> = {
+  vague_budget: "Fair enough, but \"whatever\" is how groups end up somewhere nobody wanted. Which would bother you more: paying about $45 a head, or $25 a head somewhere less exciting?",
+  vague_distance: "No problem. Which would bother you more: 30 minutes of travel, or a so-so place 5 minutes away?",
+  tradeoff_budget_travel: "Two quick trade-offs so I negotiate the way you would. Which is worse: paying $10 over your budget, or travelling 10 minutes further than you'd like?",
+  tradeoff_cuisine_travel: "And which is worse: a cuisine you're lukewarm on, or an extra 10 minutes of travel?",
+  concession: "Last one. If something has to give, what goes first: the cuisine, the distance, or the budget? List them in order if you like.",
+};
+
+const FIRST = /\b(first|former|a|1|one|the first one)\b/i;
+const SECOND = /\b(second|latter|b|2|two|the second one)\b/i;
+const NEITHER = /\b(neither|both fine|either|same|no difference|don'?t care)\b/i;
+
+const round2 = (x: number) => Math.round(x * 100) / 100;
+function bump(weights: Record<SoftDim, number>, up: SoftDim, down: SoftDim): Record<SoftDim, number> {
+  return { ...weights, [up]: round2(Math.min(0.7, weights[up] + 0.15)), [down]: round2(Math.max(0.1, weights[down] - 0.1)) };
+}
+
+/** Read the answer to a pending question. Returns null if the message doesn't answer it. */
+export function answerPending(text: string, pending: Pending, weights: Record<SoftDim, number>): ConstraintsUpdate | null {
+  const t = text.toLowerCase();
+  const pick = (aRe: RegExp, bRe: RegExp): "a" | "b" | "neither" | null => {
+    if (NEITHER.test(t)) return "neither";
+    const a = aRe.test(t) || FIRST.test(t);
+    const b = bRe.test(t) || SECOND.test(t);
+    if (a && !b) return "a";
+    if (b && !a) return "b";
+    return null;
+  };
+  switch (pending) {
+    case "vague_budget": {
+      const ans = pick(/\b(45|pay(ing)?|expensive|pricey|money|cost)\b/, /\b(25|less exciting|boring|cheap|so-?so)\b/);
+      if (ans === "a") return { budgetMax: 30, budgetFlex: 10, pending: null };
+      if (ans === "b" || ans === "neither") return { budgetMax: 60, budgetFlex: 15, pending: null };
+      return null;
+    }
+    case "vague_distance": {
+      const ans = pick(/\b(30|travel(ling)?|far|drive|driving|commute)\b/, /\b(5|so-?so|close|nearby|boring)\b/);
+      if (ans === "a") return { maxTravelMin: 15, pending: null };
+      if (ans === "b" || ans === "neither") return { maxTravelMin: 40, pending: null };
+      return null;
+    }
+    case "tradeoff_budget_travel": {
+      const ans = pick(/\b(pay(ing)?|over|budget|money|price|cost|\$)\b/, /\b(travel(ling)?|further|farther|distance|drive|driving|minutes?)\b/);
+      if (ans === null) return null;
+      const w = ans === "a" ? bump(weights, "budget", "travel") : ans === "b" ? bump(weights, "travel", "budget") : weights;
+      return { weights: w, pending: null };
+    }
+    case "tradeoff_cuisine_travel": {
+      const ans = pick(/\b(cuisine|food|lukewarm|menu|eat)\b/, /\b(travel(ling)?|further|farther|distance|drive|driving|minutes?)\b/);
+      if (ans === null) return null;
+      const w = ans === "a" ? bump(weights, "cuisine", "travel") : ans === "b" ? bump(weights, "travel", "cuisine") : weights;
+      return { weights: w, pending: null };
+    }
+    case "concession": {
+      const hits: { dim: SoftDim; at: number }[] = [];
+      const find = (re: RegExp, dim: SoftDim) => {
+        const m = t.match(re);
+        if (m && m.index !== undefined) hits.push({ dim, at: m.index });
+      };
+      find(/\b(cuisine|food|type of food|menu)\b/, "cuisine");
+      find(/\b(distance|travel|far|drive|driving|location)\b/, "travel");
+      find(/\b(budget|price|money|cost|spend)\b/, "budget");
+      if (hits.length === 0) return /^\W*(neither|none|nothing|no|nope|nah|not sure|idk)\W*$/.test(t) ? { pending: null } : null;
+      hits.sort((x, y) => x.at - y.at);
+      return { concessionOrder: hits.map((h) => h.dim), pending: null };
+    }
+  }
+}
+
+export type RuleTurn = { update: ConstraintsUpdate; reply: string };
+
+/** One assistant turn on the rule-based path: read the message in context, decide what to ask next. */
+export function ruleTurn(text: string, current: Constraints): RuleTurn {
+  let update: ConstraintsUpdate | null = current.pending ? answerPending(text, current.pending, current.weights) : null;
+  let answeredProbe = update !== null;
+  if (!update) {
+    const missing = missingFields(current);
+    update = extractRules(text, missing[0]);
+    const gotNumeric = (f: MissingField) => (f === "budget" ? update!.budgetMax !== undefined : update!.maxTravelMin !== undefined);
+    if (Object.keys(update).length === 0 && (missing[0] === "budget" || missing[0] === "distance") && VAGUE.test(text)) {
+      update = { pending: missing[0] === "budget" ? "vague_budget" : "vague_distance" };
+    } else if (current.pending?.startsWith("vague_") && gotNumeric(current.pending === "vague_budget" ? "budget" : "distance")) {
+      // They gave a real number after all: the either/or is moot. A pending probe, by contrast, is asked again.
+      update.pending = null;
+    }
+    answeredProbe = false;
+  }
+
+  const after = mergeConstraints(current, update);
+  const gotSomething = Object.keys(update).some((k) => k !== "pending" && k !== "probesAsked");
+  const ack = answeredProbe ? "Noted." : gotSomething ? "Got it, noted privately." : "Sorry, I didn't catch anything specific there.";
+
+  if (after.pending && after.pending.startsWith("vague_")) return { update, reply: `${PENDING_QUESTIONS[after.pending]}` };
+  const missing = missingFields(after);
+  if (missing.length) return { update, reply: `${ack} ${QUESTIONS[missing[0]]}` };
+  if (after.pending) return { update, reply: `${ack} ${PENDING_QUESTIONS[after.pending]}` };
+
+  const probe: Probe | null = nextProbe(after);
+  if (probe) {
+    update = { ...update, pending: probe, probesAsked: [probe] };
+    return { update, reply: `${ack} ${PENDING_QUESTIONS[probe]}` };
+  }
+  return { update, reply: `${ack} That's everything I need. Anything else you care about, like cuisines you love or want to avoid? Otherwise hit "I'm done".` };
+}
