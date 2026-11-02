@@ -31,7 +31,7 @@ Soft preferences: liked/disliked cuisines (${CUISINES.join(", ")}).
 Rules:
 - Reassure them numbers stay private when asking about money.
 - Never judge their constraints.
-- Reply in the same language the user writes in.
+- Always reply in English.
 - Always call the record_constraints tool. Put ONLY fields the latest message changes into "update".
 - availableSlots is the FULL list of slots they are free (replace, not append). If they say they're busy at some time, return all other slots.`;
 

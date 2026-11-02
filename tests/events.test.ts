@@ -135,7 +135,7 @@ describe("chat → constraints → negotiation", () => {
 
   it("end to end: two people agree on a plan; result has no private data", async () => {
     const { a, b, event } = await setup();
-    await sendMessage(event.id, a.id, "预算40以内，不吃辣，周六只有晚上有空，开车不想超过20分钟");
+    await sendMessage(event.id, a.id, "Saturday night only, under $40, no spicy, max 20 minutes away");
     await setReady(event.id, a.id, true);
     await sendMessage(event.id, b.id, "free all weekend, $35 max, 15 minutes, vegetarian");
     await setReady(event.id, b.id, true);
