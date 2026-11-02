@@ -16,14 +16,28 @@ type Props = {
 
 const MISSING_LABEL: Record<MissingField, string> = { time: "when", budget: "budget", distance: "distance", diet: "diet" };
 
+type ChatSnapshot = {
+  eventId: string;
+  messages: ChatTurn[];
+  summary: string[];
+  missing: MissingField[];
+};
+
 export function PrivateChat({ eventId, inviteCode, initialMessages, initialSummary, initialMissing, ready }: Props) {
-  const [messages, setMessages] = useState(initialMessages);
-  const [summary, setSummary] = useState(initialSummary);
-  const [missing, setMissing] = useState(initialMissing);
+  const [localReply, setLocalReply] = useState<ChatSnapshot | null>(null);
+  const [submission, setSubmission] = useState<ChatSnapshot | null>(null);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const bottom = useRef<HTMLDivElement>(null);
+
+  const serverSnapshot: ChatSnapshot = { eventId, messages: initialMessages, summary: initialSummary, missing: initialMissing };
+  // Chats are append-only. Keep a completed send until server props catch up,
+  // then render refreshed props directly instead of copying them into state.
+  const latest = localReply?.eventId === eventId && localReply.messages.length > initialMessages.length
+    ? localReply : serverSnapshot;
+  // A refresh during a send must not erase its optimistic message or draft.
+  const { messages, summary, missing } = submission?.eventId === eventId ? submission : latest;
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -35,15 +49,21 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
     if (!msg || pending) return;
     setText("");
     setError(null);
-    setMessages((m) => [...m, { role: "user", content: msg }]);
+    setSubmission({ eventId, messages: [...messages, { role: "user", content: msg }], summary, missing });
     startTransition(async () => {
-      const res = await sendMessageAction(eventId, inviteCode, msg);
-      if ("messages" in res) {
-        setMessages(res.messages);
-        setSummary(res.summary);
-        setMissing(res.missing);
-      } else {
-        setError(res.error);
+      try {
+        const res = await sendMessageAction(eventId, inviteCode, msg);
+        if ("messages" in res) {
+          setLocalReply({ eventId, messages: res.messages, summary: res.summary, missing: res.missing });
+        } else {
+          setError(res.error);
+          setText((draft) => draft || msg);
+        }
+      } catch {
+        setError("Couldn't send your message. Please try again.");
+        setText((draft) => draft || msg);
+      } finally {
+        setSubmission(null);
       }
     });
   }
