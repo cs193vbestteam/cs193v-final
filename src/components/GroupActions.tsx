@@ -21,11 +21,11 @@ export function NegotiateButton({ eventId, inviteCode, readyCount, memberCount, 
       >
         {pending ? "Assistants negotiating…" : decided ? "Re-run with latest info" : "Find a plan"}
       </button>
-      {readyCount < 2 && <p className="mt-1 text-xs text-muted">Needs at least 2 people marked done.</p>}
+      {readyCount < 2 && <p className="mt-2 text-center text-xs text-ink-3">Needs at least 2 people marked done.</p>}
       {memberCount >= 2 && readyCount < memberCount && (
-        <p className="mt-1 text-xs text-muted">{readyCount} of {memberCount} people ready. Waiting for everyone to finish.</p>
+        <p className="mt-2 text-center text-xs text-ink-3">{readyCount} of {memberCount} people ready. Waiting for everyone to finish.</p>
       )}
-      {error && <p role="alert" className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-sm text-seal">{error}</p>}
     </div>
   );
 }
@@ -61,17 +61,22 @@ export function CopyInvite({ url }: { url: string }) {
 
   return (
     <div className="space-y-2">
-      <button type="button" className="btn-ghost w-full truncate text-xs" disabled={status === "copying"} onClick={copy}>
+      <button
+        type="button"
+        className={`${status === "copied" ? "btn" : "btn-ghost"} btn-sm w-full`}
+        disabled={status === "copying"}
+        onClick={copy}
+      >
         {status === "copied" ? "Copied!" : status === "copying" ? "Copying…" : "Copy invite link"}
       </button>
-      <div role="status" className="text-xs text-muted">
+      <div role="status" className="text-xs text-ink-3">
         {status === "copied" && "Invitation link copied."}
         {status === "failed" && "Couldn't copy automatically. Copy the invitation link below, or try again."}
       </div>
       {status === "failed" && (
-        <label className="block text-xs text-muted">
+        <label className="block text-xs text-ink-3">
           Invitation link
-          <input className="input mt-1" type="text" readOnly value={url} onFocus={(event) => event.currentTarget.select()} />
+          <input className="input mt-1 font-mono text-xs" type="text" readOnly value={url} onFocus={(event) => event.currentTarget.select()} />
         </label>
       )}
     </div>

@@ -1,6 +1,6 @@
 # Tacit
 
-**Live site:** _TODO: add deployed URL here_
+**Live site:** https://miniproject-europium.vercel.app
 
 Group plans without the group-chat drama. Everyone tells **their own private assistant** their real constraints (budget, when they're free, what they won't eat, how far they'll travel). The assistants then negotiate a plan without leaking anyone's numbers. The group only sees the final answer: *"Sat dinner · Olive Tree Mezze · ~$27/person · everyone's in."*
 

@@ -76,62 +76,103 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
     });
   }
 
-  return (
-    <section className="card flex h-[36rem] flex-col">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="font-semibold">Your private assistant</h2>
-        <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent">🔒 only you can see this</span>
-      </div>
+  const progress = 4 - missing.length;
 
-      <div className="flex-1 space-y-3 overflow-y-auto pr-1" aria-live="polite">
+  return (
+    <section className="card flex flex-col !p-0 lg:h-[min(42rem,calc(100dvh-14rem))] lg:min-h-[30rem]">
+      <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
+        <h2 className="font-serif text-xl">Your private assistant</h2>
+        <span className="pill shrink-0">
+          <LockIcon />
+          <span className="sm:hidden">private</span>
+          <span className="hidden sm:inline">only you can see this</span>
+        </span>
+      </header>
+
+      <div className="scroll-quiet max-h-[26rem] min-h-[16rem] flex-1 space-y-3 overflow-y-auto px-5 py-4 lg:max-h-none" aria-live="polite">
         {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div key={i} className={`bubble-in flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <p
-              className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 text-sm ${
-                m.role === "user" ? "bg-accent text-white" : "bg-stone-100"
+              className={`max-w-[85%] whitespace-pre-wrap text-[0.9375rem] leading-relaxed ${
+                m.role === "user"
+                  ? "rounded-2xl rounded-br-md bg-ink px-3.5 py-2 text-paper"
+                  : "rounded-2xl rounded-bl-md bg-paper-2 px-3.5 py-2 text-ink"
               }`}
             >
               {m.content}
             </p>
           </div>
         ))}
-        {pending && <p className="text-xs text-muted">Assistant is thinking…</p>}
+        {pending && (
+          <p className="flex items-center gap-2 text-xs text-ink-3">
+            <span className="thinking inline-flex gap-1"><span /><span /><span /></span>
+            Assistant is thinking…
+          </p>
+        )}
         <div ref={bottom} />
       </div>
 
-      <form onSubmit={send} className="mt-3 flex gap-2">
+      <form onSubmit={send} className="flex gap-2 border-t border-line px-4 py-3">
         <input
           className="input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder='e.g. "Saturday night only, under $40, no spicy"'
+          placeholder='Try: "Saturday night only, under $40, no spicy"'
           maxLength={1000}
           aria-label="Message your assistant"
+          autoComplete="off"
         />
         <button className="btn" disabled={pending || !text.trim()}>Send</button>
       </form>
 
-      <div className="mt-4 rounded-xl bg-stone-50 p-3 text-sm">
-        <div className="mb-1 font-medium">What your assistant knows</div>
+      <div className="border-t border-line bg-paper-2/40 px-5 py-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="eyebrow">What your assistant knows</div>
+          <div className="flex shrink-0 items-center gap-1" aria-label={`${progress} of 4 essentials covered`}>
+            {Array.from({ length: 4 }, (_, i) => (
+              <span
+                key={i}
+                aria-hidden
+                className={`h-1.5 w-5 rounded-full transition-colors duration-500 ${i < progress ? "bg-ink" : "bg-line-strong"}`}
+              />
+            ))}
+          </div>
+        </div>
         {summary.length ? (
-          <ul className="list-inside list-disc text-muted">{summary.map((s) => <li key={s}>{s}</li>)}</ul>
+          <ul className="mt-2.5 grid gap-x-6 gap-y-1 text-sm text-ink-2 sm:grid-cols-2">
+            {summary.map((s) => (
+              <li key={s} className="flex gap-2">
+                <span aria-hidden className="mt-[0.55em] h-1 w-1 shrink-0 rounded-full bg-ink-3" />
+                <span>{s}</span>
+              </li>
+            ))}
+          </ul>
         ) : (
-          <p className="text-muted">Nothing yet.</p>
+          <p className="mt-2.5 text-sm text-ink-3">Nothing yet. Just talk to it like a friend who keeps secrets.</p>
         )}
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <span className="text-xs text-muted">
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <span className={`font-mono text-[0.6875rem] uppercase tracking-wider ${missing.length ? "text-ink-3" : "text-moss"}`}>
             {missing.length ? `Still needs: ${missing.map((m) => MISSING_LABEL[m]).join(", ")}` : "All set ✓"}
           </span>
           <button
             onClick={toggleReady}
             disabled={pending || (!ready && missing.length > 0)}
-            className={ready ? "btn-ghost" : "btn"}
+            className={ready ? "btn-ghost btn-sm" : "btn btn-sm"}
           >
             {ready ? "Not done yet" : "I'm done"}
           </button>
         </div>
+        {error && <p role="alert" className="mt-3 text-sm text-seal">{error}</p>}
       </div>
-      {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
     </section>
+  );
+}
+
+function LockIcon() {
+  return (
+    <svg aria-hidden width="11" height="11" viewBox="0 0 16 16" fill="none">
+      <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
   );
 }

@@ -2,10 +2,17 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="mx-auto mt-16 max-w-md card text-center">
-      <h1 className="text-xl font-semibold">Not found</h1>
-      <p className="mt-2 text-sm text-muted">That plan or page doesn't exist. Check the invite link?</p>
-      <Link href="/" className="btn mt-4">Go home</Link>
+    <div className="mx-auto mt-20 max-w-md text-center">
+      <p className="eyebrow rise">404</p>
+      <h1 className="display rise mt-4 text-5xl" style={{ "--d": "0.08s" } as React.CSSProperties}>
+        Nothing <em>here.</em>
+      </h1>
+      <p className="lede rise mt-4" style={{ "--d": "0.16s" } as React.CSSProperties}>
+        That plan or page doesn&apos;t exist. Check the invite link, or head home.
+      </p>
+      <div className="rise mt-8" style={{ "--d": "0.24s" } as React.CSSProperties}>
+        <Link href="/" className="btn">Go home</Link>
+      </div>
     </div>
   );
 }
