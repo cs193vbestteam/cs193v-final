@@ -8,6 +8,7 @@ import { describeConstraints, missingFields, type MissingField } from "@/lib/con
 import type { ChatTurn } from "@/lib/extract";
 import { AccessError, createEvent, joinEvent, runNegotiation, sendMessage, setReady } from "@/lib/events";
 import { endSession, requireUser, startSession } from "@/lib/session";
+import { safeNext } from "@/lib/redirect";
 
 export type FormState = { error?: string };
 
@@ -16,12 +17,6 @@ function friendly(err: unknown): string {
   if (err instanceof AuthError || err instanceof AccessError) return err.message;
   console.error(err);
   return "Something went wrong. Please try again.";
-}
-
-/** Only allow redirects to local paths (prevents open-redirects via ?next=). */
-function safeNext(value: FormDataEntryValue | null): string {
-  const v = typeof value === "string" ? value : "/";
-  return v.startsWith("/") && !v.startsWith("//") ? v : "/";
 }
 
 export async function signupAction(_: FormState, form: FormData): Promise<FormState> {
