@@ -201,7 +201,7 @@ export async function setReady(eventId: string, userId: string, ready: boolean):
 }
 
 /**
- * Runs the negotiation among ready members.
+ * Runs the negotiation only when every joined member is ready.
  * Each member's constraints are decrypted here, server-side, and wrapped in an
  * opaque Assistant closure. The negotiation engine never sees the constraints.
  */
@@ -209,10 +209,14 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
   await requireMember(eventId, userId);
   const client = await db();
   const { rows } = await client.execute({
-    sql: "SELECT constraints_enc FROM members WHERE event_id = ? AND ready = 1",
+    sql: "SELECT constraints_enc, ready FROM members WHERE event_id = ?",
     args: [eventId],
   });
-  if (rows.length < 2) throw new AccessError("At least 2 people need to be ready first");
+  const readyCount = rows.filter((row) => Number(row.ready) === 1).length;
+  if (readyCount < 2) throw new AccessError("At least 2 people need to be ready first");
+  if (readyCount !== rows.length) {
+    throw new AccessError("Everyone who joined must be ready before finding a plan");
+  }
 
   const assistants: Assistant[] = rows.map((r) => {
     const c = ConstraintsSchema.parse(decryptJson(String(r.constraints_enc)));

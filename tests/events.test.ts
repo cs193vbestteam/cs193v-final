@@ -150,4 +150,37 @@ describe("chat → constraints → negotiation", () => {
     const stored = JSON.stringify(result);
     expect(stored).not.toMatch(/budget|dietary|maxTravel|availableSlots|userId/);
   });
+
+  it("does not exclude an unready third member from the group agreement", async () => {
+    const { a, b, event } = await setup();
+    const c = await makeUser("Charlie");
+    await joinEvent(event.inviteCode, c.id);
+    for (const user of [a, b]) {
+      await sendMessage(event.id, user.id, "Saturday dinner, $40, 20 minutes, no restrictions");
+      await setReady(event.id, user.id, true);
+    }
+
+    await expect(runNegotiation(event.id, a.id)).rejects.toThrow(/everyone.*ready/i);
+    expect(await getResult(event.id, a.id)).toBeNull();
+
+    await sendMessage(event.id, c.id, "Saturday dinner, $40, 20 minutes, no restrictions");
+    await setReady(event.id, c.id, true);
+    const result = await runNegotiation(event.id, a.id);
+    expect(result.status).toBe("agreed");
+    expect(result.participants).toBe(3);
+  });
+
+  it("blocks a new negotiation when one of three ready members withdraws readiness", async () => {
+    const { a, b, event } = await setup();
+    const c = await makeUser("Charlie");
+    await joinEvent(event.inviteCode, c.id);
+    for (const user of [a, b, c]) {
+      await sendMessage(event.id, user.id, "Saturday dinner, $40, 20 minutes, no restrictions");
+      await setReady(event.id, user.id, true);
+    }
+    await setReady(event.id, c.id, false);
+
+    await expect(runNegotiation(event.id, b.id)).rejects.toThrow(/everyone.*ready/i);
+    expect(await getResult(event.id, a.id)).toBeNull();
+  });
 });
