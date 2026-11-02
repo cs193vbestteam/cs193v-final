@@ -13,7 +13,7 @@ import {
 describe("extractTime", () => {
   it.each([
     ["Saturday evening only", ["sat_dinner"]],
-    ["只有周六晚上有空", ["sat_dinner"]],
+    ["only free sunday lunch", ["sun_lunch"]],
     ["sat lunch or sun dinner", ["sat_lunch", "sun_dinner"]],
     ["Saturday lunch and dinner", ["sat_lunch", "sat_dinner"]],
   ])("%s", (text, expected) => {
@@ -22,7 +22,7 @@ describe("extractTime", () => {
 
   it("handles being busy (negation)", () => {
     expect(extractTime("I'm busy Saturday afternoon")).toEqual(["fri_dinner", "sat_dinner", "sun_lunch", "sun_dinner"]);
-    expect(extractTime("周六下午有事")).toEqual(["fri_dinner", "sat_dinner", "sun_lunch", "sun_dinner"]);
+    expect(extractTime("can't do saturday lunch")).toEqual(["fri_dinner", "sat_dinner", "sun_lunch", "sun_dinner"]);
   });
 
   it("combines free and busy clauses", () => {
@@ -39,16 +39,15 @@ describe("extractBudget", () => {
     ["my budget is 40", 40],
     ["under $35 please", 35],
     ["$50 max", 50],
-    ["预算40以内", 40],
-    ["人均不超过60", 60],
-    ["30块", 30],
+    ["no more than 60", 60],
+    ["30 bucks", 30],
   ])("%s -> %d", (text, expected) => {
     expect(extractBudget(text).budgetMax).toBe(expected);
   });
 
   it("does not confuse travel minutes for dollars", () => {
     expect(extractBudget("up to 30 minutes away").budgetMax).toBeUndefined();
-    expect(extractBudget("不超过20分钟").budgetMax).toBeUndefined();
+    expect(extractBudget("no more than 20 min").budgetMax).toBeUndefined();
   });
 
   it("detects flexibility", () => {
@@ -60,10 +59,10 @@ describe("extractBudget", () => {
 describe("extractDistance", () => {
   it.each([
     ["no more than 20 minutes", 20],
-    ["开车不超过20分钟", 20],
+    ["15 min drive tops", 15],
     ["not too far", 20],
     ["walking distance", 10],
-    ["距离无所谓", 60],
+    ["don't care about distance", 60],
   ])("%s -> %d", (text, expected) => {
     expect(extractDistance(text)).toBe(expected);
   });
@@ -71,13 +70,13 @@ describe("extractDistance", () => {
 });
 
 describe("extractDietary", () => {
-  it("finds restrictions in English and Chinese", () => {
+  it("finds restrictions", () => {
     expect(extractDietary("I can't eat spicy and I'm vegetarian").dietary?.sort()).toEqual(["no_spicy", "vegetarian"]);
-    expect(extractDietary("不吃辣，海鲜过敏").dietary?.sort()).toEqual(["no_seafood", "no_spicy"]);
+    expect(extractDietary("no spicy, allergic to shellfish").dietary?.sort()).toEqual(["no_seafood", "no_spicy"]);
   });
   it("confirms 'no restrictions'", () => {
     expect(extractDietary("no restrictions")).toEqual({ dietaryConfirmed: true });
-    expect(extractDietary("没有忌口")).toEqual({ dietaryConfirmed: true });
+    expect(extractDietary("I eat anything")).toEqual({ dietaryConfirmed: true });
   });
 });
 
@@ -87,7 +86,7 @@ describe("extractCuisines", () => {
       likedCuisines: ["japanese"],
       dislikedCuisines: ["american"],
     });
-    expect(extractCuisines("想吃日料，不想吃火锅")).toEqual({ likedCuisines: ["japanese"], dislikedCuisines: ["chinese"] });
+    expect(extractCuisines("craving ramen, tired of hot pot")).toEqual({ likedCuisines: ["japanese"], dislikedCuisines: ["chinese"] });
   });
 });
 
@@ -100,8 +99,8 @@ describe("extractRules (full message)", () => {
     expect(u.dietary).toEqual(["no_spicy"]);
   });
 
-  it("handles the Chinese example from the proposal", () => {
-    const u = extractRules("预算40以内，不吃辣，周六只有晚上有空，开车不想超过20分钟");
+  it("handles the example from the proposal", () => {
+    const u = extractRules("Saturday night only. Budget 40. Can't handle spicy. Max 20 minutes away");
     expect(u.budgetMax).toBe(40);
     expect(u.dietary).toEqual(["no_spicy"]);
     expect(u.availableSlots).toEqual(["sat_dinner"]);

@@ -11,8 +11,8 @@ v1 covers one scenario: picking a restaurant and time for a weekend meal.
 ```
  private chat (per person)          server                         group view
  ─────────────────────────   ─────────────────────────────   ──────────────────────
- "预算40以内, 不吃辣,        →  extract → Constraints JSON   
-  周六只有晚上有空"             (LLM or rule-based)            
+ "Sat night only, under $40, →  extract → Constraints JSON   
+  no spicy"                     (LLM or rule-based)            
                                  │ AES-GCM encrypted in DB    
                                  ▼                            
                              each member → opaque Assistant   
@@ -22,7 +22,7 @@ v1 covers one scenario: picking a restaurant and time for a weekend meal.
                              → adapt from verdicts → repeat      + anonymous round counts
 ```
 
-- **Extraction** (`src/lib/extract.ts`, `extract-rules.ts`): turns chat into a typed `Constraints` object (`src/lib/constraints.ts`). Uses Claude via tool use if `ANTHROPIC_API_KEY` is set, otherwise a tested rule-based extractor that handles English and Chinese.
+- **Extraction** (`src/lib/extract.ts`, `extract-rules.ts`): turns chat into a typed `Constraints` object (`src/lib/constraints.ts`). Uses Claude via tool use if `ANTHROPIC_API_KEY` is set, otherwise a tested rule-based extractor.
 - **Evaluation** (`src/lib/evaluate.ts`): deterministic, no LLM. Judges one proposal against one person's constraints and returns only `yes / meh / no` plus a coarse reason.
 - **Negotiation** (`src/lib/negotiate.ts`): never receives constraints, only one opaque assistant function per person. It proposes options in rounds and learns from the verdicts.
 - **Privacy:** private chat messages, constraints and emails are encrypted at rest (AES-256-GCM). Emails are looked up through an HMAC blind index. Passwords use bcrypt (salted, cost 12). Session cookies are random tokens, and only their SHA-256 hashes are stored.

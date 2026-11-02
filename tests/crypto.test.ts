@@ -3,7 +3,7 @@ import { blindIndex, decrypt, decryptJson, encrypt, encryptJson, randomToken, sh
 
 describe("encrypt/decrypt", () => {
   it("round-trips text, including unicode", () => {
-    const msg = "预算 40 以内, no spicy 🌶️";
+    const msg = "budget 40, no spicy 🌶️ café";
     expect(decrypt(encrypt(msg))).toBe(msg);
   });
 
