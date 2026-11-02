@@ -4,14 +4,14 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { runNegotiationAction } from "@/app/actions";
 
-export function NegotiateButton({ eventId, inviteCode, readyCount, decided }: { eventId: string; inviteCode: string; readyCount: number; decided: boolean }) {
+export function NegotiateButton({ eventId, inviteCode, readyCount, memberCount, decided }: { eventId: string; inviteCode: string; readyCount: number; memberCount: number; decided: boolean }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
     <div>
       <button
         className="btn w-full"
-        disabled={pending || readyCount < 2}
+        disabled={pending || readyCount < 2 || readyCount !== memberCount}
         onClick={() =>
           start(async () => {
             const res = await runNegotiationAction(eventId, inviteCode);
@@ -22,6 +22,9 @@ export function NegotiateButton({ eventId, inviteCode, readyCount, decided }: { 
         {pending ? "Assistants negotiating…" : decided ? "Re-run with latest info" : "Find a plan"}
       </button>
       {readyCount < 2 && <p className="mt-1 text-xs text-muted">Needs at least 2 people marked done.</p>}
+      {memberCount >= 2 && readyCount < memberCount && (
+        <p className="mt-1 text-xs text-muted">{readyCount} of {memberCount} people ready. Waiting for everyone to finish.</p>
+      )}
       {error && <p role="alert" className="mt-1 text-sm text-red-600">{error}</p>}
     </div>
   );

@@ -69,7 +69,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           <section className="card space-y-3">
             <h2 className="font-semibold">The plan</h2>
             {result ? <ResultCard result={result} /> : <p className="text-sm text-muted">No plan yet.</p>}
-            <NegotiateButton eventId={event.id} inviteCode={code} readyCount={readyCount} decided={!!result} />
+            <NegotiateButton eventId={event.id} inviteCode={code} readyCount={readyCount} memberCount={members.length} decided={!!result} />
           </section>
         </aside>
       </div>
