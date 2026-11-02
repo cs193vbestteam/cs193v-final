@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { db } from "./db";
+import { db, isUniqueViolation } from "./db";
 import { blindIndex, decrypt, encrypt, randomToken, sha256 } from "./crypto";
 
 /** bcrypt generates and embeds a random salt per hash. */
@@ -40,7 +40,7 @@ export async function createUser(input: z.input<typeof SignupSchema>): Promise<U
       args: [id, blindIndex(email), encrypt(email), displayName, await hashPassword(password), Date.now()],
     });
   } catch (err) {
-    if (String(err).includes("UNIQUE")) throw new AuthError("An account with that email already exists");
+    if (isUniqueViolation(err)) throw new AuthError("An account with that email already exists");
     throw err;
   }
   return { id, displayName, email };
