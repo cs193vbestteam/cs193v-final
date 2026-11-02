@@ -292,6 +292,51 @@ const FIRST = /\b(first|former|a|1|one|the first one)\b/i;
 const SECOND = /\b(second|latter|b|2|two|the second one)\b/i;
 const NEITHER = /\b(neither|both fine|either|same|no difference|don'?t care)\b/i;
 
+/** The two options each either/or offers, so an answer that echoes one (typos included) is understood. */
+const OPTIONS: Record<Exclude<Pending, "concession">, [string, string]> = {
+  vague_budget: ["paying about $45 a head", "$25 a head somewhere less exciting"],
+  vague_distance: ["30 minutes of travel", "a so-so place 5 minutes away"],
+  tradeoff_budget_travel: ["paying $10 over your budget", "travelling 10 minutes further than you'd like"],
+  tradeoff_cuisine_travel: ["a cuisine you're lukewarm on", "an extra 10 minutes of travel"],
+};
+const STOP = new Set(["a", "an", "the", "of", "on", "or", "you", "your", "you're", "youre", "than", "you'd", "youd", "like", "is", "it", "to", "and", "that", "one", "i", "me", "my", "d", "s"]);
+
+const tokens = (text: string) => text.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").split(/\s+/).filter((t) => t && !STOP.has(t));
+
+/** Levenshtein distance, capped: we only care whether two words are within one typo of each other. */
+function closeEnough(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (a.length < 4 || b.length < 4 || Math.abs(a.length - b.length) > 1) return false;
+  let i = 0;
+  let j = 0;
+  let edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++;
+    else if (b.length > a.length) j++;
+    else { i++; j++; }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+}
+
+/** Which option the answer echoes more, by word overlap with one typo allowed. Ties and empties are null. */
+function pickByEcho(answer: string, [optA, optB]: [string, string]): "a" | "b" | null {
+  const ans = tokens(answer);
+  if (ans.length === 0) return null;
+  const score = (opt: string) => {
+    const words = tokens(opt);
+    return ans.filter((t) => words.some((w) => closeEnough(t, w))).length;
+  };
+  // Words both options share (e.g. "10") carry no information.
+  const shared = new Set(tokens(optA).filter((w) => tokens(optB).some((x) => closeEnough(w, x))));
+  const distinct = (opt: string) => tokens(opt).filter((w) => !shared.has(w)).join(" ");
+  const a = score(distinct(optA));
+  const b = score(distinct(optB));
+  if (a === b) return null;
+  return a > b ? "a" : "b";
+}
+
 const round2 = (x: number) => Math.round(x * 100) / 100;
 function bump(weights: Record<SoftDim, number>, up: SoftDim, down: SoftDim): Record<SoftDim, number> {
   return { ...weights, [up]: round2(Math.min(0.7, weights[up] + 0.15)), [down]: round2(Math.max(0.1, weights[down] - 0.1)) };
@@ -306,7 +351,8 @@ export function answerPending(text: string, pending: Pending, weights: Record<So
     const b = bRe.test(t) || SECOND.test(t);
     if (a && !b) return "a";
     if (b && !a) return "b";
-    return null;
+    // Keywords were ambiguous or absent (typos, paraphrase): compare against the two options as offered.
+    return pending === "concession" ? null : pickByEcho(text, OPTIONS[pending]);
   };
   switch (pending) {
     case "vague_budget": {

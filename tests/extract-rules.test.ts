@@ -7,6 +7,7 @@ import {
   extractDistance,
   extractRules,
   extractTime,
+  answerPending,
   ruleReply,
   ruleTurn,
 } from "@/lib/extract-rules";
@@ -262,5 +263,49 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
   it("still gates readiness on the four essentials only", () => {
     const c = mergeConstraints(start(essentials), { pending: "concession" });
     expect(missingFields(c)).toEqual([]);
+  });
+});
+
+describe("answering an either/or by echoing an option", () => {
+  const essentials = { availableSlots: ["sat_dinner" as const], budgetMax: 40, maxTravelMin: 15, dietaryConfirmed: true };
+  const PROBE_ORDER = ["tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"] as const;
+  const pendingOn = (pending: Parameters<typeof answerPending>[1]) => {
+    const upTo = PROBE_ORDER.indexOf(pending as (typeof PROBE_ORDER)[number]);
+    return mergeConstraints(emptyConstraints(), { ...essentials, pending, probesAsked: upTo >= 0 ? [...PROBE_ORDER.slice(0, upTo + 1)] : [] });
+  };
+
+  it.each([
+    ["extra 10 monutes", "travel"],
+    ["the extra 10 minutes", "travel"],
+    ["lukewarm cuisine", "cuisine"],
+    ["a cusine im lukewarm on", "cuisine"],
+  ])("cuisine vs travel: %s → %s loses weight", (answer, loser) => {
+    const c = pendingOn("tradeoff_cuisine_travel");
+    const t = ruleTurn(answer, c);
+    expect(t.update.pending).toBe("concession");
+    const w = t.update.weights!;
+    if (loser === "travel") expect(w.travel!).toBeGreaterThan(c.weights.travel);
+    else expect(w.cuisine!).toBeGreaterThan(c.weights.cuisine);
+  });
+
+  it("budget vs travel: an echoed option with a typo is understood, and '10' alone is not", () => {
+    const c = pendingOn("tradeoff_budget_travel");
+    expect(ruleTurn("travellng further", c).update.weights!.travel!).toBeGreaterThan(c.weights.travel);
+    expect(ruleTurn("paying $10 over my budget,", c).update.weights!.budget!).toBeGreaterThan(c.weights.budget);
+    expect(ruleTurn("10", c).update.weights).toBeUndefined();
+  });
+
+  it("vague either/ors accept an echo too", () => {
+    const c = mergeConstraints(emptyConstraints(), { availableSlots: ["sat_dinner"], pending: "vague_budget" });
+    expect(ruleTurn("the less exciting one", c).update).toMatchObject({ budgetMax: 60, pending: null });
+    const d = mergeConstraints(emptyConstraints(), { availableSlots: ["sat_dinner"], budgetMax: 40, pending: "vague_distance" });
+    expect(ruleTurn("so-so place nearby", d).update).toMatchObject({ maxTravelMin: 40, pending: null });
+  });
+
+  it("an unrelated message is still not mistaken for an answer", () => {
+    const c = pendingOn("tradeoff_cuisine_travel");
+    const t = ruleTurn("what time is it", c);
+    expect(t.update.weights).toBeUndefined();
+    expect(t.reply).toMatch(/Sorry/);
   });
 });
