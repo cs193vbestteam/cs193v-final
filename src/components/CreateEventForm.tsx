@@ -18,6 +18,15 @@ export function CreateEventForm() {
           maxLength={80}
           autoComplete="off"
         />
+        <label htmlFor="plan-location" className="sr-only">Near where (optional)</label>
+        <input
+          id="plan-location"
+          className="input sm:max-w-[14rem]"
+          name="location"
+          placeholder="Near… (e.g. Palo Alto)"
+          maxLength={120}
+          autoComplete="off"
+        />
         <button className="btn shrink-0" disabled={pending}>
           {pending ? "Creating…" : "Start a plan"}
           {!pending && <Arrow />}

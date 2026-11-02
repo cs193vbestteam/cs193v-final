@@ -55,7 +55,7 @@ export async function createEventAction(_: FormState, form: FormData): Promise<F
   const user = await requireUser();
   let code: string;
   try {
-    code = (await createEvent(user.id, String(form.get("title") ?? ""))).inviteCode;
+    code = (await createEvent(user.id, String(form.get("title") ?? ""), String(form.get("location") ?? ""))).inviteCode;
   } catch (err) {
     return { error: friendly(err) };
   }

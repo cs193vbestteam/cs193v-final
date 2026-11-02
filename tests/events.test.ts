@@ -184,3 +184,36 @@ describe("chat → constraints → negotiation", () => {
     expect(await getResult(event.id, a.id)).toBeNull();
   });
 });
+
+describe("candidate pool per plan", () => {
+  it("stores the location and falls back to the seed pool without a Places key", async () => {
+    delete process.env.GOOGLE_PLACES_API_KEY;
+    const a = await makeUser("Alice");
+    const e = await createEvent(a.id, "Dinner", "  Palo Alto, CA ");
+    expect(e.location).toBe("Palo Alto, CA");
+    expect(e.poolSource).toBe("seed");
+    expect(e.poolSize).toBe(16);
+    const { poolForEvent } = await import("@/lib/pool");
+    expect((await poolForEvent(e.id)).source).toBe("seed");
+    expect((await listMyEvents(a.id))[0]).toMatchObject({ location: "Palo Alto, CA", poolSource: "seed" });
+  });
+
+  it("rejects an absurdly long location", async () => {
+    const a = await makeUser("Alice");
+    await expect(createEvent(a.id, "Dinner", "x".repeat(121))).rejects.toThrow();
+  });
+
+  it("the stored result carries public place summaries for everything the rounds mention", async () => {
+    const { a, b, event } = await setup();
+    await sendMessage(event.id, a.id, "Saturday dinner, under $40, 20 minutes, no restrictions");
+    await sendMessage(event.id, b.id, "Saturday dinner, under $40, 20 minutes, no restrictions");
+    await setReady(event.id, a.id, true);
+    await setReady(event.id, b.id, true);
+    const result = await runNegotiation(event.id, a.id);
+    const mentioned = new Set(result.rounds.flatMap((r) => r.proposals.map((p) => p.proposal.restaurantId)));
+    for (const id of mentioned) expect(result.places[id]).toMatchObject({ name: expect.any(String), pricePerPerson: expect.any(Number) });
+    expect(JSON.stringify(result.places)).not.toMatch(/budget|constraints|weight/);
+    const stored = await getResult(event.id, b.id);
+    expect(stored?.places).toEqual(result.places);
+  });
+});

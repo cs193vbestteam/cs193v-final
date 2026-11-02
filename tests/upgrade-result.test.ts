@@ -38,6 +38,7 @@ describe("upgradeResult", () => {
       conflicts: [],
       leakedDims: 7,
       memberNames: ["A", "B"],
+      places: { x: { name: "X", cuisine: "thai", pricePerPerson: 20, travelMin: 5 } },
       participants: 2,
       decidedAt: 2,
     };

@@ -1,0 +1,83 @@
+{
+  "places": [
+    {
+      "id": "ChIJ_sushi",
+      "displayName": { "text": "Sakura Omakase" },
+      "primaryType": "sushi_restaurant",
+      "types": ["sushi_restaurant", "japanese_restaurant", "restaurant", "food"],
+      "priceLevel": "PRICE_LEVEL_EXPENSIVE",
+      "location": { "latitude": 37.4275, "longitude": -122.1697 },
+      "servesVegetarianFood": false,
+      "regularOpeningHours": {
+        "periods": [
+          { "open": { "day": 2, "hour": 17, "minute": 0 }, "close": { "day": 2, "hour": 22, "minute": 0 } },
+          { "open": { "day": 5, "hour": 17, "minute": 0 }, "close": { "day": 5, "hour": 23, "minute": 0 } },
+          { "open": { "day": 6, "hour": 17, "minute": 0 }, "close": { "day": 6, "hour": 23, "minute": 0 } }
+        ]
+      }
+    },
+    {
+      "id": "ChIJ_taqueria",
+      "displayName": { "text": "La Esquina Taqueria" },
+      "primaryType": "mexican_restaurant",
+      "types": ["mexican_restaurant", "restaurant", "food"],
+      "priceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "location": { "latitude": 37.4440, "longitude": -122.1620 },
+      "servesVegetarianFood": true,
+      "regularOpeningHours": {
+        "periods": [
+          { "open": { "day": 0, "hour": 11, "minute": 0 }, "close": { "day": 0, "hour": 21, "minute": 0 } },
+          { "open": { "day": 5, "hour": 11, "minute": 0 }, "close": { "day": 5, "hour": 22, "minute": 0 } },
+          { "open": { "day": 6, "hour": 11, "minute": 0 }, "close": { "day": 6, "hour": 22, "minute": 0 } }
+        ]
+      }
+    },
+    {
+      "id": "ChIJ_thai",
+      "displayName": { "text": "Siam Spice House" },
+      "primaryType": "thai_restaurant",
+      "types": ["thai_restaurant", "restaurant", "food"],
+      "location": { "latitude": 37.4200, "longitude": -122.2000 }
+    },
+    {
+      "id": "ChIJ_latenight",
+      "displayName": { "text": "Midnight Kebab" },
+      "primaryType": "turkish_restaurant",
+      "types": ["turkish_restaurant", "halal_restaurant", "restaurant"],
+      "priceLevel": "PRICE_LEVEL_MODERATE",
+      "location": { "latitude": 37.4300, "longitude": -122.1700 },
+      "regularOpeningHours": {
+        "periods": [
+          { "open": { "day": 6, "hour": 18, "minute": 0 }, "close": { "day": 0, "hour": 2, "minute": 0 } }
+        ]
+      }
+    },
+    {
+      "id": "ChIJ_247",
+      "displayName": { "text": "Always Open Diner" },
+      "primaryType": "american_restaurant",
+      "types": ["american_restaurant", "diner", "restaurant"],
+      "priceLevel": "PRICE_LEVEL_INEXPENSIVE",
+      "location": { "latitude": 37.4290, "longitude": -122.1690 },
+      "regularOpeningHours": { "periods": [{ "open": { "day": 0, "hour": 0, "minute": 0 } }] }
+    },
+    {
+      "id": "ChIJ_sushi",
+      "displayName": { "text": "Sakura Omakase (duplicate)" },
+      "types": ["sushi_restaurant"],
+      "location": { "latitude": 37.4275, "longitude": -122.1697 }
+    },
+    {
+      "id": "ChIJ_unknown",
+      "displayName": { "text": "Mystery Bistro" },
+      "primaryType": "restaurant",
+      "types": ["restaurant", "food"],
+      "location": { "latitude": 37.4280, "longitude": -122.1700 }
+    },
+    {
+      "id": "ChIJ_noloc",
+      "displayName": { "text": "Nowhere Noodles" },
+      "types": ["ramen_restaurant"]
+    }
+  ]
+}

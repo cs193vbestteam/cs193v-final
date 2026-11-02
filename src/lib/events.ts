@@ -12,6 +12,8 @@ import { extract, type ChatTurn } from "./extract";
 import { OPENING_MESSAGE } from "./extract-rules";
 import { configuredSelector } from "./mediator-llm";
 import { negotiate, type NegotiationResult } from "./negotiate";
+import { resolvePool } from "./places";
+import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./pool";
 import { agentsForEvent } from "./vault";
 
 /**
@@ -21,12 +23,33 @@ import { agentsForEvent } from "./vault";
 
 export class AccessError extends Error {}
 
-export type EventSummary = { id: string; title: string; inviteCode: string; creatorId: string; decided: boolean };
+const RESTAURANT_SEED_SIZE = 16;
+
+export type EventSummary = {
+  id: string;
+  title: string;
+  inviteCode: string;
+  creatorId: string;
+  decided: boolean;
+  /** Where the plan happens, as typed by the creator. Public. */
+  location: string | null;
+  poolSource: PoolSource;
+  poolSize: number;
+};
 export type Member = { userId: string; displayName: string; ready: boolean };
-/** What the group sees. `memberNames` lets the UI name a reservation ("Sam: timing") without exposing ids. */
-export type StoredResult = NegotiationResult & { participants: number; memberNames: string[]; decidedAt: number };
+/**
+ * What the group sees. `memberNames` lets the UI name a reservation ("Sam: timing") without exposing ids;
+ * `places` carries the public details of every restaurant the rounds mention, so results outlive the pool.
+ */
+export type StoredResult = NegotiationResult & {
+  participants: number;
+  memberNames: string[];
+  places: Record<string, PlaceSummary>;
+  decidedAt: number;
+};
 
 export const TitleSchema = z.string().trim().min(1, "Give your plan a name").max(80, "Name is too long");
+export const LocationSchema = z.string().trim().max(120, "Location is too long");
 export const MessageSchema = z.string().trim().min(1).max(1000, "Message is too long");
 
 const INVITE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"; // no look-alikes (l/1, o/0)
@@ -36,12 +59,16 @@ function newInviteCode(): string {
 }
 
 function rowToEvent(row: Record<string, unknown>): EventSummary {
+  const pool = row.pool_json ? (JSON.parse(String(row.pool_json)) as unknown[]) : null;
   return {
     id: String(row.id),
     title: String(row.title),
     inviteCode: String(row.invite_code),
     creatorId: String(row.creator_id),
     decided: row.result_json !== null && row.result_json !== undefined,
+    location: row.location ? String(row.location) : null,
+    poolSource: pool?.length ? ((row.pool_source as PoolSource) ?? "places") : "seed",
+    poolSize: pool?.length ?? RESTAURANT_SEED_SIZE,
   };
 }
 
@@ -59,18 +86,25 @@ async function addMember(eventId: string, userId: string) {
   if (Number(rows[0].n) === 0) await addMessage(eventId, userId, "assistant", OPENING_MESSAGE);
 }
 
-export async function createEvent(userId: string, title: string): Promise<EventSummary> {
+export async function createEvent(userId: string, title: string, location: string | null = null): Promise<EventSummary> {
   const client = await db();
+  const where = LocationSchema.parse(location ?? "") || null;
+  const pool = await resolvePool(where);
+  const restaurants = pool.source === "places" ? pool.restaurants : null;
   const event: EventSummary = {
     id: crypto.randomUUID(),
     title: TitleSchema.parse(title),
     inviteCode: newInviteCode(),
     creatorId: userId,
     decided: false,
+    location: where,
+    poolSource: pool.source,
+    poolSize: restaurants?.length ?? RESTAURANT_SEED_SIZE,
   };
+  if (pool.source === "seed" && where) console.info(`Plan "${event.title}": using seed pool (${pool.reason})`);
   await client.execute({
-    sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at) VALUES (?, ?, ?, ?, ?)",
-    args: [event.id, event.title, event.inviteCode, userId, Date.now()],
+    sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    args: [event.id, event.title, event.inviteCode, userId, Date.now(), where, restaurants ? JSON.stringify(restaurants) : null, pool.source],
   });
   await addMember(event.id, userId);
   return event;
@@ -215,11 +249,18 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
   }
   const members = await listMembers(eventId, userId);
   const memberNames = userIds.map((id) => members.find((m) => m.userId === id)?.displayName ?? "Someone");
+  const { restaurants } = await poolForEvent(eventId);
 
+  const outcome = await negotiate(agents, { restaurants, maxRounds: 6, perRound: 5, selector: configuredSelector() });
+  const mentioned = new Set<string>();
+  if (outcome.proposal) mentioned.add(outcome.proposal.restaurantId);
+  for (const round of outcome.rounds) for (const p of round.proposals) mentioned.add(p.proposal.restaurantId);
+  for (const f of outcome.finalists) mentioned.add(f.proposal.restaurantId);
   const result: StoredResult = {
-    ...(await negotiate(agents, { maxRounds: 6, perRound: 5, selector: configuredSelector() })),
+    ...outcome,
     participants: agents.length,
     memberNames,
+    places: summarize(restaurants, mentioned),
     decidedAt: Date.now(),
   };
   const client = await db();
@@ -261,5 +302,6 @@ export function upgradeResult(raw: Record<string, unknown>): StoredResult {
     conflicts: (raw.conflicts as StoredResult["conflicts"]) ?? [],
     leakedDims: (raw.leakedDims as number) ?? 0,
     memberNames: (raw.memberNames as string[]) ?? [],
+    places: (raw.places as StoredResult["places"]) ?? {},
   } as StoredResult;
 }

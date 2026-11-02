@@ -14,7 +14,8 @@ function describeDims(t: Tally): string {
 }
 
 export function ResultCard({ result }: { result: StoredResult }) {
-  const r = result.proposal ? getRestaurant(result.proposal.restaurantId) : undefined;
+  const place = (id: string) => result.places?.[id] ?? getRestaurant(id);
+  const r = result.proposal ? place(result.proposal.restaurantId) : undefined;
   const headline =
     result.status === "agreed"
       ? "Everyone's in"
@@ -94,7 +95,7 @@ export function ResultCard({ result }: { result: StoredResult }) {
               </div>
               <ul className="mt-1.5 space-y-1.5">
                 {round.proposals.map((p) => {
-                  const name = getRestaurant(p.proposal.restaurantId)?.name ?? "?";
+                  const name = place(p.proposal.restaurantId)?.name ?? "?";
                   const why = describeDims(p.tally);
                   return (
                     <li key={`${p.proposal.restaurantId}-${p.proposal.slot}`} className="grid grid-cols-[1fr_4rem] items-center gap-3">
@@ -123,7 +124,7 @@ export function ResultCard({ result }: { result: StoredResult }) {
                   <li key={`${f.proposal.restaurantId}-${f.proposal.slot}`} className="flex items-center justify-between gap-3">
                     <span className={chosen ? "text-ink" : "text-ink-2"}>
                       {chosen ? "★ " : ""}
-                      {getRestaurant(f.proposal.restaurantId)?.name ?? "?"} · {SLOT_LABELS[f.proposal.slot]}
+                      {place(f.proposal.restaurantId)?.name ?? "?"} · {SLOT_LABELS[f.proposal.slot]}
                     </span>
                     <span className="flex items-center gap-2 font-mono text-[0.6875rem] text-ink-3">
                       <span aria-label={`buckets ${f.buckets.join(", ")}`}>{f.buckets.join(" · ")}</span>

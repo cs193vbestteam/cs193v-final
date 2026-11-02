@@ -25,6 +25,9 @@ export default async function Home() {
       <section className="card rise mt-8" style={{ "--d": "0.15s" } as React.CSSProperties}>
         <p className="eyebrow mb-3">New plan</p>
         <CreateEventForm />
+        <p className="mt-3 text-xs text-ink-3">
+          Add a place and the candidates come from real restaurants nearby; leave it blank for the built-in set.
+        </p>
       </section>
 
       <section className="rise mt-12" style={{ "--d": "0.25s" } as React.CSSProperties}>

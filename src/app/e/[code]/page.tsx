@@ -57,7 +57,11 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       <AutoRefresh />
       <div className="rise flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-line pb-5">
         <div className="min-w-0">
-          <p className="eyebrow">Plan · {code}</p>
+          <p className="eyebrow">
+            Plan · {code}
+            {event.location ? ` · near ${event.location}` : ""}
+            {` · ${event.poolSize} ${event.poolSource === "places" ? "real places" : "seed places"}`}
+          </p>
           <h1 className="display mt-2 truncate text-4xl sm:text-5xl">{event.title}</h1>
         </div>
         <div className="flex items-center gap-3">

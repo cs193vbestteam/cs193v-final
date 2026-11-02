@@ -52,6 +52,23 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE INDEX IF NOT EXISTS messages_by_chat ON messages (event_id, user_id, id);
 `;
 
+/** Columns added after v1. ALTER TABLE has no IF NOT EXISTS in SQLite, so each is tried and a duplicate is ignored. */
+const MIGRATIONS = [
+  "ALTER TABLE events ADD COLUMN location TEXT",      // where the plan happens (public)
+  "ALTER TABLE events ADD COLUMN pool_json TEXT",     // candidate restaurants for this plan (public)
+  "ALTER TABLE events ADD COLUMN pool_source TEXT",   // 'places' | 'seed'
+];
+
+async function migrate(c: Client) {
+  for (const sql of MIGRATIONS) {
+    try {
+      await c.execute(sql);
+    } catch (err) {
+      if (!/duplicate column/i.test((err as Error).message)) throw err;
+    }
+  }
+}
+
 let client: Client | null = null;
 let ready: Promise<void> | null = null;
 
@@ -62,7 +79,11 @@ export async function db(): Promise<Client> {
       authToken: process.env.DATABASE_AUTH_TOKEN || undefined,
     });
     const c = client;
-    ready = c.executeMultiple(SCHEMA).then(() => c.execute("PRAGMA foreign_keys = ON")).then(() => undefined);
+    ready = c
+      .executeMultiple(SCHEMA)
+      .then(() => migrate(c))
+      .then(() => c.execute("PRAGMA foreign_keys = ON"))
+      .then(() => undefined);
   }
   await ready;
   return client;
