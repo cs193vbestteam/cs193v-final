@@ -99,6 +99,7 @@ export function ResultCard({ result }: { result: StoredResult }) {
                   return (
                     <li key={`${p.proposal.restaurantId}-${p.proposal.slot}`} className="grid grid-cols-[1fr_4rem] items-center gap-3">
                       <span className="truncate" title={why || undefined}>
+                        {p.retried && <span className="text-amber" title="asked again after a concession step">↺ </span>}
                         <span className="text-ink">{name}</span>
                         <span className="text-ink-3"> · {SLOT_LABELS[p.proposal.slot]}</span>
                         {why && <span className="text-ink-3"> · {why}</span>}

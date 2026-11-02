@@ -7,10 +7,11 @@ import { RESTAURANTS, type Restaurant } from "./restaurants";
  * The protocol.
  *
  *   for round in 1..maxRounds:
- *     mediator proposes K candidates from tallies alone
+ *     from `concessionFrom` on, every agent is asked to concede one more step,
+ *       and the closest earlier near-misses are put to them again first
+ *     mediator fills the round with fresh candidates chosen from tallies alone
  *     every agent answers accept / reluctant / reject (+ one dim)
  *     all accept → done; otherwise remember what was feasible
- *     from `concessionFrom` on, ask every agent to concede one more step
  *   pick among the best feasible candidates by Nash product of utility BUCKETS
  *
  * Privacy by construction: this module imports no storage, no crypto, no
@@ -109,24 +110,42 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
     leakedDims,
   });
 
+  /** Ask every agent about one proposal at the current level, record it, and say whether it was unanimous. */
+  const ask = (proposal: Proposal, log: RoundFeedback, retried: boolean): Tried => {
+    const judgements = agents.map((a) => a.judge(proposal, level));
+    leakedDims += judgements.filter((j) => j.dim).length;
+    const tally = tallyOf(judgements);
+    const entry: Tried = { proposal, tally, judgements, level };
+    tried.set(key(proposal), entry);
+    log.proposals.push(retried ? { proposal, tally, retried } : { proposal, tally });
+    return entry;
+  };
+
   for (let round = 1; round <= maxRounds; round++) {
     level = Math.max(0, round - concessionFrom + 1);
-    const untried = pool.filter((c) => !tried.has(candidateKey(c)));
-    const picks: Candidate[] = await propose(untried, rounds, perRound, lookup, opts.selector);
-    if (picks.length === 0) break;
-
     const log: RoundFeedback = { round, level, proposals: [] };
     const unanimous: Tried[] = [];
-    for (const { r, slot } of picks) {
-      const proposal: Proposal = { restaurantId: r.id, slot };
-      const judgements = agents.map((a) => a.judge(proposal, level));
-      leakedDims += judgements.filter((j) => j.dim).length;
-      const tally = tallyOf(judgements);
-      const entry: Tried = { proposal, tally, judgements, level };
-      tried.set(key(proposal), entry);
-      log.proposals.push({ proposal, tally });
-      if (tally.accept === agents.length) unanimous.push(entry);
+
+    // A concession step is pointless on brand-new long shots alone: first re-ask the nearest misses.
+    if (level > 0) {
+      const nearMisses = [...tried.values()]
+        .filter((t) => t.level < level && t.tally.reject <= Math.ceil(agents.length / 2))
+        .sort((a, b) => a.tally.reject - b.tally.reject || a.tally.reluctant - b.tally.reluctant || key(a.proposal).localeCompare(key(b.proposal)))
+        .slice(0, Math.ceil(perRound / 2));
+      for (const t of nearMisses) {
+        const entry = ask(t.proposal, log, true);
+        if (entry.tally.accept === agents.length) unanimous.push(entry);
+      }
     }
+
+    const untried = pool.filter((c) => !tried.has(candidateKey(c)));
+    const room = perRound - log.proposals.length;
+    const picks: Candidate[] = room > 0 ? await propose(untried, rounds, room, lookup, opts.selector) : [];
+    for (const { r, slot } of picks) {
+      const entry = ask({ restaurantId: r.id, slot }, log, false);
+      if (entry.tally.accept === agents.length) unanimous.push(entry);
+    }
+    if (log.proposals.length === 0) break;
     rounds.push(log);
 
     if (unanimous.length) {
@@ -138,7 +157,11 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   // Re-check everything tried at the final concession level: a concession may have made an early option acceptable.
   const feasible: Tried[] = [];
   for (const t of tried.values()) {
-    const judgements = t.level === level ? t.judgements : agents.map((a) => a.judge(t.proposal, level));
+    let { judgements } = t;
+    if (t.level !== level) {
+      judgements = agents.map((a) => a.judge(t.proposal, level));
+      leakedDims += judgements.filter((j) => j.dim).length; // these dimension names are seen too
+    }
     const tally = tallyOf(judgements);
     if (tally.reject === 0) feasible.push({ ...t, judgements, tally, level });
   }

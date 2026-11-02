@@ -65,6 +65,20 @@ describe("negotiate", () => {
     expect(result.concessionLevel).toBeGreaterThanOrEqual(1);
     expect(result.rounds.find((r) => r.round === 4)?.level).toBe(1);
     expect(result.rounds.find((r) => r.round === 3)?.level).toBe(0);
+    // The near-miss is put to the agents again in round 4 and wins there, not in a post-loop sweep.
+    expect(result.rounds).toHaveLength(4);
+    const retried = result.rounds[3].proposals.filter((p) => p.retried);
+    expect(retried.length).toBeGreaterThan(0);
+    expect(retried.some((p) => p.proposal.restaurantId === "taqueria-sol")).toBe(true);
+  });
+
+  it("a concession round re-asks at most half its slots and fills the rest with fresh candidates", async () => {
+    const people = [c({ budgetMax: 15, maxTravelMin: 5 }), c({ budgetMax: 60, maxTravelMin: 60, dislikedCuisines: ["mexican"], concessionOrder: ["budget", "travel", "cuisine"] })];
+    const result = await negotiate(people.map(agentFor));
+    const r4 = result.rounds.find((r) => r.round === 4);
+    expect(r4).toBeDefined();
+    expect(r4!.proposals.filter((p) => p.retried).length).toBeLessThanOrEqual(3);
+    expect(r4!.proposals.length).toBeLessThanOrEqual(5);
   });
 
   it("reports no_deal with the conflicting dimensions for impossible constraints", async () => {

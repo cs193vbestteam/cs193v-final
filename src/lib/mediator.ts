@@ -23,7 +23,8 @@ export type RoundFeedback = {
   round: number;
   /** Concession steps every assistant was asked to take this round. */
   level: number;
-  proposals: { proposal: Proposal; tally: Tally }[];
+  /** `retried`: an earlier near-miss asked again after a concession step. */
+  proposals: { proposal: Proposal; tally: Tally; retried?: boolean }[];
 };
 
 export type Candidate = { r: Restaurant; slot: Slot };

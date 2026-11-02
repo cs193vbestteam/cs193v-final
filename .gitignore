@@ -16,3 +16,6 @@ next-env.d.ts
 .vercel
 coverage/
 .claude/
+
+# simulation output
+sim/out/
