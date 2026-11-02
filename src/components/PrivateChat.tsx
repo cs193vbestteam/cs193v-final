@@ -25,7 +25,9 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
   const [pending, startTransition] = useTransition();
   const bottom = useRef<HTMLDivElement>(null);
 
-  useEffect(() => bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), [messages]);
+  useEffect(() => {
+    bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [messages]);
 
   function send(e: React.FormEvent) {
     e.preventDefault();
