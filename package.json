@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "sim": "tsx sim/run.ts",
-    "gen-key": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
+    "gen-key": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
+    "personas": "node --require ./sim/shims/server-only.cjs --import tsx sim/personas.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
