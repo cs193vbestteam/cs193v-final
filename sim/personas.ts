@@ -10,8 +10,10 @@
  * actually get turned into the right constraints, and does the plan that
  * comes out feel right to the people whose numbers were never shared.
  *
- * Needs an OpenAI-compatible key: OPENROUTER_API_KEY or LLM_API_KEY (+ LLM_BASE_URL),
- * from the environment or .env.local. Uses a throwaway SQLite file so local.db is untouched.
+ * Personas run on Claude via Anthropic's OpenAI-compatible endpoint (ANTHROPIC_API_KEY,
+ * from the environment or .env.local); OPENROUTER_API_KEY or LLM_API_KEY + LLM_BASE_URL
+ * override. Uses a throwaway SQLite file so local.db is untouched.
+ * --llm-assistant also puts the assistant under test on the LLM path (needs ANTHROPIC_API_KEY).
  *
  *   node --require ./sim/shims/server-only.cjs --import tsx sim/personas.ts [--people 5] [--seed sim/seeds/friends.md]
  */
@@ -40,11 +42,14 @@ const OUT_DIR = arg("out", path.join(ROOT, "sim/out"));
 const MAX_TURNS = Number(arg("turns", "14"));
 const LOCATION = arg("location", "");
 
-const LLM_KEY = process.env.LLM_API_KEY || process.env.OPENROUTER_API_KEY;
-const LLM_BASE = process.env.LLM_BASE_URL || (process.env.OPENROUTER_API_KEY ? "https://openrouter.ai/api/v1" : "https://api.openai.com/v1");
-const LLM_MODEL = process.env.PERSONA_MODEL || process.env.LLM_MODEL_NAME || "openai/gpt-4o-mini";
+const LLM_KEY = process.env.LLM_API_KEY || process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
+// Default to Claude directly (Anthropic's OpenAI-compatible endpoint); OPENROUTER_API_KEY or LLM_* override.
+const LLM_BASE =
+  process.env.LLM_BASE_URL ||
+  (process.env.LLM_API_KEY ? "https://api.openai.com/v1" : process.env.OPENROUTER_API_KEY ? "https://openrouter.ai/api/v1" : "https://api.anthropic.com/v1");
+const LLM_MODEL = process.env.PERSONA_MODEL || process.env.LLM_MODEL_NAME || (process.env.OPENROUTER_API_KEY && !process.env.LLM_API_KEY ? "anthropic/claude-haiku-5.5" : "claude-haiku-5-5");
 if (!LLM_KEY) {
-  console.error("No LLM key. Run with OPENROUTER_API_KEY=... (or LLM_API_KEY + LLM_BASE_URL), or add it to .env.local.");
+  console.error("No LLM key. Put ANTHROPIC_API_KEY in .env.local (or run with OPENROUTER_API_KEY / LLM_API_KEY + LLM_BASE_URL).");
   process.exit(1);
 }
 
@@ -54,7 +59,8 @@ const DB_FILE = path.join(OUT_DIR, "personas.db");
 for (const f of [DB_FILE, `${DB_FILE}-journal`, `${DB_FILE}-wal`, `${DB_FILE}-shm`]) if (existsSync(f)) rmSync(f);
 process.env.DATABASE_URL = `file:${DB_FILE}`;
 delete process.env.DATABASE_AUTH_TOKEN;
-delete process.env.ANTHROPIC_API_KEY; // the assistant runs on the rule-based path: that is what we are testing
+// The assistant under test runs on the rule-based path unless --llm-assistant is given.
+if (!args.includes("--llm-assistant")) delete process.env.ANTHROPIC_API_KEY;
 delete process.env.GOOGLE_PLACES_API_KEY;
 
 // ── LLM client (OpenAI-compatible, like MiroFish's) ──
@@ -75,7 +81,15 @@ async function chat(messages: Msg[], opts: { json?: boolean; temperature?: numbe
       await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
       continue;
     }
-    if (!res.ok) throw new Error(`LLM ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    if (!res.ok) {
+      const text = await res.text();
+      // Some OpenAI-compatible endpoints (Anthropic's among them) reject response_format: ask again without it and parse leniently.
+      if (res.status === 400 && body.response_format && /response_format/i.test(text)) {
+        delete body.response_format;
+        continue;
+      }
+      throw new Error(`LLM ${res.status}: ${text.slice(0, 300)}`);
+    }
     const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };
     return data.choices?.[0]?.message?.content?.trim() ?? "";
   }
