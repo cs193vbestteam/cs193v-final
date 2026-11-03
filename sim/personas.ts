@@ -68,7 +68,9 @@ type Msg = { role: "system" | "user" | "assistant"; content: string };
 let llmCalls = 0;
 async function chat(messages: Msg[], opts: { json?: boolean; temperature?: number; maxTokens?: number } = {}): Promise<string> {
   llmCalls++;
-  const body: Record<string, unknown> = { model: LLM_MODEL, messages, temperature: opts.temperature ?? 0.8, max_tokens: opts.maxTokens ?? 400 };
+  const body: Record<string, unknown> = { model: LLM_MODEL, messages, max_tokens: opts.maxTokens ?? 400 };
+  // Claude 5 models reject `temperature` on the OpenAI-compatible endpoint; other providers still take it.
+  if (!/api\.anthropic\.com/.test(LLM_BASE)) body.temperature = opts.temperature ?? 0.8;
   if (opts.json) body.response_format = { type: "json_object" };
   for (let attempt = 0; attempt < 3; attempt++) {
     const res = await fetch(`${LLM_BASE}/chat/completions`, {
