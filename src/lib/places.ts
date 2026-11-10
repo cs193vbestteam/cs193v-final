@@ -5,10 +5,17 @@ import type { Restaurant } from "./restaurants";
  * Candidate pool from Google Places (API "New"). Public information only:
  * where a plan happens is group knowledge, nobody's preferences are involved.
  *
- *   resolvePool(location)  → geocode the text, fetch nearby restaurants,
- *                             map them onto our Restaurant shape
+ *   resolvePool(location)  → geocode the text, gather nearby restaurants
+ *                             over several queries, map them onto our
+ *                             Restaurant shape
  *   Without GOOGLE_PLACES_API_KEY (or on any failure) callers fall back to
  *   the seeded RESTAURANTS, so the app keeps working offline.
+ *
+ * Nearby Search returns at most 20 places per call and has no paging, so one
+ * call gives a small, popularity-ranked pool. gatherPlaces() widens it: one
+ * general query, then one query per cuisine for the cuisines the general page
+ * covers least, merged and de-duplicated by place id. The number of calls per
+ * plan is capped (MAX_NEARBY_CALLS) because every call is billed.
  */
 
 export type LatLng = { lat: number; lng: number };
@@ -45,6 +52,27 @@ export const PRICE_BY_LEVEL: Record<string, number> = {
   PRICE_LEVEL_VERY_EXPENSIVE: 90,
 };
 export const DEFAULT_PRICE = 30;
+
+/** Nearby Search (New) returns at most this many places per call and cannot page. */
+export const NEARBY_PAGE_SIZE = 20;
+/** The most restaurants one plan's pool keeps. */
+export const POOL_TARGET = 60;
+/** Hard cap on Nearby Search calls per plan (geocoding is one more call on top). */
+export const MAX_NEARBY_CALLS = 6;
+
+/** Places types (Table A, valid in `includedTypes`) to ask for when widening the pool for one cuisine. */
+export const CUISINE_QUERY_TYPES: Record<Cuisine, readonly string[]> = {
+  japanese: ["japanese_restaurant", "sushi_restaurant", "ramen_restaurant"],
+  chinese: ["chinese_restaurant"],
+  korean: ["korean_restaurant"],
+  thai: ["thai_restaurant"],
+  vietnamese: ["vietnamese_restaurant"],
+  indian: ["indian_restaurant"],
+  mexican: ["mexican_restaurant"],
+  italian: ["italian_restaurant", "pizza_restaurant"],
+  american: ["american_restaurant", "hamburger_restaurant", "barbecue_restaurant", "steak_house"],
+  mediterranean: ["mediterranean_restaurant", "greek_restaurant", "turkish_restaurant", "lebanese_restaurant", "middle_eastern_restaurant"],
+};
 
 /** City travel: roughly 25 km/h door to door, never under 3 minutes. */
 export const KM_PER_MIN = 25 / 60;
@@ -169,13 +197,19 @@ export async function geocode(location: string, key: string, fetcher: Fetcher = 
   return loc ? { lat: loc.latitude, lng: loc.longitude } : null;
 }
 
-/** Restaurants within `radiusM` of a point (Nearby Search caps at 20 results). */
-export async function nearbyRestaurants(center: LatLng, key: string, radiusM = 5000, fetcher: Fetcher = fetch): Promise<PlaceResult[]> {
+/** Restaurants of the given Places types within `radiusM` of a point (Nearby Search caps at 20 results). */
+export async function nearbyRestaurants(
+  center: LatLng,
+  key: string,
+  radiusM = 5000,
+  fetcher: Fetcher = fetch,
+  includedTypes: readonly string[] = ["restaurant"],
+): Promise<PlaceResult[]> {
   const data = await postPlaces<{ places?: PlaceResult[] }>(
     "places:searchNearby",
     {
-      includedTypes: ["restaurant"],
-      maxResultCount: 20,
+      includedTypes,
+      maxResultCount: NEARBY_PAGE_SIZE,
       rankPreference: "POPULARITY",
       locationRestriction: { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: radiusM } },
     },
@@ -186,7 +220,75 @@ export async function nearbyRestaurants(center: LatLng, key: string, radiusM = 5
   return data.places ?? [];
 }
 
-export type ResolvedPool = { source: "places"; location: string; center: LatLng; restaurants: Restaurant[] } | { source: "seed"; location: string | null; reason: string };
+/** Cuisines in the order to query them: least represented in `pool` first, ties in CUISINES order. */
+export function cuisineQueryOrder(pool: readonly Restaurant[]): Cuisine[] {
+  const count = new Map<Cuisine, number>(CUISINES.map((c) => [c, 0]));
+  for (const r of pool) count.set(r.cuisine, (count.get(r.cuisine) ?? 0) + 1);
+  return [...CUISINES].sort((a, b) => count.get(a)! - count.get(b)! || CUISINES.indexOf(a) - CUISINES.indexOf(b));
+}
+
+/**
+ * Merge several pools into one of at most `cap` restaurants, de-duplicated by
+ * place id. `base` keeps its order and goes first; the `extra` lists are then
+ * interleaved one restaurant at a time, so a cap cuts every cuisine equally
+ * instead of dropping whichever query happened to come last.
+ */
+export function mergePools(base: readonly Restaurant[], extra: readonly (readonly Restaurant[])[], cap = POOL_TARGET): Restaurant[] {
+  const seen = new Set<string>();
+  const out: Restaurant[] = [];
+  const add = (r: Restaurant) => {
+    if (out.length >= cap || seen.has(r.id)) return;
+    seen.add(r.id);
+    out.push(r);
+  };
+  base.forEach(add);
+  const longest = Math.max(0, ...extra.map((list) => list.length));
+  for (let i = 0; i < longest && out.length < cap; i++) for (const list of extra) if (i < list.length) add(list[i]);
+  return out;
+}
+
+export type GatherOptions = { maxCalls?: number; target?: number; radiusM?: number };
+export type Gathered = { restaurants: Restaurant[]; calls: number; failedCalls: number };
+
+/**
+ * The candidate pool around `center`, from at most `maxCalls` Nearby Search
+ * calls: the general "restaurant" query, then (only if that left the pool
+ * under `target`) one query per cuisine for the least-covered cuisines, run
+ * together. A failed call costs its results, not the pool; if every call
+ * fails the first error is thrown so the caller can fall back to the seed.
+ */
+export async function gatherPlaces(center: LatLng, key: string, fetcher: Fetcher = fetch, options: GatherOptions = {}): Promise<Gathered> {
+  const maxCalls = Math.max(1, Math.floor(options.maxCalls ?? MAX_NEARBY_CALLS));
+  const target = options.target ?? POOL_TARGET;
+  const radiusM = options.radiusM ?? 5000;
+  const errors: unknown[] = [];
+  let calls = 1;
+
+  let base: Restaurant[] = [];
+  try {
+    base = toPool(await nearbyRestaurants(center, key, radiusM, fetcher), center);
+  } catch (err) {
+    errors.push(err);
+  }
+
+  const extra: Restaurant[][] = [];
+  if (base.length < target && maxCalls > 1) {
+    const cuisines = cuisineQueryOrder(base).slice(0, maxCalls - 1);
+    calls += cuisines.length;
+    const settled = await Promise.allSettled(cuisines.map((c) => nearbyRestaurants(center, key, radiusM, fetcher, CUISINE_QUERY_TYPES[c])));
+    for (const s of settled) {
+      if (s.status === "fulfilled") extra.push(toPool(s.value, center));
+      else errors.push(s.reason);
+    }
+  }
+
+  if (errors.length === calls) throw errors[0];
+  return { restaurants: mergePools(base, extra, target), calls, failedCalls: errors.length };
+}
+
+export type ResolvedPool =
+  | { source: "places"; location: string; center: LatLng; restaurants: Restaurant[]; calls: number; failedCalls: number }
+  | { source: "seed"; location: string | null; reason: string };
 
 /**
  * The pool for a plan near `location`. Falls back to the seed when there is no
@@ -199,9 +301,9 @@ export async function resolvePool(location: string | null, key = process.env.GOO
   try {
     const center = await geocode(where, key, fetcher);
     if (!center) return { source: "seed", location: where, reason: "location not found" };
-    const restaurants = toPool(await nearbyRestaurants(center, key, 5000, fetcher), center);
+    const { restaurants, calls, failedCalls } = await gatherPlaces(center, key, fetcher);
     if (restaurants.length < 5) return { source: "seed", location: where, reason: `only ${restaurants.length} usable places nearby` };
-    return { source: "places", location: where, center, restaurants };
+    return { source: "places", location: where, center, restaurants, calls, failedCalls };
   } catch (err) {
     return { source: "seed", location: where, reason: (err as Error).message };
   }
