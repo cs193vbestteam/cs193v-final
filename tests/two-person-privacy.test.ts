@@ -207,7 +207,11 @@ describe("plans of three or more are unchanged", () => {
     // The shortlist: the plan on top, the other options under it, each a place nobody rejected.
     expect(result.options![0].proposal).toEqual(result.proposal);
     expect(result.options!.length).toBeGreaterThan(1);
-    expect(html).toMatch(/Best fit above · \d more that works? for the group/);
+    expect(html).toMatch(/Best fit of \d places that work for the group/);
+    expect(html).toMatch(/See all \d options/);
+    // The pop-out holds one tile per option, the best fit first.
+    expect(html.match(/<li class="rounded-xl border p-4/g)).toHaveLength(result.options!.length);
+    expect(html).toContain("1 · Best fit");
     for (const o of result.options!) {
       expect(html).toContain(result.places[o.proposal.restaurantId].name);
       expect(typeof o.everyoneIn).toBe("boolean");
