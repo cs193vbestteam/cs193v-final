@@ -9,17 +9,28 @@ vi.mock("@/app/actions", () => ({ sendMessageAction: vi.fn(), setReadyAction: vi
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 type Props = ComponentProps<typeof PrivateChat>;
 const initial: Props = {
-  eventId: "event-1", inviteCode: "invite-1", ready: false,
+  eventId: "event-1",
+  inviteCode: "invite-1",
+  ready: false,
   initialMessages: [{ role: "assistant", content: "Hello" }],
-  initialSummary: [], initialMissing: ["budget"],
+  initialSummary: [],
+  initialMissing: ["budget"],
 };
 const response: ChatState = {
-  messages: [...initial.initialMessages, { role: "user", content: "Under $40" }, { role: "assistant", content: "Budget saved privately" }],
-  summary: ["Budget: up to $40/person"], missing: [],
+  messages: [
+    ...initial.initialMessages,
+    { role: "user", content: "Under $40" },
+    { role: "assistant", content: "Budget saved privately" },
+  ],
+  summary: ["Budget: up to $40/person"],
+  missing: [],
 };
 const updated: Props = {
-  ...initial, initialMessages: response.messages, initialSummary: response.summary,
-  initialMissing: [], ready: true,
+  ...initial,
+  initialMessages: response.messages,
+  initialSummary: response.summary,
+  initialMissing: [],
+  ready: true,
 };
 let root: Root;
 let container: HTMLDivElement;
@@ -36,7 +47,9 @@ afterEach(async () => {
   vi.resetAllMocks();
   Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
 });
-const render = async (props: Props) => { await act(async () => root.render(createElement(PrivateChat, props))); };
+const render = async (props: Props) => {
+  await act(async () => root.render(createElement(PrivateChat, props)));
+};
 const input = () => container.querySelector("input")!;
 async function type(value: string) {
   await act(async () => {
@@ -45,7 +58,9 @@ async function type(value: string) {
   });
 }
 async function submit() {
-  await act(async () => { container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); });
+  await act(async () => {
+    container.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
 }
 function expectUpdated() {
   expect(container.textContent).toContain("Budget saved privately");
@@ -72,7 +87,11 @@ describe("PrivateChat server refresh", () => {
 
   it("preserves a pending send, ignores a stale refresh and deduplicates the response", async () => {
     let resolve!: (value: ChatState) => void;
-    vi.mocked(sendMessageAction).mockReturnValue(new Promise(r => { resolve = r; }));
+    vi.mocked(sendMessageAction).mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      }),
+    );
     await render(initial);
     await type("Under $40");
     await submit();
@@ -87,20 +106,28 @@ describe("PrivateChat server refresh", () => {
     await render({ ...initial, initialMessages: [...initial.initialMessages] });
     expectUpdated();
     await render(updated);
-    const userMessages = [...container.querySelectorAll("p")].filter(p => p.textContent === "Under $40");
+    const userMessages = [...container.querySelectorAll("p")].filter((p) => p.textContent === "Under $40");
     expect(userMessages).toHaveLength(1);
     expect(sendMessageAction).toHaveBeenCalledTimes(1);
   });
 
   it("uses a newer remote snapshot even if an older local send resolves afterwards", async () => {
     let resolve!: (value: ChatState) => void;
-    vi.mocked(sendMessageAction).mockReturnValue(new Promise(r => { resolve = r; }));
+    vi.mocked(sendMessageAction).mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      }),
+    );
     await render(initial);
     await type("Under $40");
     await submit();
     const newer: Props = {
       ...updated,
-      initialMessages: [...response.messages, { role: "user", content: "Actually under $30" }, { role: "assistant", content: "Budget reduced" }],
+      initialMessages: [
+        ...response.messages,
+        { role: "user", content: "Actually under $30" },
+        { role: "assistant", content: "Budget reduced" },
+      ],
       initialSummary: ["Budget: up to $30/person"],
     };
     await render(newer);
@@ -117,8 +144,13 @@ describe("PrivateChat server refresh", () => {
     await submit();
     expectUpdated();
     await render({
-      ...updated, ready: false,
-      initialMessages: [...response.messages, { role: "user", content: "Saturday only" }, { role: "assistant", content: "Saturday saved" }],
+      ...updated,
+      ready: false,
+      initialMessages: [
+        ...response.messages,
+        { role: "user", content: "Saturday only" },
+        { role: "assistant", content: "Saturday saved" },
+      ],
       initialSummary: [...response.summary, "Saturday dinner only"],
     });
     expect(container.textContent).toContain("Saturday saved");
@@ -133,12 +165,16 @@ describe("PrivateChat server refresh", () => {
     await submit();
     expect(input().value).toBe("Under $40");
     expect(container.querySelector('[role="alert"]')?.textContent).toBe("Please try again");
-    expect([...container.querySelectorAll("p")].some(p => p.textContent === "Under $40")).toBe(false);
+    expect([...container.querySelectorAll("p")].some((p) => p.textContent === "Under $40")).toBe(false);
   });
 
   it("preserves a new draft and refreshed data after a rejected send", async () => {
     let reject!: (reason: Error) => void;
-    vi.mocked(sendMessageAction).mockReturnValue(new Promise((_, r) => { reject = r; }));
+    vi.mocked(sendMessageAction).mockReturnValue(
+      new Promise((_, r) => {
+        reject = r;
+      }),
+    );
     await render(initial);
     await type("Under $40");
     await submit();

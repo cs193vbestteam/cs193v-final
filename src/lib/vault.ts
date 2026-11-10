@@ -15,7 +15,9 @@ import { compile } from "./preferences";
  * tests/isolation.test.ts), and this module exports nothing that returns a
  * preference value.
  */
-export async function agentsForEvent(eventId: string): Promise<{ agents: Agent[]; userIds: string[]; readyCount: number }> {
+export async function agentsForEvent(
+  eventId: string,
+): Promise<{ agents: Agent[]; userIds: string[]; readyCount: number }> {
   const client = await db();
   const { rows } = await client.execute({
     sql: "SELECT user_id, constraints_enc, ready FROM members WHERE event_id = ? ORDER BY joined_at",

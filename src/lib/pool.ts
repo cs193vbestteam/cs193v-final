@@ -10,11 +10,15 @@ export type PoolSource = "places" | "seed";
 
 export async function poolForEvent(eventId: string): Promise<{ restaurants: Restaurant[]; source: PoolSource }> {
   const client = await db();
-  const { rows } = await client.execute({ sql: "SELECT pool_json, pool_source FROM events WHERE id = ?", args: [eventId] });
+  const { rows } = await client.execute({
+    sql: "SELECT pool_json, pool_source FROM events WHERE id = ?",
+    args: [eventId],
+  });
   const raw = rows[0]?.pool_json;
   if (raw) {
     const restaurants = JSON.parse(String(raw)) as Restaurant[];
-    if (Array.isArray(restaurants) && restaurants.length) return { restaurants, source: (rows[0].pool_source as PoolSource) ?? "places" };
+    if (Array.isArray(restaurants) && restaurants.length)
+      return { restaurants, source: (rows[0].pool_source as PoolSource) ?? "places" };
   }
   return { restaurants: RESTAURANTS, source: "seed" };
 }

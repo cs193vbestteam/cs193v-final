@@ -29,7 +29,11 @@ export type RoundFeedback = {
 
 export type Candidate = { r: Restaurant; slot: Slot };
 
-export type Selector = (shortlist: Candidate[], history: RoundFeedback[], k: number) => Candidate[] | Promise<Candidate[]>;
+export type Selector = (
+  shortlist: Candidate[],
+  history: RoundFeedback[],
+  k: number,
+) => Candidate[] | Promise<Candidate[]>;
 
 export const key = (p: Proposal) => `${p.restaurantId}@${p.slot}`;
 export const candidateKey = (c: Candidate) => `${c.r.id}@${c.slot}`;
@@ -137,7 +141,12 @@ function distance(a: Candidate, b: Candidate): number {
  * Rank the untried pool and shortlist `k` distinct restaurants.
  * Round 1 (no history): a diverse spread. Later: what the tallies point to.
  */
-export function shortlist(pool: Candidate[], history: RoundFeedback[], k: number, lookup: (id: string) => Restaurant | undefined): Candidate[] {
+export function shortlist(
+  pool: Candidate[],
+  history: RoundFeedback[],
+  k: number,
+  lookup: (id: string) => Restaurant | undefined,
+): Candidate[] {
   const hints = learn(history, lookup);
   const ranked = pool
     .map((c, i) => ({ c, s: score(hints, c), i }))
@@ -185,6 +194,8 @@ export async function propose(
   if (!selector || list.length <= k) return list.slice(0, k);
   const chosen = await selector(list, history, k);
   const allowed = new Set(list.map(candidateKey));
-  const valid = chosen.filter((c, i, arr) => allowed.has(candidateKey(c)) && arr.findIndex((o) => candidateKey(o) === candidateKey(c)) === i);
+  const valid = chosen.filter(
+    (c, i, arr) => allowed.has(candidateKey(c)) && arr.findIndex((o) => candidateKey(o) === candidateKey(c)) === i,
+  );
   return valid.length ? valid.slice(0, k) : list.slice(0, k);
 }

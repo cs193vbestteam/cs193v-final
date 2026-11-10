@@ -24,49 +24,58 @@ afterEach(async () => {
 });
 
 describe("PrivateChat auto-scroll", () => {
-  it.each(["void", "promise"])("mounts, scrolls after sending, and unmounts when scrollIntoView returns %s", async (returnType) => {
-    const scroll = vi.fn(() => returnType === "promise" ? Promise.resolve() : undefined);
-    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
-      configurable: true,
-      writable: true,
-      value: scroll,
-    });
-    const { sendMessageAction } = await import("@/app/actions");
-    vi.mocked(sendMessageAction).mockResolvedValue({
-      messages: [
-        { role: "assistant", content: "Hello" },
-        { role: "user", content: "Saturday dinner" },
-        { role: "assistant", content: "What is your budget?" },
-      ],
-      summary: [],
-      missing: ["budget", "distance", "diet"],
-    });
-    container = document.createElement("div");
-    document.body.appendChild(container);
-    root = createRoot(container);
-    await act(async () => root!.render(createElement(PrivateChat, {
-      eventId: "event-1", inviteCode: "invite-1",
-      initialMessages: [{ role: "assistant", content: "Hello" }],
-      initialSummary: [], initialMissing: ["time", "budget", "distance", "diet"],
-      ready: false,
-    })));
-    expect(scroll).toHaveBeenCalledWith({ behavior: "smooth", block: "nearest" });
-    const initialScrollCount = scroll.mock.calls.length;
+  it.each(["void", "promise"])(
+    "mounts, scrolls after sending, and unmounts when scrollIntoView returns %s",
+    async (returnType) => {
+      const scroll = vi.fn(() => (returnType === "promise" ? Promise.resolve() : undefined));
+      Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+        configurable: true,
+        writable: true,
+        value: scroll,
+      });
+      const { sendMessageAction } = await import("@/app/actions");
+      vi.mocked(sendMessageAction).mockResolvedValue({
+        messages: [
+          { role: "assistant", content: "Hello" },
+          { role: "user", content: "Saturday dinner" },
+          { role: "assistant", content: "What is your budget?" },
+        ],
+        summary: [],
+        missing: ["budget", "distance", "diet"],
+      });
+      container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+      await act(async () =>
+        root!.render(
+          createElement(PrivateChat, {
+            eventId: "event-1",
+            inviteCode: "invite-1",
+            initialMessages: [{ role: "assistant", content: "Hello" }],
+            initialSummary: [],
+            initialMissing: ["time", "budget", "distance", "diet"],
+            ready: false,
+          }),
+        ),
+      );
+      expect(scroll).toHaveBeenCalledWith({ behavior: "smooth", block: "nearest" });
+      const initialScrollCount = scroll.mock.calls.length;
 
-    const input = container.querySelector("input")!;
-    await act(async () => {
-      // Use the native setter so React observes a real input value change.
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "Saturday dinner");
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    await act(async () => {
-      container!.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
-    });
-    expect(sendMessageAction).toHaveBeenCalledWith("event-1", "invite-1", "Saturday dinner");
-    expect(container.textContent).toContain("What is your budget?");
-    expect(scroll.mock.calls.length).toBeGreaterThan(initialScrollCount);
+      const input = container.querySelector("input")!;
+      await act(async () => {
+        // Use the native setter so React observes a real input value change.
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "Saturday dinner");
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      await act(async () => {
+        container!.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+      });
+      expect(sendMessageAction).toHaveBeenCalledWith("event-1", "invite-1", "Saturday dinner");
+      expect(container.textContent).toContain("What is your budget?");
+      expect(scroll.mock.calls.length).toBeGreaterThan(initialScrollCount);
 
-    await act(async () => root!.unmount());
-    root = undefined;
-  });
+      await act(async () => root!.unmount());
+      root = undefined;
+    },
+  );
 });

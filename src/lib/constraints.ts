@@ -71,7 +71,9 @@ export const ConstraintsSchema = z.object({
   likedCuisines: z.array(z.enum(CUISINES)),
   dislikedCuisines: z.array(z.enum(CUISINES)),
   /** Relative importance of each soft dimension (normalised at compile time). */
-  weights: z.object({ budget: z.number().min(0), travel: z.number().min(0), cuisine: z.number().min(0) }).default({ ...DEFAULT_WEIGHTS }),
+  weights: z
+    .object({ budget: z.number().min(0), travel: z.number().min(0), cuisine: z.number().min(0) })
+    .default({ ...DEFAULT_WEIGHTS }),
   /** "If something has to give, what goes first?" null = not asked yet. */
   concessionOrder: z.array(z.enum(SOFT_DIMS)).nullable().default(null),
   /** Follow-up questions already asked, so the assistant never nags twice. */
@@ -82,7 +84,10 @@ export const ConstraintsSchema = z.object({
 export type Constraints = z.infer<typeof ConstraintsSchema>;
 
 export const ConstraintsUpdateSchema = ConstraintsSchema.partial().extend({
-  weights: z.object({ budget: z.number().min(0), travel: z.number().min(0), cuisine: z.number().min(0) }).partial().optional(),
+  weights: z
+    .object({ budget: z.number().min(0), travel: z.number().min(0), cuisine: z.number().min(0) })
+    .partial()
+    .optional(),
 });
 export type ConstraintsUpdate = z.infer<typeof ConstraintsUpdateSchema>;
 
@@ -103,7 +108,7 @@ export function emptyConstraints(): Constraints {
   };
 }
 
-const uniq = <T,>(xs: T[]) => Array.from(new Set(xs));
+const uniq = <T>(xs: T[]) => Array.from(new Set(xs));
 
 /** Apply an update from the extractor. Scalars overwrite; dietary needs accumulate. */
 export function mergeConstraints(base: Constraints, update: ConstraintsUpdate): Constraints {
@@ -153,7 +158,9 @@ export function describeConstraints(c: Constraints): string[] {
   const lines: string[] = [];
   if (c.availableSlots) lines.push(`Free: ${c.availableSlots.map((s) => SLOT_LABELS[s]).join(", ") || "nothing yet"}`);
   if (c.budgetMax !== null)
-    lines.push(`Budget: up to $${c.budgetMax}/person${c.budgetFlex ? ` (can stretch to $${c.budgetMax + c.budgetFlex})` : ""}`);
+    lines.push(
+      `Budget: up to $${c.budgetMax}/person${c.budgetFlex ? ` (can stretch to $${c.budgetMax + c.budgetFlex})` : ""}`,
+    );
   if (c.maxTravelMin !== null) lines.push(`Travel: up to ${c.maxTravelMin} min`);
   if (c.dietaryConfirmed)
     lines.push(`Diet: ${c.dietary.length ? c.dietary.map((d) => DIETARY_LABELS[d]).join(", ") : "no restrictions"}`);

@@ -1,4 +1,4 @@
-import { SLOTS, type Cuisine, type Slot } from "./constraints";
+import { CUISINES, SLOTS, type Cuisine, type Slot } from "./constraints";
 import type { Restaurant } from "./restaurants";
 
 /**
@@ -29,7 +29,12 @@ export type PlaceResult = {
   priceLevel?: string;
   location?: { latitude: number; longitude: number };
   servesVegetarianFood?: boolean;
-  regularOpeningHours?: { periods?: { open: { day: number; hour: number; minute?: number }; close?: { day: number; hour: number; minute?: number } }[] };
+  regularOpeningHours?: {
+    periods?: {
+      open: { day: number; hour: number; minute?: number };
+      close?: { day: number; hour: number; minute?: number };
+    }[];
+  };
 };
 
 export const PLACE_FIELDS = [
@@ -71,7 +76,13 @@ export const CUISINE_QUERY_TYPES: Record<Cuisine, readonly string[]> = {
   mexican: ["mexican_restaurant"],
   italian: ["italian_restaurant", "pizza_restaurant"],
   american: ["american_restaurant", "hamburger_restaurant", "barbecue_restaurant", "steak_house"],
-  mediterranean: ["mediterranean_restaurant", "greek_restaurant", "turkish_restaurant", "lebanese_restaurant", "middle_eastern_restaurant"],
+  mediterranean: [
+    "mediterranean_restaurant",
+    "greek_restaurant",
+    "turkish_restaurant",
+    "lebanese_restaurant",
+    "middle_eastern_restaurant",
+  ],
 };
 
 /** City travel: roughly 25 km/h door to door, never under 3 minutes. */
@@ -173,7 +184,13 @@ export function toPool(results: PlaceResult[], center: LatLng): Restaurant[] {
 
 type Fetcher = typeof fetch;
 
-async function postPlaces<T>(path: string, body: unknown, key: string, fieldMask: string, fetcher: Fetcher): Promise<T> {
+async function postPlaces<T>(
+  path: string,
+  body: unknown,
+  key: string,
+  fieldMask: string,
+  fetcher: Fetcher,
+): Promise<T> {
   const res = await fetcher(`https://places.googleapis.com/v1/${path}`, {
     method: "POST",
     headers: { "content-type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": fieldMask },
@@ -233,7 +250,11 @@ export function cuisineQueryOrder(pool: readonly Restaurant[]): Cuisine[] {
  * interleaved one restaurant at a time, so a cap cuts every cuisine equally
  * instead of dropping whichever query happened to come last.
  */
-export function mergePools(base: readonly Restaurant[], extra: readonly (readonly Restaurant[])[], cap = POOL_TARGET): Restaurant[] {
+export function mergePools(
+  base: readonly Restaurant[],
+  extra: readonly (readonly Restaurant[])[],
+  cap = POOL_TARGET,
+): Restaurant[] {
   const seen = new Set<string>();
   const out: Restaurant[] = [];
   const add = (r: Restaurant) => {
@@ -257,7 +278,12 @@ export type Gathered = { restaurants: Restaurant[]; calls: number; failedCalls: 
  * together. A failed call costs its results, not the pool; if every call
  * fails the first error is thrown so the caller can fall back to the seed.
  */
-export async function gatherPlaces(center: LatLng, key: string, fetcher: Fetcher = fetch, options: GatherOptions = {}): Promise<Gathered> {
+export async function gatherPlaces(
+  center: LatLng,
+  key: string,
+  fetcher: Fetcher = fetch,
+  options: GatherOptions = {},
+): Promise<Gathered> {
   const maxCalls = Math.max(1, Math.floor(options.maxCalls ?? MAX_NEARBY_CALLS));
   const target = options.target ?? POOL_TARGET;
   const radiusM = options.radiusM ?? 5000;
@@ -275,7 +301,9 @@ export async function gatherPlaces(center: LatLng, key: string, fetcher: Fetcher
   if (base.length < target && maxCalls > 1) {
     const cuisines = cuisineQueryOrder(base).slice(0, maxCalls - 1);
     calls += cuisines.length;
-    const settled = await Promise.allSettled(cuisines.map((c) => nearbyRestaurants(center, key, radiusM, fetcher, CUISINE_QUERY_TYPES[c])));
+    const settled = await Promise.allSettled(
+      cuisines.map((c) => nearbyRestaurants(center, key, radiusM, fetcher, CUISINE_QUERY_TYPES[c])),
+    );
     for (const s of settled) {
       if (s.status === "fulfilled") extra.push(toPool(s.value, center));
       else errors.push(s.reason);
@@ -287,14 +315,25 @@ export async function gatherPlaces(center: LatLng, key: string, fetcher: Fetcher
 }
 
 export type ResolvedPool =
-  | { source: "places"; location: string; center: LatLng; restaurants: Restaurant[]; calls: number; failedCalls: number }
+  | {
+      source: "places";
+      location: string;
+      center: LatLng;
+      restaurants: Restaurant[];
+      calls: number;
+      failedCalls: number;
+    }
   | { source: "seed"; location: string | null; reason: string };
 
 /**
  * The pool for a plan near `location`. Falls back to the seed when there is no
  * key, the place can't be found, or fewer than 5 restaurants map cleanly.
  */
-export async function resolvePool(location: string | null, key = process.env.GOOGLE_PLACES_API_KEY, fetcher: Fetcher = fetch): Promise<ResolvedPool> {
+export async function resolvePool(
+  location: string | null,
+  key = process.env.GOOGLE_PLACES_API_KEY,
+  fetcher: Fetcher = fetch,
+): Promise<ResolvedPool> {
   const where = location?.trim() || null;
   if (!where) return { source: "seed", location: null, reason: "no location given" };
   if (!key) return { source: "seed", location: where, reason: "no GOOGLE_PLACES_API_KEY" };
@@ -302,7 +341,8 @@ export async function resolvePool(location: string | null, key = process.env.GOO
     const center = await geocode(where, key, fetcher);
     if (!center) return { source: "seed", location: where, reason: "location not found" };
     const { restaurants, calls, failedCalls } = await gatherPlaces(center, key, fetcher);
-    if (restaurants.length < 5) return { source: "seed", location: where, reason: `only ${restaurants.length} usable places nearby` };
+    if (restaurants.length < 5)
+      return { source: "seed", location: where, reason: `only ${restaurants.length} usable places nearby` };
     return { source: "places", location: where, center, restaurants, calls, failedCalls };
   } catch (err) {
     return { source: "seed", location: where, reason: (err as Error).message };

@@ -1,6 +1,16 @@
 import type { Agent } from "./agent";
 import type { Bucket, Dim, Judgement, Proposal } from "./evaluate";
-import { candidateKey, candidatePool, key, propose, tallyOf, type Candidate, type RoundFeedback, type Selector, type Tally } from "./mediator";
+import {
+  candidateKey,
+  candidatePool,
+  key,
+  propose,
+  tallyOf,
+  type Candidate,
+  type RoundFeedback,
+  type Selector,
+  type Tally,
+} from "./mediator";
 import { RESTAURANTS, type Restaurant } from "./restaurants";
 
 /**
@@ -62,7 +72,10 @@ export const nashProduct = (buckets: number[]) => buckets.reduce((acc, b) => acc
 
 function finalistsFor(cands: Tried[], agents: Agent[], level: number, n: number): Finalist[] {
   const ranked = [...cands].sort(
-    (a, b) => b.tally.accept - a.tally.accept || a.tally.reluctant - b.tally.reluctant || key(a.proposal).localeCompare(key(b.proposal)),
+    (a, b) =>
+      b.tally.accept - a.tally.accept ||
+      a.tally.reluctant - b.tally.reluctant ||
+      key(a.proposal).localeCompare(key(b.proposal)),
   );
   return ranked.slice(0, n).map((t) => {
     const buckets = agents.map((a) => a.bucket(t.proposal, level)).sort((x, y) => y - x);
@@ -88,7 +101,15 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   const nFinalists = opts.finalists ?? 3;
 
   const empty: NegotiationResult = {
-    status: "no_deal", proposal: null, tally: null, rounds: [], concessionLevel: 0, finalists: [], reservations: [], conflicts: [], leakedDims: 0,
+    status: "no_deal",
+    proposal: null,
+    tally: null,
+    rounds: [],
+    concessionLevel: 0,
+    finalists: [],
+    reservations: [],
+    conflicts: [],
+    leakedDims: 0,
   };
   if (agents.length === 0) return empty;
 
@@ -98,7 +119,12 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   let level = 0;
   let leakedDims = 0;
 
-  const finish = (status: NegotiationResult["status"], chosen: Finalist | null, finalists: Finalist[], conflicts: Dim[] = []): NegotiationResult => ({
+  const finish = (
+    status: NegotiationResult["status"],
+    chosen: Finalist | null,
+    finalists: Finalist[],
+    conflicts: Dim[] = [],
+  ): NegotiationResult => ({
     status,
     proposal: chosen?.proposal ?? null,
     tally: chosen?.tally ?? null,
@@ -130,7 +156,12 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
     if (level > 0) {
       const nearMisses = [...tried.values()]
         .filter((t) => t.level < level && t.tally.reject <= Math.ceil(agents.length / 2))
-        .sort((a, b) => a.tally.reject - b.tally.reject || a.tally.reluctant - b.tally.reluctant || key(a.proposal).localeCompare(key(b.proposal)))
+        .sort(
+          (a, b) =>
+            a.tally.reject - b.tally.reject ||
+            a.tally.reluctant - b.tally.reluctant ||
+            key(a.proposal).localeCompare(key(b.proposal)),
+        )
         .slice(0, Math.ceil(perRound / 2));
       for (const t of nearMisses) {
         const entry = ask(t.proposal, log, true);
@@ -174,7 +205,8 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
 
   const counts = new Map<Dim, number>();
   for (const t of tried.values()) {
-    for (const [dim, n] of Object.entries(t.tally.rejectDims) as [Dim, number][]) counts.set(dim, (counts.get(dim) ?? 0) + n);
+    for (const [dim, n] of Object.entries(t.tally.rejectDims) as [Dim, number][])
+      counts.set(dim, (counts.get(dim) ?? 0) + n);
   }
   const conflicts = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([d]) => d);
   return finish("no_deal", null, [], conflicts);

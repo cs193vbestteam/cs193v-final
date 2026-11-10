@@ -54,9 +54,9 @@ CREATE INDEX IF NOT EXISTS messages_by_chat ON messages (event_id, user_id, id);
 
 /** Columns added after v1. ALTER TABLE has no IF NOT EXISTS in SQLite, so each is tried and a duplicate is ignored. */
 const MIGRATIONS = [
-  "ALTER TABLE events ADD COLUMN location TEXT",      // where the plan happens (public)
-  "ALTER TABLE events ADD COLUMN pool_json TEXT",     // candidate restaurants for this plan (public)
-  "ALTER TABLE events ADD COLUMN pool_source TEXT",   // 'places' | 'seed'
+  "ALTER TABLE events ADD COLUMN location TEXT", // where the plan happens (public)
+  "ALTER TABLE events ADD COLUMN pool_json TEXT", // candidate restaurants for this plan (public)
+  "ALTER TABLE events ADD COLUMN pool_source TEXT", // 'places' | 'seed'
 ];
 
 async function migrate(c: Client) {

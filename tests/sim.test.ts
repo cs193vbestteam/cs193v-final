@@ -86,7 +86,13 @@ describe("sim harness", () => {
 /* LLM baseline (no network: fetch is stubbed)                         */
 /* ------------------------------------------------------------------ */
 
-type FakeBody = { model: string; system: string; tools: { name: string }[]; tool_choice: { type: string; name?: string }; messages: { role: string; content: string }[] };
+type FakeBody = {
+  model: string;
+  system: string;
+  tools: { name: string }[];
+  tool_choice: { type: string; name?: string };
+  messages: { role: string; content: string }[];
+};
 
 /** A fetch that answers every call with one tool_use block whose input is produced by `pick`. */
 function fakeFetch(pick: (body: FakeBody) => unknown, status = 200) {
@@ -94,7 +100,10 @@ function fakeFetch(pick: (body: FakeBody) => unknown, status = 200) {
   const fn = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
     const body = JSON.parse(String(init?.body)) as FakeBody;
     calls.push(body);
-    const payload = { content: [{ type: "tool_use", name: PICK_TOOL.name, input: pick(body) }], stop_reason: "tool_use" };
+    const payload = {
+      content: [{ type: "tool_use", name: PICK_TOOL.name, input: pick(body) }],
+      stop_reason: "tool_use",
+    };
     return {
       ok: status >= 200 && status < 300,
       status,
@@ -133,11 +142,16 @@ describe("LLM no-privacy baseline", () => {
     expect(body.model).toBe("test-model");
     expect(body.tool_choice).toEqual({ type: "tool", name: PICK_TOOL.name });
     expect(body.tools[0].name).toBe(PICK_TOOL.name);
-    const shown = JSON.parse(body.messages[0].content) as { members: { preferences: unknown }[]; candidates: { restaurantId: string; slot: string }[] };
+    const shown = JSON.parse(body.messages[0].content) as {
+      members: { preferences: unknown }[];
+      candidates: { restaurantId: string; slot: string }[];
+    };
     // No privacy: all preference files, verbatim, and every (restaurant, open slot) pair.
     expect(shown.members.map((m) => m.preferences)).toEqual(g.prefs);
     expect(shown.candidates).toHaveLength(pool.length);
-    expect(new Set(shown.candidates.map((c) => `${c.restaurantId}@${c.slot}`))).toEqual(new Set(pool.map((c) => `${c.r.id}@${c.slot}`)));
+    expect(new Set(shown.candidates.map((c) => `${c.restaurantId}@${c.slot}`))).toEqual(
+      new Set(pool.map((c) => `${c.r.id}@${c.slot}`)),
+    );
   });
 
   it("returns null for a pick that is not a real candidate", async () => {
@@ -147,14 +161,26 @@ describe("LLM no-privacy baseline", () => {
     expect(await llmBaselinePick(g, { apiKey: "k" })).toBeNull();
     // 2. a real restaurant at a slot it is not open for
     const closed = g.restaurants.find((r) => r.open.length < 5)!;
-    const closedSlot = (["fri_dinner", "sat_lunch", "sat_dinner", "sun_lunch", "sun_dinner"] as const).find((s) => !closed.open.includes(s))!;
+    const closedSlot = (["fri_dinner", "sat_lunch", "sat_dinner", "sun_lunch", "sun_dinner"] as const).find(
+      (s) => !closed.open.includes(s),
+    )!;
     vi.stubGlobal("fetch", fakeFetch(() => ({ restaurantId: closed.id, slot: closedSlot })).fn);
     expect(await llmBaselinePick(g, { apiKey: "k" })).toBeNull();
     // 3. malformed input
     vi.stubGlobal("fetch", fakeFetch(() => ({ restaurantId: 7 })).fn);
     expect(await llmBaselinePick(g, { apiKey: "k" })).toBeNull();
     // 4. no tool_use block at all
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: "r1" }] }) }) as unknown as Response));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          ({
+            ok: true,
+            status: 200,
+            json: async () => ({ content: [{ type: "text", text: "r1" }] }),
+          }) as unknown as Response,
+      ),
+    );
     expect(await llmBaselinePick(g, { apiKey: "k" })).toBeNull();
   });
 
@@ -180,9 +206,19 @@ describe("LLM no-privacy baseline", () => {
     vi.stubGlobal("fetch", fn);
 
     const N = 5;
-    const report = await runSim({ groups: GROUPS, seed: SEED, llm: { apiKey: "k", model: "fake", groups: N, concurrency: 2 } });
+    const report = await runSim({
+      groups: GROUPS,
+      seed: SEED,
+      llm: { apiKey: "k", model: "fake", groups: N, concurrency: 2 },
+    });
     expect(fn).toHaveBeenCalledTimes(N);
-    expect(report.meta.llm).toEqual({ model: "fake", groupsRequested: N, groupIds: [0, 1, 2, 3, 4], concurrency: 2, timeoutMs: expect.any(Number) });
+    expect(report.meta.llm).toEqual({
+      model: "fake",
+      groupsRequested: N,
+      groupIds: [0, 1, 2, 3, 4],
+      concurrency: 2,
+      timeoutMs: expect.any(Number),
+    });
     for (const g of report.groups) {
       if (g.id < N) {
         expect(g.llm).toBeDefined();

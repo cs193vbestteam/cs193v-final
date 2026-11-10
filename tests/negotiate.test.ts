@@ -27,7 +27,9 @@ describe("negotiate", () => {
     expect(result.tally?.accept).toBe(5);
     expect(result.reservations).toEqual([]);
     for (const p of people) {
-      expect(evaluate(compile(p), getRestaurant(result.proposal!.restaurantId)!, result.proposal!.slot).verdict).toBe("accept");
+      expect(evaluate(compile(p), getRestaurant(result.proposal!.restaurantId)!, result.proposal!.slot).verdict).toBe(
+        "accept",
+      );
     }
   });
 
@@ -48,7 +50,10 @@ describe("negotiate", () => {
 
   it("falls back to a compromise when nothing gets unanimous accept", async () => {
     // Only Taqueria Sol is cheap/close enough, and one person mildly dislikes Mexican.
-    const people = [c({ budgetMax: 15, maxTravelMin: 5 }), c({ budgetMax: 60, maxTravelMin: 60, dislikedCuisines: ["mexican"] })];
+    const people = [
+      c({ budgetMax: 15, maxTravelMin: 5 }),
+      c({ budgetMax: 60, maxTravelMin: 60, dislikedCuisines: ["mexican"] }),
+    ];
     const result = await negotiate(people.map(agentFor), { concessionFrom: 99 });
     expect(result.status).toBe("compromise");
     expect(result.tally?.reject).toBe(0);
@@ -57,7 +62,10 @@ describe("negotiate", () => {
   });
 
   it("concessions from round 4 turn a lasting compromise into agreement", async () => {
-    const people = [c({ budgetMax: 15, maxTravelMin: 5 }), c({ budgetMax: 60, maxTravelMin: 60, dislikedCuisines: ["mexican"], concessionOrder: ["cuisine"] })];
+    const people = [
+      c({ budgetMax: 15, maxTravelMin: 5 }),
+      c({ budgetMax: 60, maxTravelMin: 60, dislikedCuisines: ["mexican"], concessionOrder: ["cuisine"] }),
+    ];
     const without = await negotiate(people.map(agentFor), { concessionFrom: 99 });
     expect(without.status).toBe("compromise");
     const result = await negotiate(people.map(agentFor));
@@ -73,7 +81,15 @@ describe("negotiate", () => {
   });
 
   it("a concession round re-asks at most half its slots and fills the rest with fresh candidates", async () => {
-    const people = [c({ budgetMax: 15, maxTravelMin: 5 }), c({ budgetMax: 60, maxTravelMin: 60, dislikedCuisines: ["mexican"], concessionOrder: ["budget", "travel", "cuisine"] })];
+    const people = [
+      c({ budgetMax: 15, maxTravelMin: 5 }),
+      c({
+        budgetMax: 60,
+        maxTravelMin: 60,
+        dislikedCuisines: ["mexican"],
+        concessionOrder: ["budget", "travel", "cuisine"],
+      }),
+    ];
     const result = await negotiate(people.map(agentFor));
     const r4 = result.rounds.find((r) => r.round === 4);
     expect(r4).toBeDefined();
@@ -113,7 +129,10 @@ describe("negotiate", () => {
   });
 
   it("chooses the finalist with the highest Nash product", async () => {
-    const people = [c({ budgetMax: 25, budgetFlex: 15 }), c({ budgetMax: 25, budgetFlex: 15, likedCuisines: ["vietnamese"] })];
+    const people = [
+      c({ budgetMax: 25, budgetFlex: 15 }),
+      c({ budgetMax: 25, budgetFlex: 15, likedCuisines: ["vietnamese"] }),
+    ];
     const result = await negotiate(people.map(agentFor));
     const best = Math.max(...result.finalists.map((f) => f.nash));
     expect(result.finalists.find((f) => f.proposal.restaurantId === result.proposal!.restaurantId)!.nash).toBe(best);
