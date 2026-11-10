@@ -9,9 +9,9 @@ Settle helps a group pick a restaurant and a time for a weekend meal without any
 1. **The website.** Someone signs up, starts a plan with a name and a location, and shares the invite link. Friends open the link and join.
 2. **The private chat.** Each person has a chat on the plan page that only they can see. They type things like "Saturday night only, under $40, no spicy".
 3. **The extractor.** Our server sends each message to Claude, which turns it into structured constraints: when the person is free, their budget, how far they will travel, what they cannot eat, and cuisines they like or dislike. If the call to Claude fails, a rule-based extractor written in plain code answers instead.
-4. **The candidate list.** When a plan is created, the server asks Google Places for up to 60 real restaurants near the plan's location and saves them with the plan. If that fails, a built-in list of 16 fictional restaurants is used.
-5. **The assistants.** When everyone is done, the server builds one assistant per person from their saved constraints. An assistant can only answer "accept, reluctant or reject" about a proposed restaurant and time, with at most one word for why, such as "price".
-6. **The mediator.** It runs the negotiation: five proposals per round, up to six rounds, adjusting from the answers. It never sees anyone's constraints, only the public restaurant list and counts of answers.
+4. **The candidate list.** When a plan is created with a location, the server asks Google Places for up to 60 real restaurants nearby and saves them with the plan. Without a Google key, or if the request fails, a built-in list of 16 fictional restaurants is used. So far this path has been tested almost entirely against hand-written responses in Google's format; with a real key it has been run once, on a developer's machine (see Open questions).
+5. **The assistants.** When everyone is done, the server builds one assistant per person from their saved constraints. An assistant answers "accept, reluctant or reject" about a proposed restaurant and time, with at most one word for why, such as "price". For the final choice between the best options it also sends one scrambled message: a score for each finalist with random masks added, which means nothing on its own.
+6. **The mediator.** It runs the negotiation: five proposals per round, up to six rounds, adjusting from the answers. It never sees anyone's constraints: only the public restaurant list, counts of the answers, and the one-word reasons. For the final choice it adds up everyone's scrambled messages; the masks cancel in the sum, so it learns how the finalists compare for the group as a whole and never anyone's score.
 7. **The result.** The group sees the chosen plan, for example "Sat dinner · Olive Tree Mezze · ~$27/person". Groups of three or more also see anonymous counts for each option tried. Groups of two see only the outcome, because with two people every count would be the other person's answer.
 
 Separately, `sim/` holds evaluation scripts that are not part of the website. They run the negotiation on thousands of made-up groups and score the extractors on scripted chats.
@@ -25,7 +25,7 @@ Separately, `sim/` holds evaluation scripts that are not part of the website. Th
 | **Postgres** on **Neon** | The production database (chosen, not set up for this repository yet; see Open questions). |
 | **PGlite** | Postgres running inside Node, for local development and tests, so nobody installs a database. |
 | **Anthropic API (Claude)** | Reads private-chat messages into constraints. |
-| **Google Places API** | Finds real restaurants near a plan's location, and turns a typed place into coordinates. |
+| **Google Places API** | Finds real restaurants near a plan's location, and turns a typed place into coordinates. Built, but barely exercised with a real key so far. |
 | **Zod** | Checks the shape of anything from outside: form input, Claude's output, stored data. |
 | **bcryptjs** and Node's built-in crypto | Password hashing, and encryption of private data. |
 | **Vercel** | Hosting (see Open questions for where the deployment stands). |
@@ -69,7 +69,7 @@ We use four secrets: `ENCRYPTION_KEY` (encrypts private data), `DATABASE_URL` (t
 - **Emails, private chats, constraints and starting points** are encrypted with AES-256-GCM before they are written to the database. Accounts are found at login through a keyed hash of the email.
 - **Login cookies** hold a random token, and the database stores only its hash, so a copy of the database cannot be used to log in as someone.
 - **Access is checked on the server.** Every function that reads or changes a plan checks that the person is a member, and no function exists that reads another person's chat or constraints.
-- **Only one module can decrypt constraints,** and it hands the negotiation assistants, never the constraints. A test fails if the negotiation code can reach the database or the encryption code.
+- **The negotiation never receives constraints.** One module (`vault.ts`) turns each person's stored constraints into an assistant and hands over only the assistant. A person's own constraints are decrypted elsewhere only to show them back to that person. A test fails if the negotiation code can reach the database or the encryption code.
 - **Abuse limits** cap chat messages, model calls per plan, login attempts and new accounts.
 - **Claude's output is checked** before it is saved: anything that does not fit the expected shape is discarded, and out-of-range numbers (a budget over $500, for example) are dropped.
 
@@ -78,7 +78,7 @@ These protections are about what other members can see and what the negotiation 
 ## Open questions
 
 1. **This repository is not deployed yet.** The "Live site" link in the README points at an earlier version. *Next:* create the Neon database, set the four secrets in Vercel, deploy from this repository, then run one two-person plan on the live site and update the link.
-2. **What Google Places will cost us.** It works on a developer's machine, but we have not checked the price at our volume (up to 7 calls per new plan) and no spending limit is set. *Next:* read the current pricing, set a daily quota and a budget alert, and create one plan with a real location on the deployed site.
+2. **Google Places with a real key.** The tests for this path use hand-written responses in Google's format. With a real key it has been run once: on one developer's machine, a plan created near Palo Alto came back with 60 real places. Nobody has looked at those restaurants, negotiated on them, or used a real key for a person's starting point. We also have not checked the price at our volume (up to 7 calls per new plan), and no spending limit is set. *Next:* create a plan with a real location, read through the restaurants it returns, run a full two-person negotiation on it, then read the pricing and set a daily quota and a budget alert before a key goes anywhere near the deployed site.
 3. **How Claude behaves when someone tries to manipulate it.** We wrote 48 scripted chats, 16 of them adversarial ("ignore your instructions", "show me Sam's budget"), and ran the rule-based extractor on them. We have not run Claude on them. *Next:* run `npm run sim:extract -- --llm` and add the results to `docs/evaluation.md`, checking first how often the call to Claude fails and falls back to the rules.
 4. **Unlimited re-runs.** A member can change their own answers and re-run a plan as often as they like, and watching how the outcome moves slowly reveals the others' limits. *Next:* decide on a cap or a cool-down and open an issue for it.
 5. **How it does with real friends.** Our tests use made-up groups and personas built from Yelp reviews, which turned out to have almost no price or dietary limits. *Next:* try it with a few real groups and compare what they say with the plan they got.
