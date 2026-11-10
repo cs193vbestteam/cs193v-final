@@ -1,5 +1,5 @@
 import type { Summary } from "./metrics";
-import { DEFAULT_NEGOTIATE, runSim, type SimReport } from "./pipeline";
+import { DEFAULT_NEGOTIATE, runSim, type SimOptions, type SimReport } from "./pipeline";
 
 /**
  * The multi-seed study behind docs/evaluation.md.
@@ -59,6 +59,7 @@ export type MetricKey =
   | "naiveNashRatio"
   | "leakedDims"
   | "leakedPerPersonPerRound"
+  | "finalists"
   | "rounds";
 
 type Metric = { key: MetricKey; label: string; format: "pct" | "ratio" | "count"; pick: (s: Summary) => number | null };
@@ -83,6 +84,7 @@ export const METRICS: readonly Metric[] = [
     format: "count",
     pick: (s) => s.leakedPerPersonPerRound.mean,
   },
+  { key: "finalists", label: "finalists bucketed per group", format: "count", pick: (s) => s.finalists.mean },
   { key: "rounds", label: "rounds run", format: "count", pick: (s) => s.roundsAll.mean },
 ];
 
@@ -122,20 +124,28 @@ export function pairedDifference(a: Aggregate, b: Aggregate, key: MetricKey): In
 /* Running                                                             */
 /* ------------------------------------------------------------------ */
 
-export type SeedRunOptions = { seeds: readonly number[]; groups: number; restaurants?: number; perRound?: number };
+export type NegotiateOverrides = NonNullable<SimOptions["negotiate"]>;
+export type SeedRunOptions = {
+  seeds: readonly number[];
+  groups: number;
+  restaurants?: number;
+  perRound?: number;
+  /** Any other protocol setting to change; `perRound` above wins over a `perRound` here. */
+  negotiate?: NegotiateOverrides;
+};
 
 export async function runSeeds(opts: SeedRunOptions): Promise<Aggregate> {
   if (opts.seeds.length === 0) throw new Error("runSeeds needs at least one seed");
   if (new Set(opts.seeds).size !== opts.seeds.length)
     throw new Error("seeds must be distinct: a repeated seed is the same population twice");
-  const perRound = opts.perRound ?? DEFAULT_NEGOTIATE.perRound;
+  const perRound = opts.perRound ?? opts.negotiate?.perRound ?? DEFAULT_NEGOTIATE.perRound;
   const rows: SeedRow[] = [];
   for (const seed of opts.seeds) {
     const report: SimReport = await runSim({
       groups: opts.groups,
       seed,
       restaurants: opts.restaurants,
-      negotiate: { perRound },
+      negotiate: { ...opts.negotiate, perRound },
     });
     rows.push(seedRow(seed, report.overall));
   }
@@ -148,6 +158,8 @@ export type StudyOptions = {
   restaurants?: number;
   /** `perRound` values to compare. The protocol's default is always included. */
   perRounds?: readonly number[];
+  /** Protocol variants to compare against the shipped one. Default: the exploring-round variants. */
+  variants?: readonly VariantSpec[];
   onProgress?: (done: number, total: number) => void;
 };
 
@@ -157,7 +169,23 @@ export type StudyReport = {
   base: Aggregate;
   /** One aggregate per `perRound`, ascending; includes `base`. */
   sweep: Aggregate[];
+  /** Other protocol settings, each over the same seeds as `base`. */
+  variants: Variant[];
 };
+
+export type VariantSpec = { name: string; negotiate: NegotiateOverrides };
+export type Variant = VariantSpec & { aggregate: Aggregate };
+
+/**
+ * What to do after the first unanimous accept (issue #10). More finalists
+ * matter here because an exploring round usually adds unanimous candidates,
+ * and only finalists get the bucket question that tells them apart.
+ */
+export const DEFAULT_VARIANTS: readonly VariantSpec[] = [
+  { name: "one more round", negotiate: { exploreRounds: 1 } },
+  { name: "one more round, 6 finalists", negotiate: { exploreRounds: 1, finalists: 6 } },
+  { name: "3 per round, one more round, 6 finalists", negotiate: { perRound: 3, exploreRounds: 1, finalists: 6 } },
+];
 
 export const DEFAULT_SEEDS: readonly number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 export const DEFAULT_PER_ROUNDS: readonly number[] = [3, 5, 8, 10];
@@ -172,6 +200,16 @@ export async function runStudy(opts: StudyOptions): Promise<StudyReport> {
     sweep.push(await runSeeds({ seeds: opts.seeds, groups: opts.groups, restaurants: opts.restaurants, perRound }));
     opts.onProgress?.(sweep.length, perRounds.length);
   }
+  const variants: Variant[] = [];
+  for (const spec of opts.variants ?? DEFAULT_VARIANTS) {
+    const aggregate = await runSeeds({
+      seeds: opts.seeds,
+      groups: opts.groups,
+      restaurants: opts.restaurants,
+      negotiate: spec.negotiate,
+    });
+    variants.push({ ...spec, aggregate });
+  }
   return {
     meta: {
       seeds: [...opts.seeds],
@@ -182,6 +220,7 @@ export async function runStudy(opts: StudyOptions): Promise<StudyReport> {
     },
     base: sweep.find((a) => a.perRound === basePerRound)!,
     sweep,
+    variants,
   };
 }
 
@@ -218,6 +257,16 @@ const SWEEP_COLUMNS: readonly MetricKey[] = [
   "rounds",
 ];
 const DIFF_COLUMNS: readonly MetricKey[] = ["nashRatio", "hitsOptimum", "leakedDims"];
+const VARIANT_COLUMNS: readonly MetricKey[] = [
+  "agreedGivenFeasible",
+  "nashRatio",
+  "maxMinRatio",
+  "hitsOptimum",
+  "leakedDims",
+  "finalists",
+  "rounds",
+];
+const VARIANT_DIFF_COLUMNS: readonly MetricKey[] = ["nashRatio", "maxMinRatio", "hitsOptimum", "leakedDims", "rounds"];
 
 /** Like formatInterval, with an explicit sign and percentage points for rates. */
 export function formatDifference(i: Interval, format: Metric["format"]): string {
@@ -280,6 +329,36 @@ export function studyMarkdown(report: StudyReport): string {
       lines.push(
         `| ${a.perRound} | ${DIFF_COLUMNS.map((k) => formatDifference(pairedDifference(a, base, k), metric(k).format)).join(" | ")} |`,
       );
+    }
+  }
+  if (report.variants.length) {
+    lines.push("");
+    lines.push(
+      "**After the first unanimous accept** (`exploreRounds`), mean [95% interval] across the same seeds; the shipped protocol stops at once",
+    );
+    lines.push("");
+    lines.push(`| protocol | ${VARIANT_COLUMNS.map((k) => metric(k).label).join(" | ")} |`);
+    lines.push(`|---|${VARIANT_COLUMNS.map(() => "---:").join("|")}|`);
+    const rows: [string, Aggregate][] = [
+      ["stop at the first agreement (shipped)", base],
+      ...report.variants.map((v): [string, Aggregate] => [v.name, v.aggregate]),
+    ];
+    for (const [name, a] of rows) {
+      lines.push(
+        `| ${name} | ${VARIANT_COLUMNS.map((k) => formatInterval(a.stats[k], metric(k).format)).join(" | ")} |`,
+      );
+    }
+    if (meta.seeds.length > 1) {
+      lines.push("");
+      lines.push("**Difference from the shipped protocol**, paired by seed");
+      lines.push("");
+      lines.push(`| protocol | ${VARIANT_DIFF_COLUMNS.map((k) => metric(k).label).join(" | ")} |`);
+      lines.push(`|---|${VARIANT_DIFF_COLUMNS.map(() => "---:").join("|")}|`);
+      for (const v of report.variants) {
+        lines.push(
+          `| ${v.name} | ${VARIANT_DIFF_COLUMNS.map((k) => formatDifference(pairedDifference(v.aggregate, base, k), metric(k).format)).join(" | ")} |`,
+        );
+      }
     }
   }
   return lines.join("\n");

@@ -6,6 +6,7 @@ import { DEFAULT_NEGOTIATE, runSim } from "../sim/pipeline";
 import {
   DEFAULT_PER_ROUNDS,
   DEFAULT_SEEDS,
+  DEFAULT_VARIANTS,
   METRICS,
   aggregateSeeds,
   formatDifference,
@@ -168,6 +169,35 @@ describe("runStudy", () => {
     expect(svg.startsWith("<svg")).toBe(true);
     expect(svg).not.toMatch(/NaN|undefined|Infinity/);
     expect(svg.match(/<circle /g)).toHaveLength(2 * 3); // two panels x three perRound values
+  });
+
+  it("compares protocol variants against the shipped one over the same seeds", async () => {
+    const study = await runStudy({
+      seeds: SEEDS,
+      groups: GROUPS,
+      perRounds: [5],
+      variants: [{ name: "one more round", negotiate: { exploreRounds: 1 } }],
+    });
+    expect(study.variants.map((v) => v.name)).toEqual(["one more round"]);
+    const variant = study.variants[0].aggregate;
+    expect(variant).toEqual(await runSeeds({ seeds: SEEDS, groups: GROUPS, negotiate: { exploreRounds: 1 } }));
+    expect(variant.seeds.map((s) => s.seed)).toEqual(study.base.seeds.map((s) => s.seed));
+    // An exploring round can only add answers and rounds, never remove them.
+    expect(pairedDifference(variant, study.base, "leakedDims").mean!).toBeGreaterThanOrEqual(0);
+    expect(pairedDifference(variant, study.base, "rounds").mean!).toBeGreaterThan(0);
+    expect(pairedDifference(variant, study.base, "agreed").mean).toBe(0);
+    const md = studyMarkdown(study);
+    expect(md).toContain("| stop at the first agreement (shipped) |");
+    expect(md).toContain("| one more round |");
+    expect(md).toContain("**Difference from the shipped protocol**, paired by seed");
+  });
+
+  it("uses the exploring-round variants by default and can run with none", async () => {
+    const withDefaults = await runStudy({ seeds: [3], groups: GROUPS, perRounds: [5] });
+    expect(withDefaults.variants.map((v) => v.negotiate)).toEqual(DEFAULT_VARIANTS.map((v) => v.negotiate));
+    const none = await runStudy({ seeds: SEEDS, groups: GROUPS, perRounds: [5], variants: [] });
+    expect(none.variants).toEqual([]);
+    expect(studyMarkdown(none)).not.toMatch(/After the first unanimous accept/);
   });
 
   it("with a single seed shows means and no intervals", async () => {

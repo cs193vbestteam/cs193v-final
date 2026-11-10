@@ -24,6 +24,12 @@ import { RESTAURANTS, type Restaurant } from "./restaurants";
  *     all accept → done; otherwise remember what was feasible
  *   pick among the best feasible candidates by Nash product of utility BUCKETS
  *
+ * With `exploreRounds` > 0 the first unanimous round is not the end: the
+ * mediator runs that many more rounds of fresh candidates, informed by every
+ * tally so far, and the plan is picked among ALL unanimous candidates seen.
+ * Nobody is asked to concede further once the group has agreed. This buys a
+ * better plan at the price of more answers heard by the mediator.
+ *
  * Privacy by construction: this module imports no storage, no crypto, no
  * preferences. tests/isolation.test.ts enforces that.
  */
@@ -36,6 +42,11 @@ export type NegotiateOptions = {
   concessionFrom?: number;
   /** How many feasible candidates get the bucket question. */
   finalists?: number;
+  /**
+   * Rounds to keep exploring after the first unanimous accept (default 0: stop at once).
+   * Exploring rounds count towards `maxRounds` and never raise the concession level.
+   */
+  exploreRounds?: number;
   selector?: Selector;
 };
 
@@ -99,6 +110,7 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   const perRound = opts.perRound ?? 5;
   const concessionFrom = opts.concessionFrom ?? 4;
   const nFinalists = opts.finalists ?? 3;
+  const exploreRounds = Math.max(0, Math.floor(opts.exploreRounds ?? 0));
 
   const empty: NegotiationResult = {
     status: "no_deal",
@@ -147,13 +159,24 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
     return entry;
   };
 
+  /** Every unanimously accepted candidate so far. Non-empty means the group has agreed and is exploring. */
+  const unanimous: Tried[] = [];
+  let explored = 0;
+  const agree = (): NegotiationResult => {
+    const finalists = finalistsFor(unanimous, agents, level, nFinalists);
+    return finish("agreed", pick(finalists), finalists);
+  };
+
   for (let round = 1; round <= maxRounds; round++) {
-    level = Math.max(0, round - concessionFrom + 1);
-    const log: RoundFeedback = { round, level, proposals: [] };
-    const unanimous: Tried[] = [];
+    const exploring = unanimous.length > 0;
+    // Once the group has agreed, nobody is asked to give up anything more: the level stays where it was.
+    if (!exploring) level = Math.max(0, round - concessionFrom + 1);
+    const log: RoundFeedback = exploring
+      ? { round, level, exploring: true, proposals: [] }
+      : { round, level, proposals: [] };
 
     // A concession step is pointless on brand-new long shots alone: first re-ask the nearest misses.
-    if (level > 0) {
+    if (level > 0 && !exploring) {
       const nearMisses = [...tried.values()]
         .filter((t) => t.level < level && t.tally.reject <= Math.ceil(agents.length / 2))
         .sort(
@@ -180,10 +203,12 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
     rounds.push(log);
 
     if (unanimous.length) {
-      const finalists = finalistsFor(unanimous, agents, level, nFinalists);
-      return finish("agreed", pick(finalists), finalists);
+      if (explored >= exploreRounds) return agree();
+      explored++;
     }
   }
+  // Agreed, then ran out of rounds or of candidates while exploring.
+  if (unanimous.length) return agree();
 
   // Re-check everything tried at the final concession level: a concession may have made an early option acceptable.
   const feasible: Tried[] = [];

@@ -23,6 +23,8 @@ export type RoundFeedback = {
   round: number;
   /** Concession steps every assistant was asked to take this round. */
   level: number;
+  /** Set on a round run after the group had already agreed, to look for something better (`exploreRounds`). */
+  exploring?: true;
   /** `retried`: an earlier near-miss asked again after a concession step. */
   proposals: { proposal: Proposal; tally: Tally; retried?: boolean }[];
 };
