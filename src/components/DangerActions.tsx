@@ -103,41 +103,53 @@ export function ConfirmAction({ label, title, consequences, confirmLabel, action
   );
 }
 
-/** Delete (creator) or leave (everyone else) on the plan page. */
+/**
+ * On the plan page. Everyone but the creator can leave. The creator can delete the plan
+ * for everyone, and, once someone else has joined, can instead leave and hand it over.
+ */
 export function PlanDangerZone({
   eventId,
   inviteCode,
   isCreator,
   title,
+  nextOwner,
 }: {
   eventId: string;
   inviteCode: string;
   isCreator: boolean;
   title: string;
+  /** Who the plan passes to if the creator leaves: the earliest other member. Undefined when the creator is alone. */
+  nextOwner?: string;
 }) {
-  return isCreator ? (
-    <ConfirmAction
-      label="Delete this plan"
-      title={`Delete “${title}” for everyone?`}
-      consequences={[
-        "The plan and its result",
-        "Every member's private chat and constraints for this plan",
-        "The invite link stops working",
-      ]}
-      confirmLabel="Delete plan"
-      action={() => deletePlanAction(eventId, inviteCode)}
-    />
-  ) : (
+  const leave = (
     <ConfirmAction
       label="Leave this plan"
       title={`Leave “${title}”?`}
       consequences={[
         "Your private chat and constraints for this plan",
         "The current result, if there is one: the group will need to find a plan again",
+        ...(isCreator && nextOwner ? [`The plan stays for the others and passes to ${nextOwner}`] : []),
       ]}
       confirmLabel="Leave plan"
       action={() => leavePlanAction(eventId, inviteCode)}
     />
+  );
+  if (!isCreator) return leave;
+  return (
+    <div className="space-y-2.5">
+      {nextOwner && leave}
+      <ConfirmAction
+        label="Delete this plan"
+        title={`Delete “${title}” for everyone?`}
+        consequences={[
+          "The plan and its result",
+          "Every member's private chat and constraints for this plan",
+          "The invite link stops working",
+        ]}
+        confirmLabel="Delete plan"
+        action={() => deletePlanAction(eventId, inviteCode)}
+      />
+    </div>
   );
 }
 

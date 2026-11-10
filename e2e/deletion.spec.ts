@@ -75,6 +75,39 @@ test("a member leaves a plan; the creator then deletes it for everyone", async (
   });
 });
 
+test("a creator leaves and the plan passes to the next member", async ({ browser }) => {
+  const gia = person("Gia");
+  const hal = person("Hal");
+  const creator = await signUp(browser, gia);
+  const planPath = await startPlan(creator, "Handover lunch");
+
+  await test.step("alone, the creator can only delete", async () => {
+    await expect(creator.getByRole("button", { name: "Leave this plan" })).toHaveCount(0);
+    await expect(creator.getByRole("button", { name: "Delete this plan" })).toBeVisible();
+  });
+
+  const member = await signUp(browser, hal, planPath);
+  await member.getByRole("button", { name: "Join plan" }).click();
+  await expect(member.getByText("2 joined")).toBeVisible();
+  await expect(member.getByRole("button", { name: "Delete this plan" })).toHaveCount(0);
+
+  await test.step("with a second member, the creator can leave and is told who takes over", async () => {
+    await creator.reload();
+    await creator.getByRole("button", { name: "Leave this plan" }).click();
+    await expect(creator.getByText(`passes to ${hal.name}`)).toBeVisible();
+    await creator.getByRole("button", { name: "Leave plan", exact: true }).click();
+    await expect(creator).toHaveURL(/\/$/);
+  });
+
+  await test.step("the plan survives and the remaining member now owns it", async () => {
+    await member.reload();
+    await expect(member.getByRole("heading", { name: "Handover lunch" })).toBeVisible();
+    await expect(member.getByText("1 joined")).toBeVisible();
+    await expect(member.getByText(gia.name)).toHaveCount(0);
+    await expect(member.getByRole("button", { name: "Delete this plan" })).toBeVisible();
+  });
+});
+
 test("deleting an account needs the password and really removes the account", async ({ browser }) => {
   const fern = person("Fern");
   const page = await signUp(browser, fern);

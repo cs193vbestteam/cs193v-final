@@ -112,7 +112,7 @@ describe("ConfirmAction", () => {
 describe("PlanDangerZone", () => {
   const props = { eventId: "event-1", inviteCode: "invite-1", title: "Weekend dinner" };
 
-  it("offers the creator delete, not leave", async () => {
+  it("offers a creator who is alone delete only: leaving would delete the plan anyway", async () => {
     vi.mocked(deletePlanAction).mockResolvedValue({});
     await mount(createElement(PlanDangerZone, { ...props, isCreator: true }));
     expect(button("Leave this plan")).toBeUndefined();
@@ -121,6 +121,23 @@ describe("PlanDangerZone", () => {
     await click("Delete plan");
     expect(deletePlanAction).toHaveBeenCalledWith("event-1", "invite-1");
     expect(leavePlanAction).not.toHaveBeenCalled();
+  });
+
+  it("lets a creator with other members leave, and says who the plan passes to", async () => {
+    vi.mocked(leavePlanAction).mockResolvedValue({});
+    await mount(createElement(PlanDangerZone, { ...props, isCreator: true, nextOwner: "Blake" }));
+    expect(button("Delete this plan")).toBeDefined();
+    await click("Leave this plan");
+    expect(container!.textContent).toContain("The plan stays for the others and passes to Blake");
+    await click("Leave plan");
+    expect(leavePlanAction).toHaveBeenCalledWith("event-1", "invite-1");
+    expect(deletePlanAction).not.toHaveBeenCalled();
+  });
+
+  it("does not mention a hand-over to members who are not the creator", async () => {
+    await mount(createElement(PlanDangerZone, { ...props, isCreator: false, nextOwner: "Blake" }));
+    await click("Leave this plan");
+    expect(container!.textContent).not.toContain("passes to");
   });
 
   it("offers everyone else leave, not delete", async () => {
