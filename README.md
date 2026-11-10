@@ -10,6 +10,8 @@ For how the system is put together, what it stores and how private data is prote
 
 **Live site:** https://cs193v-final.vercel.app
 
+On the live site Claude reads the private chat and runs the negotiation, and the restaurants are a built-in list of 16 fictional ones. Real restaurants from Google Places are built but not switched on yet.
+
 To try the whole flow there you need two people, or two browser windows: sign up in one, start a plan and copy the invite link, then open the link in a private (incognito) window and sign up as a second person. Tell each assistant something like `Saturday dinner, under $40, 20 minutes, no restrictions`, press "I'm done" in both, then "Find a plan".
 
 ## Run your own copy
