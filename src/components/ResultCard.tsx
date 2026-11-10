@@ -57,6 +57,7 @@ export function ResultCard({ result }: { result: StoredResult }) {
               {SLOT_LABELS[result.proposal!.slot]} · ~${r.pricePerPerson}/person
               {r.travelMin !== undefined ? ` · ${r.travelMin} min away` : ""} · {r.cuisine}
             </div>
+            {result.explanation && <p className="mt-2 text-sm italic text-ink-2">{result.explanation}</p>}
           </div>
         ) : (
           <p className="mt-2 text-sm text-ink-2">
