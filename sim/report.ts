@@ -14,7 +14,7 @@ export function toMarkdown(report: SimReport): string {
   const { meta, overall, bySize } = report;
   const rows = [overall, ...bySize];
   const lines: string[] = [];
-  lines.push(`# Tacit simulation report`);
+  lines.push(`# Settle simulation report`);
   lines.push("");
   lines.push(
     `${meta.groups} synthetic groups, seed ${meta.seed}, fresh pool of ${meta.restaurantsPerGroup} restaurants per group, group size ${meta.sizeRange[0]}..${meta.sizeRange[1]}. ` +
@@ -164,7 +164,7 @@ export function toSvg(report: SimReport): string {
   const parts: string[] = [];
   parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" ${FONT} font-size="12" fill="${INK}">`);
   parts.push(`<rect width="${W}" height="${H}" fill="#fafbfc"/>`);
-  parts.push(`<text x="24" y="30" font-size="17" font-weight="600">Tacit: privacy-preserving negotiation vs oracle</text>`);
+  parts.push(`<text x="24" y="30" font-size="17" font-weight="600">Settle: privacy-preserving negotiation vs oracle</text>`);
   parts.push(
     `<text x="24" y="50" fill="${MUTED}">${report.meta.groups} synthetic groups, seed ${report.meta.seed}, ${report.meta.restaurantsPerGroup} restaurants per group. ` +
       `Agreed ${(report.overall.convergenceRate * 100).toFixed(0)}%, oracle feasible ${(report.overall.oracleFeasibleRate * 100).toFixed(0)}%.</text>`,

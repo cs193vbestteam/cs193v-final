@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSession, deleteSession, getUserBySession, type User } from "./auth";
 
-const COOKIE = "tacit_session";
+const COOKIE = "settle_session";
 
 export async function startSession(userId: string) {
   const { token, expiresAt } = await createSession(userId);

@@ -2,7 +2,7 @@
  * MiroFish-style persona simulation against the real app.
  *
  *   seed document ──LLM──▶ N personas with personalities + HIDDEN true constraints
- *   each persona chats with Tacit's private assistant (the real server-side
+ *   each persona chats with Settle's private assistant (the real server-side
  *   code: createUser / createEvent / joinEvent / sendMessage / setReady)
  *   the real negotiation runs ──▶ personas see only the public plan and react
  *
@@ -20,7 +20,7 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import path from "node:path";
 
-// ── env: Tacit's .env.local (encryption key) + an LLM key from the usual places ──
+// ── env: Settle's .env.local (encryption key) + an LLM key from the usual places ──
 function loadEnvFile(file: string) {
   if (!existsSync(file)) return;
   for (const line of readFileSync(file, "utf8").split("\n")) {
@@ -103,8 +103,8 @@ function parseJson<T>(text: string): T {
   return JSON.parse(cleaned.slice(start)) as T;
 }
 
-// ── Tacit (imported after env is set so db/crypto pick it up) ──
-async function tacit() {
+// ── Settle (imported after env is set so db/crypto pick it up) ──
+async function settle() {
   const constraints = await import("../src/lib/constraints");
   const events = await import("../src/lib/events");
   const auth = await import("../src/lib/auth");
@@ -138,7 +138,7 @@ type Persona = {
   hidden: Hidden;
 };
 
-async function generatePersonas(seed: string, T: Awaited<ReturnType<typeof tacit>>): Promise<Persona[]> {
+async function generatePersonas(seed: string, T: Awaited<ReturnType<typeof settle>>): Promise<Persona[]> {
   const sys = `You generate realistic simulated people for a social simulation (in the style of OASIS/MiroFish agent profiles).
 Return ONLY a JSON object {"personas": [...]} with exactly ${PEOPLE} personas. Each persona:
 {
@@ -168,7 +168,7 @@ Make the hidden constraints diverse and in tension with each other, but such tha
   return parsed.personas.slice(0, PEOPLE);
 }
 
-const personaSystem = (p: Persona, T: Awaited<ReturnType<typeof tacit>>) => `You are ${p.name}, ${p.age}, ${p.mbti}. ${p.bio}
+const personaSystem = (p: Persona, T: Awaited<ReturnType<typeof settle>>) => `You are ${p.name}, ${p.age}, ${p.mbti}. ${p.bio}
 ${p.persona}
 Texting style: ${p.texting_style}
 
@@ -187,7 +187,7 @@ Never mention that you are an AI or that these are "constraints". Never dump eve
 
 type Turn = { who: "assistant" | "persona"; text: string };
 
-async function runPersonaChat(p: Persona, userId: string, eventId: string, T: Awaited<ReturnType<typeof tacit>>) {
+async function runPersonaChat(p: Persona, userId: string, eventId: string, T: Awaited<ReturnType<typeof settle>>) {
   const transcript: Turn[] = [];
   const history: Msg[] = [{ role: "system", content: personaSystem(p, T) }];
   let messages = await T.getMyMessages(eventId, userId);
@@ -249,7 +249,7 @@ function accuracy(h: Hidden, c: { availableSlots: string[] | null; budgetMax: nu
 }
 
 async function main() {
-  const T = await tacit();
+  const T = await settle();
   const seed = readFileSync(SEED_FILE, "utf8");
   console.log(`model ${LLM_MODEL} via ${LLM_BASE}\nseed ${SEED_FILE}\n`);
 
@@ -323,7 +323,7 @@ async function main() {
 
   // ── Report ──
   const md: string[] = [];
-  md.push(`# Persona simulation against Tacit`, ``, `Model: \`${LLM_MODEL}\` · ${personas.length} personas · assistant on the rule-based path · ${llmCalls} LLM calls · ${new Date().toISOString()}`, ``);
+  md.push(`# Persona simulation against Settle`, ``, `Model: \`${LLM_MODEL}\` · ${personas.length} personas · assistant on the rule-based path · ${llmCalls} LLM calls · ${new Date().toISOString()}`, ``);
   md.push(`Seed: \`${path.relative(ROOT, SEED_FILE)}\``, ``);
   md.push(`## Personas`, ``);
   for (const p of personas) {

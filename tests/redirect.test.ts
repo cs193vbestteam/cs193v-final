@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { safeNext } from "@/lib/redirect";
 
-const ORIGIN = "https://tacit.example";
+const ORIGIN = "https://settle.example";
 
 describe("post-authentication redirect", () => {
   it.each([

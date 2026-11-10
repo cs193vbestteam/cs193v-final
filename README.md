@@ -1,4 +1,4 @@
-# Tacit
+# Settle
 
 **Live site:** https://miniproject-europium.vercel.app
 
@@ -54,7 +54,7 @@ CI runs both on every PR (`.github/workflows/ci.yml`).
 ## Deploy
 
 - **Database:** create a free [Turso](https://turso.tech) database and set `DATABASE_URL=libsql://...` and `DATABASE_AUTH_TOKEN`. The schema is created automatically on first request.
-- **Host:** Vercel (one person deploys; see the course note about commit authors) or another Node host. Set `ENCRYPTION_KEY`, the database variables and, optionally, `ANTHROPIC_API_KEY` (LLM elicitation), `GOOGLE_PLACES_API_KEY` (real restaurants near the plan's location) and `TACIT_LLM_MEDIATOR=1` (LLM re-ranking of the mediator's shortlist).
+- **Host:** Vercel (one person deploys; see the course note about commit authors) or another Node host. Set `ENCRYPTION_KEY`, the database variables and, optionally, `ANTHROPIC_API_KEY` (LLM elicitation), `GOOGLE_PLACES_API_KEY` (real restaurants near the plan's location) and `SETTLE_LLM_MEDIATOR=1` (LLM re-ranking of the mediator's shortlist).
 - ⚠️ Never change `ENCRYPTION_KEY` after launch, or existing data can no longer be decrypted.
 
 ## Project layout

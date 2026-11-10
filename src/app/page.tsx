@@ -130,7 +130,7 @@ function Landing() {
             Group plans, <em>without</em> the group chat.
           </h1>
           <p className="lede rise mt-6" style={{ "--d": "0.18s" } as React.CSSProperties}>
-            Everyone says &ldquo;whatever works&rdquo; and nobody means it. Tacit lets each person tell their own
+            Everyone says &ldquo;whatever works&rdquo; and nobody means it. Settle lets each person tell their own
             assistant the real constraints, then the assistants negotiate a plan nobody has to secretly suffer through.
           </p>
           <div className="rise mt-8 flex flex-wrap items-center gap-3" style={{ "--d": "0.28s" } as React.CSSProperties}>

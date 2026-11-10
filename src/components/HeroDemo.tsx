@@ -40,7 +40,7 @@ export function HeroDemo() {
         {/* The one line everyone actually needed */}
         <div className="demo-result pointer-events-none absolute inset-x-5 top-1/2 -translate-y-1/2">
           <div className="relative rounded-2xl border border-ink bg-ink px-5 py-4 text-paper shadow-[var(--shadow-lift)]">
-            <div className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-paper/60">tacit · to the group</div>
+            <div className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-paper/60">settle · to the group</div>
             <div className="mt-1.5 font-serif text-2xl leading-tight">
               {DEMO_RESULT.when} · {DEMO_RESULT.where}
             </div>
