@@ -46,11 +46,11 @@ We did not keep the Week 8 goals in the repository, so this uses the fifteen iss
 | Browser tests in CI | Done |
 | Evaluate on real preferences (Yelp) | Done, with the caveat above |
 | Hide individual scores in the final step (stretch) | Done |
-| A second kind of plan | Dropped |
+| A second kind of plan | Postponed |
 
 How the scope changed:
 
-- **One kind of plan, not two.** We considered movie night, then hotel picking, and dropped both. Hotels had no free source of prices.
+- **One kind of plan so far.** Movie night and hotel picking are not built; hotels had no free price source. Hotel picking comes later.
 - **The negotiation now uses Claude.** The original design used plain code. Claude-driven assistants can act on what people say in their own words, such as an allergy; code still enforces the hard rules and ranks the options.
 - **Real restaurants go live a week late,** on one member's Google billing account.
 - **More evaluation than planned:** the ten-seed study, the Yelp personas, the extractor suite and the masked final pick.
