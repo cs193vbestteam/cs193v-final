@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db, isUniqueViolation } from "./db";
 import { blindIndex, decrypt, encrypt, randomToken, sha256 } from "./crypto";
+import { hit, LIMITS, rateKey, waitText } from "./ratelimit";
 
 /** bcrypt generates and embeds a random salt per hash. */
 const BCRYPT_ROUNDS = 12;
@@ -51,6 +52,11 @@ const DUMMY_HASH = bcrypt.hashSync(randomToken(), BCRYPT_ROUNDS);
 
 export async function authenticate(input: z.input<typeof LoginSchema>): Promise<User> {
   const { email, password } = LoginSchema.parse(input);
+  // Checked before bcrypt, so a guessing script can't make us burn CPU either.
+  const attempts = await hit(rateKey.loginEmail(email), LIMITS.loginPerEmail);
+  if (!attempts.allowed) {
+    throw new AuthError(`Too many attempts for this account. Please try again ${waitText(attempts.retryAfterMs)}.`);
+  }
   const client = await db();
   const { rows } = await client.execute({
     sql: "SELECT id, display_name, email_enc, password_hash FROM users WHERE email_index = ?",
@@ -94,4 +100,14 @@ export async function getUserBySession(token: string | undefined): Promise<User 
 export async function deleteSession(token: string): Promise<void> {
   const client = await db();
   await client.execute({ sql: "DELETE FROM sessions WHERE token_hash = ?", args: [sha256(token)] });
+}
+
+/** Per-IP limits on login and signup (#4). `ip` comes from the request headers (see actions.ts). */
+export async function checkIpLimit(kind: "login" | "signup", ip: string): Promise<void> {
+  const key = kind === "login" ? rateKey.loginIp(ip) : rateKey.signupIp(ip);
+  const r = await hit(key, kind === "login" ? LIMITS.loginPerIp : LIMITS.signupPerIp);
+  if (!r.allowed) {
+    const what = kind === "login" ? "sign-in attempts" : "new accounts";
+    throw new AuthError(`Too many ${what} from your network. Please try again ${waitText(r.retryAfterMs)}.`);
+  }
 }

@@ -10,6 +10,7 @@ import { resolvePool } from "./places";
 import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./pool";
 import { canLocate, resolveStart } from "./start-point";
 import { agentsForEvent } from "./vault";
+import { clearRateKey, hit, LIMITS, rateKey, waitText } from "./ratelimit";
 
 /**
  * Data access for plans ("events"). Every function takes the acting userId explicitly
@@ -17,6 +18,8 @@ import { agentsForEvent } from "./vault";
  */
 
 export class AccessError extends Error {}
+/** Too many requests; the message is safe to show. */
+export class RateLimitError extends AccessError {}
 
 const RESTAURANT_SEED_SIZE = 16;
 
@@ -214,12 +217,18 @@ export async function sendMessage(
 ): Promise<{ messages: ChatTurn[]; constraints: Constraints }> {
   const content = MessageSchema.parse(text);
   const current = await getMyConstraints(eventId, userId); // also checks membership
+  const chat = await hit(rateKey.chat(userId), LIMITS.chatPerUser);
+  if (!chat.allowed) {
+    throw new RateLimitError(`You're sending messages very quickly. Please try again ${waitText(chat.retryAfterMs)}.`);
+  }
   await addMessage(eventId, userId, "user", content);
 
   const history = await getMyMessages(eventId, userId);
   // A start point is only asked for, and only resolved, when this plan's pool has coordinates.
   const { restaurants } = await poolForEvent(eventId);
-  const extracted = await extract(history, current, { askStart: canLocate(restaurants) });
+  // Only count LLM calls when there is a key to spend; past the plan's daily budget, use the rules.
+  const allowLLM = !process.env.ANTHROPIC_API_KEY || (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed;
+  const extracted = await extract(history, current, { askStart: canLocate(restaurants) }, allowLLM);
   const { reply, update } = await resolveStart(extracted.update, extracted.reply, restaurants);
 
   let next = current;
@@ -369,13 +378,17 @@ export async function deletePlan(eventId: string, userId: string): Promise<void>
   await client.execute({ sql: "DELETE FROM messages WHERE event_id = ?", args: [eventId] });
   await client.execute({ sql: "DELETE FROM members WHERE event_id = ?", args: [eventId] });
   await client.execute({ sql: "DELETE FROM events WHERE id = ? AND creator_id = ?", args: [eventId, userId] });
+  await clearRateKey(rateKey.llm(eventId));
 }
 
 /** Removes one member's constraints and private chat from a plan and un-decides it. */
 export async function leavePlan(eventId: string, userId: string): Promise<void> {
   await requireMember(eventId, userId);
   const client = await db();
-  await client.execute({ sql: "UPDATE events SET result_json = NULL, decided_at = NULL WHERE id = ?", args: [eventId] });
+  await client.execute({
+    sql: "UPDATE events SET result_json = NULL, decided_at = NULL WHERE id = ?",
+    args: [eventId],
+  });
   if ((await creatorOf(eventId)) === userId) await handOverOrDeleteCreated(userId, eventId);
   await client.execute({ sql: "DELETE FROM messages WHERE event_id = ? AND user_id = ?", args: [eventId, userId] });
   await client.execute({ sql: "DELETE FROM members WHERE event_id = ? AND user_id = ?", args: [eventId, userId] });
@@ -395,5 +408,6 @@ export async function deleteAccount(userId: string): Promise<void> {
   await client.execute({ sql: "DELETE FROM messages WHERE user_id = ?", args: [userId] });
   await client.execute({ sql: "DELETE FROM members WHERE user_id = ?", args: [userId] });
   await client.execute({ sql: "DELETE FROM sessions WHERE user_id = ?", args: [userId] });
+  await clearRateKey(rateKey.chat(userId));
   await client.execute({ sql: "DELETE FROM users WHERE id = ?", args: [userId] });
 }

@@ -66,6 +66,13 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE INDEX IF NOT EXISTS messages_by_chat ON messages (event_id, user_id, id);
+
+-- Fixed-window rate-limit counters (src/lib/ratelimit.ts). Emails and IPs appear only as HMACs.
+CREATE TABLE IF NOT EXISTS rate_limits (
+  key          TEXT PRIMARY KEY,
+  window_start BIGINT NOT NULL,
+  count        INTEGER NOT NULL
+);
 `;
 
 export type Row = Record<string, unknown>;

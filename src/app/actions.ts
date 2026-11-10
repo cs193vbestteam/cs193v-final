@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ZodError } from "zod";
-import { AuthError, authenticate, createUser } from "@/lib/auth";
+import { headers } from "next/headers";
+import { AuthError, authenticate, checkIpLimit, createUser } from "@/lib/auth";
 import { describeConstraints, missingFields, type MissingField } from "@/lib/constraints";
 import type { ChatTurn } from "@/lib/extract";
 import {
@@ -22,6 +23,12 @@ import { safeNext } from "@/lib/redirect";
 
 export type FormState = { error?: string };
 
+/** The client's IP. On Vercel the first x-forwarded-for entry is set by the platform. */
+async function clientIp(): Promise<string> {
+  const h = await headers();
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "unknown";
+}
+
 function friendly(err: unknown): string {
   if (err instanceof ZodError) return err.issues[0]?.message ?? "Invalid input";
   if (err instanceof AuthError || err instanceof AccessError) return err.message;
@@ -31,6 +38,7 @@ function friendly(err: unknown): string {
 
 export async function signupAction(_: FormState, form: FormData): Promise<FormState> {
   try {
+    await checkIpLimit("signup", await clientIp());
     const user = await createUser({
       email: String(form.get("email") ?? ""),
       displayName: String(form.get("displayName") ?? ""),
@@ -45,6 +53,7 @@ export async function signupAction(_: FormState, form: FormData): Promise<FormSt
 
 export async function loginAction(_: FormState, form: FormData): Promise<FormState> {
   try {
+    await checkIpLimit("login", await clientIp());
     const user = await authenticate({
       email: String(form.get("email") ?? ""),
       password: String(form.get("password") ?? ""),
