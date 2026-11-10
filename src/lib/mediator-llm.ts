@@ -3,17 +3,18 @@ import type { LlmBudget } from "./agent-llm";
 import { anthropicKey, callTool, llmNegotiationEnabled } from "./anthropic";
 import { SLOT_LABELS } from "./constraints";
 import type { Candidate, RoundFeedback, Selector } from "./mediator";
-import type { FinalPicker } from "./negotiate";
+import type { Explainer } from "./negotiate";
 import type { Restaurant } from "./restaurants";
 
 /**
- * The LLM mediator (#53): it proposes each round's options and makes the final pick.
+ * The LLM side of the mediator (#55): it proposes each round's options and explains the
+ * final plan to the group. The final pick itself stays in code (Nash product, negotiate.ts).
  *
  * It sees exactly what the code mediator sees: the public candidate pool and anonymous
  * tallies (how many accepted / were reluctant / rejected, and which dimension they named).
  * Never a preference, a name or who said what. Code keeps it honest:
  *   - proposals can only come from the shortlist the code built (propose() drops the rest);
- *   - the final pick must be one of the finalists, all of which nobody rejected;
+ *   - the explainer only describes the plan the code picked, from its public facts;
  *   - any failure, timeout or exhausted budget falls back to the code's own choice.
  *
  * On by default when ANTHROPIC_API_KEY is set; SETTLE_LLM_NEGOTIATION=0 turns it off.
@@ -27,21 +28,17 @@ const PROPOSER_SYSTEM =
   "Pick the options most likely to be accepted by everyone, learning from the tallies (e.g. price rejects mean " +
   "go cheaper) and favouring variety when they say little. Always call the tool.";
 
-const PICKER_SYSTEM =
-  "You are the mediator for a group choosing a restaurant and a time, and you make the final pick among the " +
-  "finalists. Nobody rejected any of them. For each you see public facts, how many people accepted or were " +
-  "reluctant, and its group score relative to the best one (higher is better for the group as a whole). " +
-  "Choose the plan that is best for the group, normally the highest score; a slightly lower score is fine only " +
-  "with a clear reason (e.g. everyone accepted it rather than some being reluctant). Then write ONE short, warm " +
-  "sentence for the group saying why this plan. Never mention votes, reluctance, objections, scores or any " +
-  "individual: describe the plan itself (time, cuisine, price, distance). Always call the tool.";
+const EXPLAINER_SYSTEM =
+  "A group has just settled on a plan for a meal together. Write ONE short, warm sentence for the group about " +
+  "why this plan works (time, cuisine, price, distance). You know only the plan itself: never mention votes, " +
+  "objections, scores, or any individual. Always call the tool.";
 
 /** Words that would turn the group's explanation into a hint about individual answers. */
 export const REVEALING =
   /\b(reluctan\w*|reject\w*|object\w*|vote\w*|scor\w*|someone|somebody|one of you|one person|a person|except|everyone but|not everyone|tally|tallies)\b/i;
 
 const Ids = z.object({ ids: z.array(z.number().int()) });
-const Pick = z.object({ id: z.number().int(), explanation: z.string().min(1).max(400) });
+const Sentence = z.object({ explanation: z.string().min(1).max(400) });
 
 const publicFacts = (r: Restaurant, slot: Candidate["slot"]) => ({
   name: r.name,
@@ -96,47 +93,38 @@ export function llmSelector(
   };
 }
 
-export function llmFinalPicker(
+/**
+ * The sentence the group sees under the plan. The code has already picked the plan (highest
+ * Nash product among the finalists); this only describes it, from its public facts alone.
+ */
+export function llmExplainer(
   apiKey: string,
   lookup: (id: string) => Restaurant | undefined,
   budget?: LlmBudget,
-): FinalPicker {
-  return async (finalists) => {
-    if (finalists.length === 0) return null;
+): Explainer {
+  return async (chosen) => {
+    const r = lookup(chosen.restaurantId);
+    if (!r) return null;
     if (budget && !(await budget())) return null;
-    const options = finalists.map((f, i) => {
-      const r = lookup(f.proposal.restaurantId);
-      return {
-        id: i,
-        ...(r ? publicFacts(r, f.proposal.slot) : { restaurant: f.proposal.restaurantId }),
-        accepted: f.tally.accept,
-        reluctant: f.tally.reluctant,
-        groupScoreRelativeToBest: f.relative,
-      };
-    });
     const out = await callTool({
       apiKey,
-      system: PICKER_SYSTEM,
-      user: JSON.stringify({ finalists: options }),
+      system: EXPLAINER_SYSTEM,
+      user: JSON.stringify({ plan: publicFacts(r, chosen.slot) }),
       tool: {
-        name: "choose_plan",
-        description: "Choose one finalist and explain the choice to the group.",
+        name: "explain_plan",
+        description: "One short sentence for the group about the chosen plan.",
         input_schema: {
           type: "object",
-          properties: {
-            id: { type: "integer" },
-            explanation: { type: "string", description: "One short sentence for the group." },
-          },
-          required: ["id", "explanation"],
+          properties: { explanation: { type: "string" } },
+          required: ["explanation"],
         },
       },
-      maxTokens: 200,
+      maxTokens: 150,
     });
-    const parsed = Pick.safeParse(out);
+    const parsed = Sentence.safeParse(out);
     if (!parsed.success) return null;
     // The sentence is shown to the group: drop it if it hints at who objected to what.
-    const explanation = REVEALING.test(parsed.data.explanation) ? "" : parsed.data.explanation;
-    return { index: parsed.data.id, explanation };
+    return REVEALING.test(parsed.data.explanation) ? null : parsed.data.explanation;
   };
 }
 
@@ -158,11 +146,11 @@ export function configuredSelector(
   };
 }
 
-/** The final picker to use in production, if any. negotiate() keeps the code's pick on any failure. */
-export function configuredFinalPicker(
+/** The explainer to use in production, if any. negotiate() shows no sentence on any failure. */
+export function configuredExplainer(
   lookup: (id: string) => Restaurant | undefined,
   budget?: LlmBudget,
-): FinalPicker | undefined {
+): Explainer | undefined {
   const key = anthropicKey();
-  return key && llmNegotiationEnabled() ? llmFinalPicker(key, lookup, budget) : undefined;
+  return key && llmNegotiationEnabled() ? llmExplainer(key, lookup, budget) : undefined;
 }

@@ -6,7 +6,7 @@ import { compile } from "@/lib/preferences";
 import { emptyConstraints, type Constraints } from "@/lib/constraints";
 import { db, resetDbForTests } from "@/lib/db";
 import { createEvent, joinEvent, runNegotiation, sendMessage, setReady } from "@/lib/events";
-import { llmFinalPicker, REVEALING } from "@/lib/mediator-llm";
+import { llmExplainer, REVEALING } from "@/lib/mediator-llm";
 import { negotiate } from "@/lib/negotiate";
 import { LIMITS, rateKey } from "@/lib/ratelimit";
 import { RESTAURANTS, getRestaurant } from "@/lib/restaurants";
@@ -32,7 +32,7 @@ function fakeAnthropic(judge: (option: Record<string, unknown>) => string = () =
       const k = Number(/Pick exactly (\d+)/.exec(body.system)?.[1] ?? 5);
       input = { ids: Array.from({ length: k }, (_, i) => i) };
     } else {
-      input = { id: 0, explanation: "A relaxed Saturday dinner that suits the group's budget." };
+      input = { explanation: "A relaxed Saturday dinner that suits the group's budget." };
     }
     return Response.json({ content: [{ type: "tool_use", input }] });
   });
@@ -160,39 +160,46 @@ describe("llmJudge", () => {
   });
 });
 
-describe("the LLM final pick", () => {
-  it("may choose any finalist, re-bases the scores on it, and shows its sentence", async () => {
-    const prefs = [person({}), person({}), person({})].map((c) => compile(c));
-    const agents = maskGroup(prefs.map((p) => makeAgent(p)));
+describe("the final pick: code decides, the LLM only explains", () => {
+  const three = () => maskGroup([person({}), person({}), person({})].map((c) => makeAgent(compile(c))));
+
+  it("the plan is exactly the code's pick, whatever the explainer says", async () => {
+    const agents = three();
     const code = await negotiate(agents, { maxRounds: 3 });
-    expect(code.finalists.length).toBeGreaterThan(1);
-    const last = code.finalists.length - 1;
-    const picked = await negotiate(agents, {
+    const explained = await negotiate(agents, {
       maxRounds: 3,
-      finalPicker: async () => ({ index: last, explanation: "Sunday lunch, close by and easy on the wallet." }),
+      explainer: async () => "Pick the last finalist instead!",
     });
-    expect(picked.proposal).toEqual(code.finalists[last].proposal);
-    expect(picked.finalists[last].relative).toBe(1);
-    expect(picked.explanation).toBe("Sunday lunch, close by and easy on the wallet.");
+    expect(explained.proposal).toEqual(code.proposal);
+    expect(explained.finalists).toEqual(code.finalists);
+    expect(explained.explanation).toBe("Pick the last finalist instead!");
   });
 
-  it("keeps the code's pick on an out-of-range choice or a failure", async () => {
-    const agents = maskGroup([person({}), person({})].map((c) => makeAgent(compile(c))));
+  it("the explainer sees only the chosen plan", async () => {
+    const agents = three();
+    const seen: unknown[] = [];
+    const r = await negotiate(agents, { maxRounds: 3, explainer: async (p) => (seen.push(p), "ok") });
+    expect(seen).toEqual([r.proposal]);
+  });
+
+  it("no sentence on a failure or an empty answer, and the plan is unchanged", async () => {
+    const agents = three();
     const code = await negotiate(agents, { maxRounds: 3 });
     vi.spyOn(console, "error").mockImplementation(() => {});
-    for (const finalPicker of [
-      async () => ({ index: 99, explanation: "x" }),
+    for (const explainer of [
+      async () => null,
+      async () => "   ",
       async () => {
         throw new Error("down");
       },
     ]) {
-      const r = await negotiate(agents, { maxRounds: 3, finalPicker });
+      const r = await negotiate(agents, { maxRounds: 3, explainer });
       expect(r.proposal).toEqual(code.proposal);
       expect(r.explanation).toBeUndefined();
     }
   });
 
-  it("drops a group sentence that hints at individual answers", async () => {
+  it("drops a group sentence that hints at individual answers, and sends only public facts", async () => {
     for (const bad of [
       "Someone was reluctant about price, but",
       "Two of you voted for it",
@@ -201,26 +208,26 @@ describe("the LLM final pick", () => {
       expect(REVEALING.test(bad), bad).toBe(true);
     expect(REVEALING.test("A relaxed Saturday dinner close to campus.")).toBe(false);
 
-    fakeAnthropic();
+    const bodies: string[] = [];
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        Response.json({
-          content: [{ type: "tool_use", input: { id: 0, explanation: "Someone was reluctant, but it's cheap." } }],
-        }),
-      ),
+      vi.fn(async (_url: string, init: RequestInit) => {
+        bodies.push(String(init.body));
+        return Response.json({
+          content: [{ type: "tool_use", input: { explanation: "Someone was reluctant, but it's cheap." } }],
+        });
+      }),
     );
-    const pick = await llmFinalPicker(
-      "k",
-      getRestaurant,
-    )([
-      {
-        proposal: { restaurantId: RESTAURANTS[0].id, slot: RESTAURANTS[0].open[0] },
-        tally: { accept: 2, reluctant: 1, reject: 0, dims: {}, rejectDims: {} },
-        relative: 1,
-      },
+    const plan = { restaurantId: RESTAURANTS[0].id, slot: RESTAURANTS[0].open[0] };
+    expect(await llmExplainer("k", getRestaurant)(plan)).toBeNull();
+    const user = JSON.parse(JSON.parse(bodies[0]).messages[0].content);
+    expect(Object.keys(user.plan).sort()).toEqual([
+      "cuisine",
+      "name",
+      "pricePerPerson",
+      "travelMinFromPlanLocation",
+      "when",
     ]);
-    expect(pick).toEqual({ index: 0, explanation: "" });
   });
 });
 
@@ -278,7 +285,7 @@ describe("a whole negotiation in LLM mode (runNegotiation)", () => {
     const agentCalls = calls.filter((c) => c.tool === "judge_options").length;
     expect(agentCalls).toBeLessThanOrEqual(3 * (rounds + 1));
     expect(calls.filter((c) => c.tool === "pick").length).toBeLessThanOrEqual(rounds);
-    expect(calls.filter((c) => c.tool === "choose_plan").length).toBeLessThanOrEqual(1);
+    expect(calls.filter((c) => c.tool === "explain_plan").length).toBeLessThanOrEqual(1);
     // ...and every one of them was counted against the plan's daily LLM budget.
     const { rows } = await (
       await db()

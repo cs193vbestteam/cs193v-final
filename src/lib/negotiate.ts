@@ -51,25 +51,21 @@ export type NegotiateOptions = {
   exploreRounds?: number;
   selector?: Selector;
   /**
-   * Makes the final pick among the finalists, e.g. an LLM (mediator-llm.ts). It sees the
-   * public facts, anonymous tallies and how the finalists compare, never a preference.
-   * Its choice must be one of the finalists; anything else, or a failure, keeps the
-   * highest Nash product.
+   * Writes one sentence for the group about the plan the code picked, e.g. an LLM
+   * (mediator-llm.ts). It sees only the chosen plan's public facts and cannot change
+   * the pick; a failure or an empty answer just means no sentence.
    */
-  finalPicker?: FinalPicker;
+  explainer?: Explainer;
 };
 
-export type FinalPicker = (
-  finalists: readonly { proposal: Proposal; tally: Tally; relative: number }[],
-) => Promise<{ index: number; explanation: string } | null>;
+export type Explainer = (chosen: Proposal) => Promise<string | null>;
 
 export type Finalist = {
   proposal: Proposal;
   tally: Tally;
   /**
    * This finalist's Nash product (the product of everyone's 1..5 bucket)
-   * divided by the chosen finalist's: 1 for the pick. At most 1 for the rest when
-   * the code picks; an LLM final pick (finalPicker) may choose a lower product.
+   * divided by the chosen finalist's: 1 for the pick, at most 1 for the rest.
    * It is all the mediator learns from the bucket question: no bucket, no
    * product, only how the finalists compare.
    */
@@ -119,7 +115,7 @@ function finalistsFor(
   agents: Agent[],
   level: number,
   n: number,
-): { finalists: Finalist[]; chosen: Finalist; relativeTo: (c: number) => Finalist[] } {
+): { finalists: Finalist[]; chosen: Finalist } {
   const ranked = [...cands]
     .sort(
       (a, b) =>
@@ -134,32 +130,26 @@ function finalistsFor(
   const logs = ranked.map((_, k) => (k === 0 ? 0 : logOf(sums.slice((k - 1) * 3, k * 3))));
   let best = 0;
   for (let k = 1; k < logs.length; k++) if (logs[k] > logs[best] + SAME) best = k;
-  const relativeTo = (c: number) =>
-    ranked.map((t, k) => ({
-      proposal: t.proposal,
-      tally: t.tally,
-      relative: Number(Math.exp(logs[k] - logs[c]).toFixed(6)),
-    }));
-  const finalists = relativeTo(best);
-  return { finalists, chosen: finalists[best], relativeTo };
+  const finalists = ranked.map((t, k) => ({
+    proposal: t.proposal,
+    tally: t.tally,
+    relative: Number(Math.exp(logs[k] - logs[best]).toFixed(6)),
+  }));
+  return { finalists, chosen: finalists[best] };
 }
 
-/** Let the final picker choose among the finalists; keep the code's pick on anything invalid. */
+/** The code's pick, plus the explainer's sentence about it when there is one. The sentence never changes the pick. */
 async function finalPick(
   computed: ReturnType<typeof finalistsFor>,
-  picker: FinalPicker | undefined,
+  explainer: Explainer | undefined,
 ): Promise<{ finalists: Finalist[]; chosen: Finalist; explanation?: string }> {
-  const { finalists, chosen, relativeTo } = computed;
-  if (!picker || finalists.length === 0) return { finalists, chosen };
+  const { finalists, chosen } = computed;
+  if (!explainer) return { finalists, chosen };
   try {
-    const pick = await picker(finalists);
-    if (!pick || !Number.isInteger(pick.index) || pick.index < 0 || pick.index >= finalists.length)
-      return { finalists, chosen };
-    const recast = relativeTo(pick.index);
-    const explanation = pick.explanation.trim().slice(0, 300) || undefined;
-    return { finalists: recast, chosen: recast[pick.index], explanation };
+    const explanation = (await explainer(chosen.proposal))?.trim().slice(0, 300) || undefined;
+    return { finalists, chosen, explanation };
   } catch (err) {
-    console.error("LLM final pick failed, keeping the code's pick:", (err as Error).message);
+    console.error("LLM explanation failed, showing the plan without one:", (err as Error).message);
     return { finalists, chosen };
   }
 }
@@ -245,7 +235,7 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   const agree = async (): Promise<NegotiationResult> => {
     const { finalists, chosen, explanation } = await finalPick(
       finalistsFor(unanimous, agents, level, nFinalists),
-      opts.finalPicker,
+      opts.explainer,
     );
     return finish("agreed", chosen, finalists, [], explanation);
   };
@@ -313,7 +303,7 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
     for (const f of feasible) tried.set(key(f.proposal), f);
     const { finalists, chosen, explanation } = await finalPick(
       finalistsFor(feasible, agents, level, nFinalists),
-      opts.finalPicker,
+      opts.explainer,
     );
     return finish(chosen.tally.accept === agents.length ? "agreed" : "compromise", chosen, finalists, [], explanation);
   }
