@@ -3,7 +3,7 @@ import { db } from "./db";
 import { decrypt, decryptJson, encrypt, encryptJson } from "./crypto";
 import type { Constraints } from "./constraints";
 import type { ChatTurn } from "./extract";
-import { configuredFinalPicker, configuredSelector } from "./mediator-llm";
+import { configuredExplainer, configuredSelector } from "./mediator-llm";
 import { negotiate, type NegotiationResult } from "./negotiate";
 import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./pool";
 import { DEFAULT_SCENARIO, parseScenarioId, ScenarioIdSchema, scenarioFor, type ScenarioId } from "./scenario";
@@ -334,7 +334,7 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
     maxRounds: 6,
     perRound: 5,
     selector: configuredSelector(lookup, budget),
-    finalPicker: configuredFinalPicker(lookup, budget),
+    explainer: configuredExplainer(lookup, budget),
   });
   const mentioned = new Set<string>();
   if (outcome.proposal) mentioned.add(outcome.proposal.restaurantId);
