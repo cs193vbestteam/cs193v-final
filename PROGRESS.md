@@ -9,16 +9,16 @@ Where Settle stands, how that compares with our plan, what is in the way, and wh
 - Accounts, plans with invite links, and deletion of plans and accounts.
 - A private chat per person. Claude turns what they type into structured constraints, with a rule-based extractor as the fallback.
 - A negotiation between one assistant per person and a mediator that never sees anyone's constraints. Since this week both are driven by Claude, with the hard rules and the final pick kept in code.
-- Privacy measures: private data encrypted in the database, a final pick computed from a masked sum, and two-person plans that show only the outcome.
+- Privacy measures: private data encrypted in the database, a final pick computed from a masked sum, and two-person plans that show places only, no counts.
 - Limits on chat messages, model calls and log-in attempts.
 - An evaluation harness (`sim/`), written up in `docs/evaluation.md`.
-- 537 unit tests, browser tests, lint and a secret scan on every pull request.
+- 566 unit tests, browser tests, lint and a secret scan on every pull request.
 
-**What works.** The whole flow from sign-up to a plan, on the live site, with Claude and a built-in list of 16 fictional restaurants. Real restaurants from Google Places are coded and tested against sample responses, but not switched on.
+**What works.** The whole flow from sign-up to a shortlist of up to six options on the live site, with Claude and a built-in list of 16 fictional restaurants. Real restaurants from Google Places are coded and have run on a developer's machine, but are not switched on.
 
 **What we measured.**
 
-- _Protocol against a planner that reads everything:_ over ten seeds of 200 synthetic groups, it agrees in 98.8% of the groups where a plan exists and keeps 94% of the best possible group welfare. A "most votes in round one" baseline keeps 44%.
+- _Protocol against a planner that reads everything:_ over ten seeds of 200 synthetic groups, it agrees in 98.7% of the groups where a plan exists and keeps 94% of the best possible group welfare. A "most votes in round one" baseline keeps 60%.
 - _Claude as a planner with no privacy,_ on 40 groups: a valid plan in 45% of the solvable ones, against 100% for the protocol.
 - _Personas from real reviewers:_ built from the Yelp Open Dataset in three cities.
 - _The extractors on 54 scripted chats,_ 16 of them adversarial: on ordinary chats the rules get 84% of fields right and Claude 96%; neither committed a violation.
@@ -42,7 +42,7 @@ We did not keep the Week 8 goals in the repository, so this uses the fifteen iss
 | Rate limits; deleting plans and accounts | Done |
 | More real restaurants; travel from each person's start | Built, not switched on |
 | Evaluation over several seeds, with a Claude baseline | Done |
-| Keep exploring after the first agreement | Done, off by default |
+| Keep exploring after the first agreement | Done: the app ends with a shortlist of six |
 | Evaluate the extractor, including prompt injection | Done for both; Claude run once |
 | Browser tests in CI | Done |
 | Evaluate on real preferences (Yelp) | Done, with the caveat above |
