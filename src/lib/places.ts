@@ -321,6 +321,8 @@ export type ResolvedPool =
       calls: number;
       failedCalls: number;
     }
+  /** Local development only: the Yelp Open Dataset on disk (yelp-pool.ts). */
+  | { source: "yelp"; location: string; center: LatLng; restaurants: Restaurant[] }
   | { source: "seed"; location: string | null; reason: string };
 
 /**

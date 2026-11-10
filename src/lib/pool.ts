@@ -6,7 +6,7 @@ import { RESTAURANTS, type Restaurant } from "./restaurants";
  * eat), stored per event so proposal ids stay stable for its whole life.
  * Plans created without a location, or before Places was wired in, use the seed.
  */
-export type PoolSource = "places" | "seed";
+export type PoolSource = "places" | "yelp" | "seed";
 
 export async function poolForEvent(eventId: string): Promise<{ restaurants: Restaurant[]; source: PoolSource }> {
   const client = await db();
