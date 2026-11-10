@@ -1,6 +1,6 @@
 # Evaluation
 
-Tacit's claim is that a group can settle on a restaurant and a time without anyone's budget, availability or dietary rules leaving their own assistant: the mediator only hears *accept / reluctant / reject* plus at most one dimension name per answer. This chapter measures what that costs: how often the protocol finds a plan, how good it is against a planner that may read everything, and how many dimension names it collects on the way. All numbers come from `sim/out/report.md` and `report.json` (200 synthetic groups, seed 1), produced by the harness in `sim/`.
+Settle's claim is that a group can settle on a restaurant and a time without anyone's budget, availability or dietary rules leaving their own assistant: the mediator only hears *accept / reluctant / reject* plus at most one dimension name per answer. This chapter measures what that costs: how often the protocol finds a plan, how good it is against a planner that may read everything, and how many dimension names it collects on the way. All numbers come from `sim/out/report.md` and `report.json` (200 synthetic groups, seed 1), produced by the harness in `sim/`.
 
 ## Setup
 

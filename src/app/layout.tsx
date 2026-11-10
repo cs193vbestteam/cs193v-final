@@ -26,7 +26,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Tacit — group plans without the group chat",
+  title: "Settle — group plans without the group chat",
   description:
     "Tell your own assistant your real constraints in private. The assistants negotiate a plan that works for everyone, and nobody's numbers leave the room.",
 };
@@ -63,7 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main className="mx-auto w-full max-w-6xl flex-1 px-5 pb-20 sm:px-8">{children}</main>
         <footer className="mx-auto w-full max-w-6xl px-5 pb-8 sm:px-8">
           <div className="flex flex-col gap-2 border-t border-line pt-5 text-xs text-ink-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="font-mono tracking-wider">TACIT · PRIVATE BY CONSTRUCTION</span>
+            <span className="font-mono tracking-wider">SETTLE · PRIVATE BY CONSTRUCTION</span>
             <span>Constraints encrypted at rest · only verdicts leave your assistant</span>
           </div>
         </footer>

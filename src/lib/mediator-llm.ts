@@ -4,7 +4,7 @@ import type { Candidate, RoundFeedback, Selector } from "./mediator";
  * Optional LLM re-ranker for the mediator. It only ever sees the public
  * shortlist the code produced plus anonymised tallies, and it can only pick
  * from that shortlist (propose() discards anything else). Scoring never
- * involves it. Enabled with ANTHROPIC_API_KEY + TACIT_LLM_MEDIATOR=1.
+ * involves it. Enabled with ANTHROPIC_API_KEY + SETTLE_LLM_MEDIATOR=1.
  */
 export function llmSelector(apiKey: string, model = process.env.ANTHROPIC_MODEL || "claude-haiku-5-5"): Selector {
   return async (shortlist: Candidate[], history: RoundFeedback[], k: number) => {
@@ -62,7 +62,7 @@ export function llmSelector(apiKey: string, model = process.env.ANTHROPIC_MODEL 
 /** The selector to use in production, if any. */
 export function configuredSelector(): Selector | undefined {
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key || process.env.TACIT_LLM_MEDIATOR !== "1") return undefined;
+  if (!key || process.env.SETTLE_LLM_MEDIATOR !== "1") return undefined;
   const inner = llmSelector(key);
   // Any failure falls back to the code's own shortlist order.
   return async (list, history, k) => {

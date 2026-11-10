@@ -1,4 +1,4 @@
-# Tacit
+# Settle
 
 **Live site:** https://miniproject-europium.vercel.app
 
@@ -54,7 +54,7 @@ CI runs both on every PR (`.github/workflows/ci.yml`).
 ## Deploy
 
 - **Database:** any Postgres (Neon, Supabase, Vercel Postgres...). Set `DATABASE_URL=postgresql://...`. The tables are created automatically on the first request. Locally, no database server is needed: without a Postgres URL the app uses [PGlite](https://pglite.dev) (Postgres in WebAssembly) and stores data in `./.pglite`.
-- **Host:** Vercel (one person deploys; see the course note about commit authors) or another Node host. Set `ENCRYPTION_KEY`, the database variables and, optionally, `ANTHROPIC_API_KEY` (LLM elicitation), `GOOGLE_PLACES_API_KEY` (real restaurants near the plan's location) and `TACIT_LLM_MEDIATOR=1` (LLM re-ranking of the mediator's shortlist).
+- **Host:** Vercel (one person deploys; see the course note about commit authors) or another Node host. Set `ENCRYPTION_KEY`, the database variables and, optionally, `ANTHROPIC_API_KEY` (LLM elicitation), `GOOGLE_PLACES_API_KEY` (real restaurants near the plan's location) and `SETTLE_LLM_MEDIATOR=1` (LLM re-ranking of the mediator's shortlist).
 - ⚠️ Never change `ENCRYPTION_KEY` after launch, or existing data can no longer be decrypted.
 
 ## Project layout
