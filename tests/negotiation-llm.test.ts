@@ -445,3 +445,44 @@ describe("replies cut off at the token limit", () => {
     expect(maxTokensFor(30)).toBeGreaterThanOrEqual(30 * 40);
   });
 });
+
+describe("an option asked again after a concession (#64)", () => {
+  const c = person({});
+  const prefs = compile({ ...c, concessionOrder: ["cuisine", "travel", "budget"] });
+  const ps = RESTAURANTS.slice(0, 4).map((r) => ({ restaurantId: r.id, slot: r.open[0] }));
+  const judgeWith = () => llmJudge({ apiKey: "k", about: [], prefs, resolve: (p) => getRestaurant(p.restaurantId) });
+
+  it("an accept stands without another call", async () => {
+    const { calls } = fakeAnthropic();
+    const judge = judgeWith();
+    const first = await judge(ps, 0);
+    expect(calls).toHaveLength(1);
+    expect(await judge(ps, 1)).toEqual(first);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("an objection is asked again only once the thing objected to has been loosened", async () => {
+    // Every option comes back "reluctant: price".
+    const calls: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        calls.push(init.body);
+        const { options } = JSON.parse(JSON.parse(String(init.body)).messages[0].content);
+        const verdicts = options.map((o: { id: number }) => ({ id: o.id, verdict: "reluctant", dim: "price" }));
+        return Response.json({ content: [{ type: "tool_use", input: { verdicts } }] });
+      }),
+    );
+    const judge = judgeWith();
+    const first = await judge(ps, 0);
+    if (!first.some((j) => j.verdict === "reluctant" && j.dim === "price")) return; // guard overrode every answer
+    const n = calls.length;
+    // Levels 1 and 2 loosen cuisine, then travel: nothing to do with price.
+    await judge(ps, 1);
+    await judge(ps, 2);
+    expect(calls).toHaveLength(n);
+    // Level 3 loosens budget: now it is worth asking.
+    await judge(ps, 3);
+    expect(calls.length).toBeGreaterThan(n);
+  });
+});

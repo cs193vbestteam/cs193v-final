@@ -38,19 +38,38 @@ Table 1, from `sim/out/report.md` (ratios are mean / median over the groups wher
 
 | group | n | agreed | any plan | oracle feasible | agreed given feasible | plan given feasible | Nash ratio protocol | Nash ratio naive | max-min ratio protocol | max-min ratio naive | hits optimum | leaked dims (mean) | leaked / person / round |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| all | 200 | 74% | 75% | 75% | 99% | 100% | 0.930 / 0.999 | 0.455 / 0.566 | 0.959 / 1.000 | 0.477 / 0.742 | 50% | 36.9 | 2.15 |
-| size 3 | 51 | 92% | 92% | 92% | 100% | 100% | 0.931 / 0.976 | 0.615 / 0.846 | 0.960 / 1.000 | 0.645 / 0.894 | 47% | 13.9 | 2.10 |
-| size 4 | 46 | 87% | 87% | 87% | 100% | 100% | 0.912 / 0.951 | 0.361 / 0.000 | 0.946 / 0.999 | 0.385 / 0.000 | 35% | 23.0 | 1.97 |
-| size 5 | 44 | 61% | 66% | 66% | 93% | 100% | 0.948 / 1.000 | 0.517 / 0.765 | 0.965 / 1.000 | 0.530 / 0.779 | 62% | 45.8 | 2.27 |
-| size 6 | 59 | 58% | 58% | 58% | 100% | 100% | 0.933 / 1.000 | 0.293 / 0.000 | 0.967 / 1.000 | 0.310 / 0.000 | 62% | 61.1 | 2.26 |
+| all | 200 | 74% | 75% | 75% | 99% | 100% | 0.938 / 1.000 | 0.567 / 0.767 | 0.963 / 1.000 | 0.593 / 0.805 | 51% | 20.9 | 2.11 |
+| size 3 | 51 | 92% | 92% | 92% | 100% | 100% | 0.928 / 0.975 | 0.727 / 0.889 | 0.958 / 1.000 | 0.757 / 0.934 | 43% | 12.0 | 2.65 |
+| size 4 | 46 | 87% | 87% | 87% | 100% | 100% | 0.921 / 0.958 | 0.583 / 0.771 | 0.950 / 0.999 | 0.607 / 0.798 | 38% | 18.0 | 2.46 |
+| size 5 | 44 | 61% | 66% | 66% | 93% | 100% | 0.958 / 1.000 | 0.599 / 0.825 | 0.968 / 1.000 | 0.608 / 0.858 | 59% | 19.6 | 1.79 |
+| size 6 | 59 | 58% | 58% | 58% | 100% | 100% | 0.958 / 1.000 | 0.299 / 0.000 | 0.982 / 1.000 | 0.337 / 0.000 | 71% | 31.6 | 1.62 |
 
 Figure 1 (`sim/out/report.svg`) plots the mean Nash ratio per group size for naive and protocol against the oracle line at 1.0 (panel a), and the rounds-to-agreement histogram (panel b).
 
 **Feasibility.** The oracle found a plan in 150 of 200 groups, and the 50 `no_deal` outcomes are exactly the 50 infeasible groups: the protocol never gave up on a solvable one. Feasibility falls with size (92% at 3 people, 58% at 6), a property of the generator, so the columns conditioned on oracle feasibility are the ones to read.
 
-**Quality.** Given a feasible group, the protocol produced a plan 100% of the time and unanimous acceptance 99% of the time (148 of 150; the other two are compromises). Its plans keep 93% of the oracle's Nash welfare on average, the median group loses almost nothing (0.999), and the worst-off member keeps 96% of what the oracle could give them. Exactly half the feasible groups (75 of 150) end on the optimum; only 5 fall below a 0.7 Nash ratio (lowest 0.53). Naive finds a feasible plan in only 77 of 150 groups and hits the optimum in 25; its median Nash ratio is 0 at sizes 4 and 6 because the most-voted round-1 option is usually rejected by someone.
+**Quality.** Given a feasible group, the protocol produced a plan 100% of the time and unanimous acceptance 99% of the time (148 of 150; the other two are compromises). Its plans keep 94% of the oracle's Nash welfare on average, the median group loses nothing (1.000), and the worst-off member keeps 96% of what the oracle could give them. Half the feasible groups (76 of 150) end on the optimum; only 5 fall below a 0.7 Nash ratio (lowest 0.53). Naive finds a feasible plan in 98 of 150 groups and hits the optimum in 29; its median Nash ratio is 0 at size 6 because the most-voted round-1 option is usually rejected by someone.
 
-**Rounds.** Of the 148 agreements, 75 came in round 1 and 60 in round 2 (135 of 148, 91.2%); rounds 3–6 account for 1, 3, 3 and 6. Both compromises ran all 6 rounds at concession level 3. Mean rounds run is 2.87 (median 2), from 1.78 at 3 people to 3.86 at 6, the latter inflated by infeasible groups running the full 6 rounds.
+**Rounds.** Of the 148 agreements, 87 came in round 1 and 49 in round 2 (136 of 148, 91.9%); rounds 3 to 6 account for 0, 3, 1 and 8. Both compromises ran all 6 rounds at concession level 3. Mean rounds run is 1.46 (median 1), from 1.31 at 3 people to 1.78 at 6.
+
+**What issue #64 changed, and what it cost.** Every number in this document up to here was regenerated after two changes to the protocol:
+
+- *Times first.* Before round 1 the mediator asks each assistant, for each time the pool offers, whether its person can make it, and then proposes only at times everyone can make. Round 1 used to spread its five candidates over all five times, so a group free on one evening spent four of them learning the calendar. If no time suits everyone the negotiation ends there with `no_deal: time` and nobody is asked about a restaurant. Each "cannot make it" is counted as a leaked dimension name, like the time reject it replaces.
+- *No pointless re-asks.* A near-miss whose tally did not move when it was asked again after a concession step is not asked a third time; its place goes to a fresh candidate. The re-check at the final concession level still looks at it once more. On the LLM path an assistant also reuses its own earlier verdict, without a model call, unless the thing it objected to has been loosened since.
+
+Ten seeds, before and after (protocol as shipped):
+
+| metric | before #64 | after #64 |
+|---|---:|---:|
+| rounds run | 2.77 | 1.44 |
+| leaked dimension names per group | 34.25 | 21.27 |
+| agreement rate, feasible groups | 98.8% | 98.7% |
+| Nash ratio, protocol | 0.944 | 0.944 |
+| max-min ratio, protocol | 0.969 | 0.968 |
+| hits the optimum | 55.2% | 55.3% |
+| Nash ratio, naive | 0.438 | 0.603 |
+
+Negotiations take about half the rounds and the mediator hears about 40% fewer dimension names, with no measurable change in welfare. The naive baseline improves because it takes its answer from round 1, and round 1 is now made of candidates at times everyone can make. Leaked names per person per round go up slightly (2.14 to 2.24): the time check is counted, and the rounds it removed were the cheap ones. The Yelp section below was measured before this change and has not been rerun.
 
 ## Across seeds and candidates per round
 
@@ -65,50 +84,50 @@ Table 1 is one draw of 200 groups. The tables below repeat it over ten seeds and
 
 | metric | mean [95% interval] | range across seeds |
 |---|---:|---:|
-| agreement rate | 75.8% [74.0%, 77.5%] | 70.0% to 78.5% |
-| agreement rate, feasible groups | 98.8% [98.4%, 99.3%] | 97.4% to 99.4% |
+| agreement rate | 75.7% [73.9%, 77.4%] | 70.0% to 78.5% |
+| agreement rate, feasible groups | 98.7% [98.1%, 99.3%] | 96.8% to 99.4% |
 | Nash ratio, protocol | 0.944 [0.938, 0.951] | 0.930 to 0.958 |
-| max-min ratio, protocol | 0.969 [0.965, 0.973] | 0.959 to 0.981 |
-| hits the optimum | 55.2% [51.8%, 58.5%] | 48.3% to 61.5% |
-| Nash ratio, naive | 0.438 [0.412, 0.464] | 0.373 to 0.488 |
-| leaked dimension names per group | 34.25 [32.39, 36.12] | 29.50 to 38.78 |
-| leaked names per person per round | 2.14 [2.10, 2.17] | 2.06 to 2.22 |
-| finalists bucketed per group | 1.30 [1.26, 1.33] | 1.22 to 1.40 |
-| rounds run | 2.77 [2.69, 2.86] | 2.59 to 3.02 |
+| max-min ratio, protocol | 0.968 [0.963, 0.973] | 0.960 to 0.981 |
+| hits the optimum | 55.3% [51.9%, 58.8%] | 46.8% to 60.0% |
+| Nash ratio, naive | 0.603 [0.575, 0.630] | 0.534 to 0.672 |
+| leaked dimension names per group | 21.27 [19.23, 23.32] | 16.58 to 26.30 |
+| leaked names per person per round | 2.24 [2.17, 2.32] | 2.11 to 2.43 |
+| finalists bucketed per group | 1.27 [1.22, 1.32] | 1.17 to 1.36 |
+| rounds run | 1.44 [1.31, 1.56] | 1.11 to 1.74 |
 
 **Candidates per round** (`perRound`), mean [95% interval] across the same seeds
 
 | perRound | agreement rate, feasible groups | Nash ratio, protocol | max-min ratio, protocol | hits the optimum | leaked dimension names per group | leaked names per person per round | rounds run |
 |---:|---:|---:|---:|---:|---:|---:|---:|
-| 3 | 98.8% [98.3%, 99.3%] | 0.939 [0.930, 0.947] | 0.964 [0.958, 0.971] | 54.2% [50.1%, 58.3%] | 20.29 [19.26, 21.33] | 1.19 [1.16, 1.21] | 3.01 [2.94, 3.09] |
-| 5 (shipped) | 98.8% [98.4%, 99.3%] | 0.944 [0.938, 0.951] | 0.969 [0.965, 0.973] | 55.2% [51.8%, 58.5%] | 34.25 [32.39, 36.12] | 2.14 [2.10, 2.17] | 2.77 [2.69, 2.86] |
-| 8 | 98.8% [98.4%, 99.3%] | 0.947 [0.942, 0.951] | 0.971 [0.967, 0.975] | 54.8% [51.5%, 58.1%] | 60.95 [57.26, 64.64] | 3.92 [3.85, 4.00] | 2.68 [2.59, 2.77] |
-| 10 | 98.8% [98.4%, 99.3%] | 0.948 [0.942, 0.954] | 0.970 [0.967, 0.973] | 56.3% [52.7%, 60.0%] | 79.69 [74.93, 84.45] | 5.24 [5.13, 5.35] | 2.64 [2.55, 2.72] |
+| 3 | 98.8% [98.3%, 99.3%] | 0.939 [0.934, 0.944] | 0.964 [0.959, 0.970] | 53.9% [51.2%, 56.7%] | 14.45 [13.42, 15.48] | 1.41 [1.37, 1.46] | 1.63 [1.51, 1.75] |
+| 5 (shipped) | 98.7% [98.1%, 99.3%] | 0.944 [0.938, 0.951] | 0.968 [0.963, 0.973] | 55.3% [51.9%, 58.8%] | 21.27 [19.23, 23.32] | 2.24 [2.17, 2.32] | 1.44 [1.31, 1.56] |
+| 8 | 98.8% [98.3%, 99.3%] | 0.944 [0.939, 0.950] | 0.970 [0.966, 0.973] | 56.1% [52.6%, 59.5%] | 31.64 [28.70, 34.58] | 3.74 [3.63, 3.85] | 1.35 [1.23, 1.46] |
+| 10 | 98.3% [97.7%, 99.0%] | 0.948 [0.943, 0.953] | 0.972 [0.968, 0.976] | 56.5% [53.4%, 59.7%] | 37.11 [33.60, 40.63] | 4.74 [4.61, 4.87] | 1.27 [1.17, 1.37] |
 
 **Difference from the shipped 5**, paired by seed (each seed's value minus the same seed at 5); an interval that excludes 0 is a difference every draw of the population supports
 
 | perRound | Nash ratio, protocol | hits the optimum | leaked dimension names per group |
 |---:|---:|---:|---:|
-| 3 | -0.006 [-0.011, +0.000] | -1.0 pts [-4.0 pts, +2.0 pts] | -13.96 [-14.83, -13.09] |
-| 8 | +0.002 [-0.003, +0.008] | -0.4 pts [-2.7 pts, +1.9 pts] | +26.70 [+24.85, +28.54] |
-| 10 | +0.003 [-0.004, +0.010] | +1.1 pts [-1.0 pts, +3.3 pts] | +45.44 [+42.51, +48.36] |
+| 3 | -0.005 [-0.010, -0.001] | -1.4 pts [-4.0 pts, +1.1 pts] | -6.83 [-7.86, -5.79] |
+| 8 | -0.000 [-0.004, +0.004] | +0.7 pts [-0.9 pts, +2.4 pts] | +10.37 [+9.25, +11.48] |
+| 10 | +0.004 [-0.002, +0.009] | +1.2 pts [-0.7 pts, +3.1 pts] | +15.84 [+13.87, +17.81] |
 
 **After the first unanimous accept** (`exploreRounds`), mean [95% interval] across the same seeds; the shipped protocol stops at once
 
 | protocol | agreement rate, feasible groups | Nash ratio, protocol | max-min ratio, protocol | hits the optimum | leaked dimension names per group | finalists bucketed per group | rounds run |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| stop at the first agreement (shipped) | 98.8% [98.4%, 99.3%] | 0.944 [0.938, 0.951] | 0.969 [0.965, 0.973] | 55.2% [51.8%, 58.5%] | 34.25 [32.39, 36.12] | 1.30 [1.26, 1.33] | 2.77 [2.69, 2.86] |
-| one more round | 98.8% [98.4%, 99.3%] | 0.953 [0.947, 0.959] | 0.976 [0.972, 0.979] | 57.1% [53.7%, 60.5%] | 38.29 [36.47, 40.11] | 1.94 [1.89, 1.99] | 3.52 [3.45, 3.59] |
-| one more round, 6 finalists | 98.8% [98.4%, 99.3%] | 0.958 [0.953, 0.962] | 0.979 [0.977, 0.981] | 58.6% [55.7%, 61.5%] | 38.29 [36.47, 40.11] | 2.78 [2.70, 2.87] | 3.52 [3.45, 3.59] |
-| 3 per round, one more round, 6 finalists | 98.8% [98.3%, 99.3%] | 0.954 [0.947, 0.960] | 0.975 [0.971, 0.979] | 57.8% [54.5%, 61.2%] | 22.34 [21.32, 23.37] | 2.13 [2.05, 2.21] | 3.75 [3.69, 3.82] |
+| stop at the first agreement (shipped) | 98.7% [98.1%, 99.3%] | 0.944 [0.938, 0.951] | 0.968 [0.963, 0.973] | 55.3% [51.9%, 58.8%] | 21.27 [19.23, 23.32] | 1.27 [1.22, 1.32] | 1.44 [1.31, 1.56] |
+| one more round | 98.7% [98.1%, 99.3%] | 0.954 [0.949, 0.959] | 0.976 [0.972, 0.979] | 57.0% [53.6%, 60.3%] | 25.24 [23.14, 27.35] | 1.96 [1.90, 2.01] | 2.17 [2.05, 2.29] |
+| one more round, 6 finalists | 98.7% [98.1%, 99.3%] | 0.958 [0.954, 0.961] | 0.979 [0.976, 0.981] | 58.4% [55.6%, 61.2%] | 25.24 [23.14, 27.35] | 2.79 [2.69, 2.89] | 2.17 [2.05, 2.29] |
+| 3 per round, one more round, 6 finalists | 98.8% [98.3%, 99.3%] | 0.954 [0.948, 0.959] | 0.975 [0.972, 0.979] | 56.9% [53.3%, 60.5%] | 16.35 [15.30, 17.40] | 2.24 [2.17, 2.30] | 2.36 [2.24, 2.48] |
 
 **Difference from the shipped protocol**, paired by seed
 
 | protocol | Nash ratio, protocol | max-min ratio, protocol | hits the optimum | leaked dimension names per group | rounds run |
 |---|---:|---:|---:|---:|---:|
-| one more round | +0.009 [+0.003, +0.015] | +0.007 [+0.003, +0.010] | +1.9 pts [-0.8 pts, +4.6 pts] | +4.04 [+3.84, +4.23] | +0.74 [+0.73, +0.76] |
-| one more round, 6 finalists | +0.013 [+0.008, +0.019] | +0.010 [+0.007, +0.014] | +3.4 pts [+0.8 pts, +6.1 pts] | +4.04 [+3.84, +4.23] | +0.74 [+0.73, +0.76] |
-| 3 per round, one more round, 6 finalists | +0.009 [+0.006, +0.013] | +0.006 [+0.005, +0.008] | +2.6 pts [+0.8 pts, +4.5 pts] | -11.91 [-12.79, -11.04] | +0.98 [+0.94, +1.02] |
+| one more round | +0.009 [+0.002, +0.016] | +0.007 [+0.003, +0.012] | +1.6 pts [-2.1 pts, +5.4 pts] | +3.97 [+3.77, +4.17] | +0.73 [+0.71, +0.75] |
+| one more round, 6 finalists | +0.013 [+0.007, +0.020] | +0.010 [+0.006, +0.015] | +3.1 pts [-0.4 pts, +6.5 pts] | +3.97 [+3.77, +4.17] | +0.73 [+0.71, +0.75] |
+| 3 per round, one more round, 6 finalists | +0.009 [+0.002, +0.016] | +0.007 [+0.003, +0.011] | +1.6 pts [-1.9 pts, +5.1 pts] | -4.92 [-5.96, -3.89] | +0.92 [+0.88, +0.96] |
 
 <!-- generated:study:end -->
 <!-- prettier-ignore-end -->
@@ -117,17 +136,17 @@ Table 1 is one draw of 200 groups. The tables below repeat it over ten seeds and
 
 Figure 2 (`docs/evaluation-sweep.svg`) plots the sweep: the Nash ratio (panel a) and the share of feasible groups that end on the optimum (panel b) against the leaked dimension names per group.
 
-**Seed 1 was a slightly unlucky draw.** Table 1 and the Results section report seed 1 alone. Among the ten seeds it has the lowest Nash ratio (0.930 against a mean of 0.944) and the lowest max-min ratio (0.959 against 0.969), the second-lowest optimum rate (50% against 55%) and the second-highest leak (36.9 names against 34.3). So the single-seed numbers understate the protocol a little; the ten-seed means are the better headline. The intervals are narrow: redrawing the population moves the Nash ratio by about ±0.007 and the agreement rate on feasible groups by half a percentage point. The share of groups that end exactly on the optimum is the noisy one (48% to 62% across seeds), so read it as "about half".
+**Seed 1 is close to the average.** Table 1 and the Results section report seed 1 alone. Against the ten-seed means it is slightly low on welfare (Nash ratio 0.938 against 0.944, max-min ratio 0.963 against 0.968, optimum rate 51% against 55%) and about average on leak (20.9 names against 21.3). The intervals are narrow: redrawing the population moves the Nash ratio by about ±0.007 and the agreement rate on feasible groups by about half a percentage point. The share of groups that end exactly on the optimum is the noisy one (47% to 60% across seeds), so read it as "about half".
 
-**More candidates per round cost privacy and buy almost nothing.** Going from 3 to 10 candidates per round roughly quadruples what the mediator hears (20 to 80 dimension names per group), while the Nash ratio moves from 0.939 to 0.948. Paired by seed, no setting differs from the shipped 5 on welfare or on the optimum rate by more than its own interval: every welfare interval in the difference table includes 0, the lower one for `perRound` 3 only just. The differences in leaked names, by contrast, are large and unambiguous. On this evidence `perRound` 3 gives the same plans for about 40% fewer leaked names than the shipped 5, at the price of a quarter of a round more on average (3.01 against 2.77 rounds). We have not changed the default in this report.
+**More candidates per round cost privacy and buy almost nothing.** Going from 3 to 10 candidates per round multiplies what the mediator hears by about two and a half (14 to 37 dimension names per group), while the Nash ratio moves from 0.939 to 0.948. Paired by seed, 8 and 10 do not differ from the shipped 5 on welfare or on the optimum rate by more than their own intervals; `perRound` 3 loses 0.005 of Nash ratio, with an interval that just excludes 0. The differences in leaked names, by contrast, are large and unambiguous. On this evidence `perRound` 3 gives nearly the same plans for about a third fewer leaked names than the shipped 5, at the price of a fifth of a round more on average (1.63 against 1.44 rounds). We have not changed the default in this report.
 
 This also corrects the Discussion below, which guessed that `perRound` was the knob that trades leak for optimality. It trades leak for very little.
 
-**One more round after the first agreement is a small, real gain.** `negotiate()` now takes `exploreRounds`: after the first unanimous round the mediator runs that many more rounds of fresh candidates, at the same concession level, and the plan is picked among every unanimous candidate seen. With one exploring round the Nash ratio rises from 0.944 to 0.953 and the worst-off member's ratio from 0.969 to 0.976; paired by seed both intervals exclude 0. The cost is about 4 more dimension names per group (+12%) and three quarters of a round. The optimum rate moves less than hoped: +1.9 points, with an interval that includes 0.
+**One more round after the first agreement is a small, real gain.** `negotiate()` now takes `exploreRounds`: after the first unanimous round the mediator runs that many more rounds of fresh candidates, at the same concession level, and the plan is picked among every unanimous candidate seen. With one exploring round the Nash ratio rises from 0.944 to 0.954 and the worst-off member's ratio from 0.968 to 0.976; paired by seed both intervals exclude 0. The cost is about 4 more dimension names per group (+19%) and three quarters of a round. The optimum rate moves less than hoped: +1.6 points, with an interval that includes 0.
 
-**The finalist cap was holding it back.** An exploring round usually adds unanimous candidates, but only `finalists` of them (3 as shipped) get the 1 to 5 bucket question that tells them apart, and among fully accepted candidates the cut is arbitrary. With 6 finalists the same round gives a Nash ratio of 0.958 and an optimum rate of 58.6% (+3.4 points, interval excluding 0), for the same number of leaked names. The price is in the other thing the mediator hears: bucket answers for 2.8 candidates per group instead of 1.3.
+**The finalist cap was holding it back.** An exploring round usually adds unanimous candidates, but only `finalists` of them (3 as shipped) get the 1 to 5 bucket question that tells them apart, and among fully accepted candidates the cut is arbitrary. With 6 finalists the same round gives a Nash ratio of 0.958 and an optimum rate of 58.4% (+3.1 points, with an interval that only just includes 0), for the same number of leaked names. The price is in the other thing the mediator hears: bucket answers for 2.8 candidates per group instead of 1.3.
 
-**Combined with fewer candidates per round, it is better on both axes.** Three candidates per round, one exploring round and 6 finalists give a Nash ratio of 0.954 against the shipped 0.944 (+0.009, interval excluding 0) while the mediator hears 22 dimension names per group instead of 34 (-35%). It costs one more round on average (3.75 against 2.77). This is the configuration the numbers favour. It is not the default yet: `exploreRounds` ships as 0, and changing the protocol's defaults is a decision for the team, not for an evaluation PR.
+**Combined with fewer candidates per round, it is better on both axes.** Three candidates per round, one exploring round and 6 finalists give a Nash ratio of 0.954 against the shipped 0.944 (+0.009, interval excluding 0) while the mediator hears 16 dimension names per group instead of 21 (-23%). It costs about one more round on average (2.36 against 1.44). This is the configuration the numbers favour. It is not the default yet: `exploreRounds` ships as 0, and changing the protocol's defaults is a decision for the team, not for an evaluation PR.
 
 Why the optimum rate stays under 60% in every variant: the final choice is made on 1 to 5 buckets, not on utilities, so candidates the oracle can tell apart often tie for the protocol. That coarseness is deliberate (a bucket leaks less than a number), and it bounds how often the exact optimum can be found no matter how many candidates are explored.
 
@@ -163,7 +182,9 @@ Per candidate it proposes, the mediator sees from each member a verdict and at m
 
 What a dimension name reveals, and all it reveals: a `time` reject says someone cannot make that slot (the pool only holds slots the restaurant is open for). A `price` reject on a $38 restaurant says some member's hard ceiling is below $38, an ordinal bound that tightens to the cheapest rejected price over the run, not whose ceiling or what it is. `distance` works the same way; `diet` says a flag of that restaurant conflicts with someone's rule; `cuisine` says someone is lukewarm about it. `learn()` in `src/lib/mediator.ts` is the complete list of inferences the proposer draws, from counts alone.
 
-The budget spent: 36.9 dimension names per group on average (median 15, range 0–164), 2.15 per person per round; of the 5 candidates in a round a typical person names a dimension on about two. The cost grows with size and rounds, so 6-person groups spend 61 names on average against 14 for 3-person groups. `observedDims` (what the wrapped agents returned) equals `leakedDims` (what the protocol reports) in every size bucket, 36.90 = 36.90 overall.
+Before round 1 the mediator also asks each assistant whether its person can make each time the pool offers (issue #64). A "no" there is the same statement a `time` reject makes, about a time instead of a candidate, and it is counted in the budget in the same way.
+
+The budget spent: 20.9 dimension names per group on average (median 12, range 1–157), 2.11 per person per round, the time check included. The cost grows with size and rounds, so 6-person groups spend 32 names on average against 12 for 3-person groups. `observedDims` (what the wrapped agents returned) equals `leakedDims` (what the protocol reports) in every size bucket, 20.86 = 20.86 overall.
 
 **The final pick: a masked sum instead of buckets.** The last step compares up to three (or `finalists`) candidates nobody rejects on the Nash product of everyone's 1 to 5 utility bucket. The mediator used to receive those buckets, sorted so they did not map back to people, and multiply them. It now receives none of them (`src/lib/masked-sum.ts`, `maskGroup` in `agent.ts`, `finalistsFor` in `negotiate.ts`).
 
@@ -206,11 +227,11 @@ The synthetic people above are our guesses. To see whether the picture holds for
 
 The personas capture where someone will go: their budget and travel limits admit about nine in ten of the places they later visited, clearly more than a random place in the city, and a later visit outscores a random place 54 to 63% of the time against a 50% coin flip. They do not capture how much someone will like it once there: a later 4-5 star place outscores a later 1-2 star one 46 to 48% of the time, which is chance. Price band, distance and cuisine say what is acceptable; they do not say what will be good. That is the limit of what these personas can stand in for.
 
-**Protocol results.** Table Y2 puts 200 friend groups per city next to the synthetic "all" row of Table 1 (seed 1), with the same seed, pool size and protocol settings (ratios are mean / median over groups where the oracle found a feasible plan).
+**Protocol results.** This section was measured before issue #64 (times first, no pointless re-asks) and has not been rerun, so its synthetic row is the old Table 1, not the one above; the comparison is like for like. Table Y2 puts 200 friend groups per city next to the synthetic "all" row of Table 1 (seed 1), with the same seed, pool size and protocol settings (ratios are mean / median over groups where the oracle found a feasible plan).
 
 | groups | n | agreed | oracle feasible | agreed given feasible | Nash ratio protocol | Nash ratio naive | max-min ratio protocol | hits optimum | agreed in round 1 | rounds (mean) | leaked dims (mean) | leaked / person / round |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| synthetic | 200 | 74% | 75% | 99% | 0.930 / 0.999 | 0.455 / 0.566 | 0.959 | 50% | 75 of 148 | 2.87 | 36.9 | 2.15 |
+| synthetic (before #64) | 200 | 74% | 75% | 99% | 0.930 / 0.999 | 0.455 / 0.566 | 0.959 | 50% | 75 of 148 | 2.87 | 36.9 | 2.15 |
 | Yelp, Philadelphia | 200 | 78% | 78% | 100% | 0.936 / 0.948 | 0.854 / 0.936 | 0.984 | 21% | 143 of 156 | 2.17 | 19.6 | 1.29 |
 | Yelp, Tampa | 200 | 83% | 83% | 100% | 0.910 / 0.932 | 0.761 / 0.903 | 0.964 | 33% | 138 of 166 | 2.02 | 17.7 | 1.29 |
 | Yelp, New Orleans | 200 | 78% | 78% | 100% | 0.961 / 1.000 | 0.795 / 0.965 | 0.995 | 52% | 129 of 155 | 2.27 | 21.5 | 1.37 |

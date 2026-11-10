@@ -295,7 +295,7 @@ describe("an assistant judges its own person's trip", () => {
 
   it("answers in verdicts and buckets only: the start point is not reachable from the agent", () => {
     const agent = makeAgent(prefs, lookup, MOUNTAIN_VIEW);
-    expect(Object.keys(agent).sort()).toEqual(["bucket", "judge"]);
+    expect(Object.keys(agent).sort()).toEqual(["bucket", "freeAt", "judge"]);
     expect(JSON.stringify(agent)).toBe("{}");
     expect(JSON.stringify(agent.judge(proposal, 0))).not.toMatch(/37\.|122\.|\d{2}/);
   });
