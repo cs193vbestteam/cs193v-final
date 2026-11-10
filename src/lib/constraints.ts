@@ -49,9 +49,14 @@ export const SOFT_DIM_LABELS: Record<SoftDim, string> = { budget: "budget", trav
 export const DEFAULT_WEIGHTS: Record<SoftDim, number> = { budget: 0.35, travel: 0.3, cuisine: 0.35 };
 export const DEFAULT_CONCESSION_ORDER: SoftDim[] = ["cuisine", "travel", "budget"];
 
-/** Extra questions the assistant asks once the essentials are known. */
+/**
+ * Follow-up questions, as stored in probesAsked / pending. The two trade-off questions are no longer
+ * asked (#48: people found them redundant) but stay in the enum so chats saved before that still parse.
+ */
 export const PROBES = ["start_point", "tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"] as const;
 export type Probe = (typeof PROBES)[number];
+/** The follow-ups actually asked once the essentials are known, in order. */
+export const ASKED_PROBES: readonly Probe[] = ["start_point", "concession"];
 /** Questions that need the next answer read in context: a vague-answer follow-up, or a probe. */
 export const PENDING = ["vague_budget", "vague_distance", ...PROBES] as const;
 export type Pending = (typeof PENDING)[number];
@@ -81,6 +86,12 @@ export const ConstraintsSchema = z.object({
   /** null = not answered yet. */
   availableSlots: z.array(z.enum(SLOTS)).nullable(),
   dietary: z.array(z.enum(DIETARY)),
+  /**
+   * What they said they avoid, in their own words ("clams and crabs, anything with shells").
+   * Kept so nothing they tell us is dropped and shown back to them; the negotiation only
+   * filters on the `dietary` flags, because restaurants carry no finer data than that.
+   */
+  avoidNotes: z.array(z.string().trim().min(1).max(160)).max(10).default([]),
   /** True once the user has answered the dietary question, even with "none". */
   dietaryConfirmed: z.boolean(),
   /** Max one-way travel time in minutes. */
@@ -118,6 +129,7 @@ export function emptyConstraints(): Constraints {
     budgetFlex: 0,
     availableSlots: null,
     dietary: [],
+    avoidNotes: [],
     dietaryConfirmed: false,
     maxTravelMin: null,
     startPoint: null,
@@ -147,6 +159,10 @@ export function mergeConstraints(base: Constraints, update: ConstraintsUpdate): 
   if (update.dietary !== undefined) {
     next.dietary = uniq([...base.dietary, ...update.dietary]);
     next.dietaryConfirmed = true;
+  }
+  if (update.avoidNotes !== undefined) {
+    next.avoidNotes = uniq([...base.avoidNotes, ...update.avoidNotes]).slice(-10);
+    if (update.avoidNotes.length) next.dietaryConfirmed = true;
   }
   if (update.dietaryConfirmed !== undefined) next.dietaryConfirmed = next.dietaryConfirmed || update.dietaryConfirmed;
   if (update.likedCuisines !== undefined) {
@@ -188,11 +204,18 @@ export function describeConstraints(c: Constraints): string[] {
     );
   if (c.maxTravelMin !== null) lines.push(`Travel: up to ${c.maxTravelMin} min`);
   if (c.startPoint) lines.push(`Coming from: ${c.startPoint.label}`);
-  if (c.dietaryConfirmed)
-    lines.push(`Diet: ${c.dietary.length ? c.dietary.map((d) => DIETARY_LABELS[d]).join(", ") : "no restrictions"}`);
+  if (c.dietaryConfirmed) {
+    const diet = c.dietary.length
+      ? c.dietary.map((d) => DIETARY_LABELS[d]).join(", ")
+      : c.avoidNotes.length
+        ? "see below"
+        : "no restrictions";
+    lines.push(`Diet: ${diet}`);
+  }
+  if (c.avoidNotes.length) lines.push(`Avoids: ${c.avoidNotes.join("; ")}`);
   if (c.likedCuisines.length) lines.push(`Would like: ${c.likedCuisines.join(", ")}`);
   if (c.dislikedCuisines.length) lines.push(`Rather not: ${c.dislikedCuisines.join(", ")}`);
-  if (c.probesAsked.some((p) => p.startsWith("tradeoff"))) {
+  if ((Object.keys(DEFAULT_WEIGHTS) as SoftDim[]).some((d) => c.weights[d] !== DEFAULT_WEIGHTS[d])) {
     const top = (Object.entries(c.weights) as [SoftDim, number][]).sort((a, b) => b[1] - a[1])[0][0];
     lines.push(`Cares most about: ${SOFT_DIM_LABELS[top]}`);
   }
@@ -207,5 +230,5 @@ export function nextProbe(c: Constraints, context: ProbeContext = {}): Probe | n
   if (missingFields(c).length > 0) return null;
   // Asking where someone is coming from is pointless when the plan can't use it, or when they already said.
   const skipStart = !context.askStart || c.startPoint !== null;
-  return PROBES.find((p) => !c.probesAsked.includes(p) && !(p === "start_point" && skipStart)) ?? null;
+  return ASKED_PROBES.find((p) => !c.probesAsked.includes(p) && !(p === "start_point" && skipStart)) ?? null;
 }

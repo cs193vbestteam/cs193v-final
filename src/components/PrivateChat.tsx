@@ -51,6 +51,10 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
   // A refresh during a send must not erase its optimistic message or draft.
   const { messages, summary, missing } = submission?.eventId === eventId ? submission : latest;
 
+  // The assistant has asked them to click "I'm done": draw the eye to it until they do.
+  const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
+  const askedToFinish = !ready && missing.length === 0 && /\bI['’]m done\b/i.test(lastAssistant);
+
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages]);
@@ -180,7 +184,8 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
           <button
             onClick={toggleReady}
             disabled={pending || (!ready && missing.length > 0)}
-            className={ready ? "btn-ghost btn-sm" : "btn btn-sm"}
+            className={ready ? "btn-ghost btn-sm" : `btn btn-sm${askedToFinish ? " btn-attention" : ""}`}
+            data-attention={askedToFinish || undefined}
           >
             {ready ? "Not done yet" : "I'm done"}
           </button>

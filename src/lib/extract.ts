@@ -7,7 +7,7 @@ import {
   type ConstraintsUpdate,
   ConstraintsUpdateSchema,
   PENDING,
-  PROBES,
+  ASKED_PROBES,
   type ProbeContext,
   SOFT_DIMS,
   nextProbe,
@@ -23,23 +23,34 @@ import { ruleTurn } from "./extract-rules";
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 export type ExtractResult = { reply: string; update: ConstraintsUpdate; source: "llm" | "rules" };
 
+/** What the model may set `pending` to: everything but the retired trade-off questions. */
+const ASKABLE_PENDING = PENDING.filter((p) => !p.startsWith("tradeoff"));
+
 const SYSTEM_PROMPT = `You are a private assistant helping ONE person plan a group meal with friends.
 Only this person sees this chat. Your job: learn their real constraints quickly and kindly, in 1-2 short sentences per reply.
 
 Hard constraints to collect (ask for whichever is missing, one at a time):
 - time: which weekend slots they are free (${SLOTS.join(", ")})
-- budget: max dollars per person, and whether they can stretch a bit (budgetFlex = extra dollars that are "a stretch but OK")
+- budget: max dollars per person, and whether they can stretch a bit (budgetFlex = extra dollars that are "a stretch but OK").
+  Accept any form: a range like "50-100" or "$50 to $100" means budgetMax = the low end and budgetFlex = high minus low;
+  "60ish" / "around 60" / "100 max" / "under 80" are budgetMax; "$" = 20, "$$" = 40, "$$$" = 70, "$$$$" = 120.
 - distance: max one-way travel minutes
-- diet: restrictions (${DIETARY.join(", ")}), or confirm none (dietaryConfirmed=true)
+- diet: restrictions (${DIETARY.join(", ")}), or confirm none (dietaryConfirmed=true).
+  Free text is a valid answer. Map what you can: any fish or shellfish (clams, crabs, shrimp, lobster, oysters,
+  "anything with shells", sushi) → no_seafood; spice/chili → no_spicy; no meat → vegetarian; no pork → halal.
+  Whenever they name something specific, also put their own words in avoidNotes (e.g. "clams and crabs, anything with shells")
+  and set dietaryConfirmed=true. If something can't be mapped to a flag, say honestly that you'll keep it in mind but can only
+  check restaurants for spicy, vegetarian, seafood and halal. Never reply that you didn't understand a reasonable answer.
 Soft preferences: liked/disliked cuisines (${CUISINES.join(", ")}).
 
+Never ask trade-off questions such as "paying $10 over budget or travelling 10 minutes further": people find them redundant.
+If they volunteer what matters most ("price matters most"), set weights: that dimension 0.5, the other two 0.25 each.
+
 Once the essentials are known, ask these follow-ups ONE at a time, each exactly once (track them in probesAsked):
-- tradeoff_budget_travel: "Which is worse: paying $10 over budget, or travelling 10 minutes further?" → nudge weights (+0.15 to what they protect, -0.1 to the other; keep each within 0.1..0.7).
-- tradeoff_cuisine_travel: same shape for cuisine vs travel.
 - concession: "If something has to give, what goes first: cuisine, distance or budget?" → concessionOrder, in the order they give (${SOFT_DIMS.join(", ")}; "distance" = travel).
 - start_point (ONLY when it is the "Next follow-up" named below): ask roughly where they will be travelling from. A neighbourhood or cross street is enough, it is optional, and it is used only to measure their own trip. Put the place in startText, exactly as they wrote it. If they decline, just set pending to null.
 If the person volunteers where they are coming from at any point, record it in startText. Never guess a place they did not state.
-Set "pending" to the question you just asked (${PENDING.join(", ")}) and back to null once answered.
+Set "pending" to the question you just asked (${ASKABLE_PENDING.join(", ")}) and back to null once answered.
 
 Never accept "whatever" / "anything" / "don't care" for budget or distance. Reply with an either/or instead
 ("Which would bother you more: $45 a head, or $25 a head somewhere less exciting?") and set pending to vague_budget / vague_distance;
@@ -67,6 +78,11 @@ const TOOL = {
           availableSlots: { type: "array", items: { type: "string", enum: [...SLOTS] } },
           dietary: { type: "array", items: { type: "string", enum: [...DIETARY] } },
           dietaryConfirmed: { type: "boolean" },
+          avoidNotes: {
+            type: "array",
+            items: { type: "string" },
+            description: "Foods they avoid, in their own words, when they named something specific.",
+          },
           maxTravelMin: { type: "integer" },
           startText: { type: "string", description: "The place the person says they will travel from, verbatim." },
           likedCuisines: { type: "array", items: { type: "string", enum: [...CUISINES] } },
@@ -76,8 +92,8 @@ const TOOL = {
             properties: { budget: { type: "number" }, travel: { type: "number" }, cuisine: { type: "number" } },
           },
           concessionOrder: { type: "array", items: { type: "string", enum: [...SOFT_DIMS] } },
-          probesAsked: { type: "array", items: { type: "string", enum: [...PROBES] } },
-          pending: { type: ["string", "null"], enum: [...PENDING, null] },
+          probesAsked: { type: "array", items: { type: "string", enum: [...ASKED_PROBES] } },
+          pending: { type: ["string", "null"], enum: [...ASKABLE_PENDING, null] },
         },
       },
     },
