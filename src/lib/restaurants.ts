@@ -23,6 +23,12 @@ export type Restaurant = {
   halal: boolean;
   /** Slots the restaurant is open for. */
   open: Slot[];
+  /** Google's public rating, 1 to 5, and how many reviews it rests on. Places results only. */
+  rating?: number;
+  ratingCount?: number;
+  /** Street address and a Google Maps link, shown to the group for the chosen place. Places results only. */
+  address?: string;
+  mapsUrl?: string;
 };
 
 const ALL: Slot[] = ["fri_dinner", "sat_lunch", "sat_dinner", "sun_lunch", "sun_dinner"];

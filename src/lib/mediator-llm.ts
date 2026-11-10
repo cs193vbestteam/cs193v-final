@@ -46,6 +46,7 @@ const publicFacts = (r: Restaurant, slot: Candidate["slot"]) => ({
   when: SLOT_LABELS[slot],
   pricePerPerson: r.pricePerPerson,
   travelMinFromPlanLocation: Math.round(r.travelMin),
+  ...(r.rating !== undefined ? { googleRating: r.rating, reviews: r.ratingCount ?? 0 } : {}),
 });
 
 /** The anonymous history, keyed by restaurant name. */

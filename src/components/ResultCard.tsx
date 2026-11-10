@@ -57,6 +57,26 @@ export function ResultCard({ result }: { result: StoredResult }) {
               {SLOT_LABELS[result.proposal!.slot]} · ~${r.pricePerPerson}/person
               {r.travelMin !== undefined ? ` · ${r.travelMin} min away` : ""} · {r.cuisine}
             </div>
+            {(r.rating !== undefined || r.address || r.mapsUrl) && (
+              <div className="mt-1 text-sm text-ink-2">
+                {r.rating !== undefined && (
+                  <span>
+                    {r.rating.toFixed(1)} on Google
+                    {r.ratingCount ? ` (${r.ratingCount.toLocaleString("en-US")} reviews)` : ""}
+                  </span>
+                )}
+                {r.rating !== undefined && r.address ? " · " : ""}
+                {r.address}
+                {r.mapsUrl && /^https:\/\//.test(r.mapsUrl) && (
+                  <>
+                    {r.rating !== undefined || r.address ? " · " : ""}
+                    <a href={r.mapsUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                      Open in Google Maps
+                    </a>
+                  </>
+                )}
+              </div>
+            )}
             {result.explanation && <p className="mt-2 text-sm italic text-ink-2">{result.explanation}</p>}
           </div>
         ) : (

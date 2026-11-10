@@ -126,6 +126,9 @@ function score(h: Hints, c: Candidate): number {
   s += 15 * (h.mehCuisines.get(r.cuisine) ?? 0);
   // Mild prior: mid-priced and nearby first, so early rounds are informative.
   s += Math.abs(r.pricePerPerson - 30) * 0.3 + r.travelMin * 0.2;
+  // Among otherwise similar options, try the better-reviewed first. A public rating, nobody's preference;
+  // it only breaks near-ties, so what the tallies say always outweighs it. Too few reviews say nothing.
+  if (r.rating !== undefined && (r.ratingCount ?? 0) >= 20) s -= (r.rating - 4) * 6;
   return s;
 }
 
