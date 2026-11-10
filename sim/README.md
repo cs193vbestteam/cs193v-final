@@ -37,3 +37,11 @@ ANTHROPIC_API_KEY=... npm run sim -- --groups 200 --seed 1 --llm-baseline --llm-
 - **Panel (b)**: for groups that reached unanimous acceptance, the round in which it happened. The two bars on the right are groups that ended in a compromise (a plan nobody rejects but not everyone accepts) and groups with no plan at all. Groups with no plan are almost always ones where the oracle also found nothing, so compare `no deal` with the `oracle feasible` rate in the table.
 
 The table columns `agreed given feasible` and `plan given feasible` are the ones to watch: they condition on the oracle having found something, so they say how often the protocol finds it rather than how often the synthetic generator produced a solvable group.
+
+## Persona simulation
+
+```
+npm run personas -- --people 5 --seed sim/seeds/friends.md
+```
+
+`sim/personas.ts` has an LLM play a group of people who chat with the real private assistant, then runs the real negotiation and records how each persona reacts to the plan. It writes its report to `sim/out/` and uses an in-memory database, so local data is untouched. It needs an LLM key: `ANTHROPIC_API_KEY` by default, or `OPENROUTER_API_KEY`, or `LLM_API_KEY` with `LLM_BASE_URL`. `PERSONA_MODEL` (or `LLM_MODEL_NAME`) overrides the model. `--llm-assistant` also puts the assistant on the LLM path.
