@@ -40,8 +40,10 @@ afterEach(async () => {
   Reflect.deleteProperty(globalThis, "IntersectionObserver");
 });
 
+// Reveal requires children in its props type, so pass them as a prop here.
 const render = async (props: Partial<Parameters<typeof Reveal>[0]> = {}) => {
-  await act(async () => root.render(createElement(Reveal, { ...props }, "hello")));
+  // eslint-disable-next-line react/no-children-prop
+  await act(async () => root.render(createElement(Reveal, { children: "hello", ...props })));
   return container.firstElementChild as HTMLElement;
 };
 

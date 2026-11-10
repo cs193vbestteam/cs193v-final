@@ -44,6 +44,8 @@ To try the full flow alone, sign up in a normal window and an incognito window, 
 
 ## Tests
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the team workflow (issues, branches, PRs, review), the style guide and how we handle secrets.
+
 ```bash
 npm test          # vitest: crypto, extraction, evaluation, negotiation, auth, data access + privacy
 npm run typecheck
