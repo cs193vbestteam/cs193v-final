@@ -43,7 +43,11 @@ export function llmSelector(apiKey: string, model = process.env.ANTHROPIC_MODEL 
           {
             name: "pick",
             description: "Choose option ids from the shortlist.",
-            input_schema: { type: "object", properties: { ids: { type: "array", items: { type: "integer" } } }, required: ["ids"] },
+            input_schema: {
+              type: "object",
+              properties: { ids: { type: "array", items: { type: "integer" } } },
+              required: ["ids"],
+            },
           },
         ],
         tool_choice: { type: "tool", name: "pick" },
@@ -55,7 +59,9 @@ export function llmSelector(apiKey: string, model = process.env.ANTHROPIC_MODEL 
     const data = (await res.json()) as { content?: { type: string; input?: { ids?: unknown } }[] };
     const ids = data.content?.find((b) => b.type === "tool_use")?.input?.ids;
     if (!Array.isArray(ids)) return [];
-    return ids.filter((i): i is number => Number.isInteger(i) && i >= 0 && i < shortlist.length).map((i) => shortlist[i]);
+    return ids
+      .filter((i): i is number => Number.isInteger(i) && i >= 0 && i < shortlist.length)
+      .map((i) => shortlist[i]);
   };
 }
 

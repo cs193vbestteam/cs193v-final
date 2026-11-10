@@ -54,8 +54,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </form>
             ) : (
               <nav className="flex items-center gap-2">
-                <Link href="/login" className="btn-ghost btn-sm">Log in</Link>
-                <Link href="/signup" className="btn btn-sm">Sign up</Link>
+                <Link href="/login" className="btn-ghost btn-sm">
+                  Log in
+                </Link>
+                <Link href="/signup" className="btn btn-sm">
+                  Sign up
+                </Link>
               </nav>
             )}
           </div>

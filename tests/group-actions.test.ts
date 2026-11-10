@@ -26,9 +26,17 @@ async function render(readyCount: number, memberCount: number, decided = false) 
     document.body.appendChild(container);
     root = createRoot(container);
   }
-  await act(async () => root!.render(createElement(NegotiateButton, {
-    eventId: "event-1", inviteCode: "invite-1", readyCount, memberCount, decided,
-  })));
+  await act(async () =>
+    root!.render(
+      createElement(NegotiateButton, {
+        eventId: "event-1",
+        inviteCode: "invite-1",
+        readyCount,
+        memberCount,
+        decided,
+      }),
+    ),
+  );
   return container.querySelector("button")!;
 }
 

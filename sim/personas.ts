@@ -46,10 +46,19 @@ const LLM_KEY = process.env.LLM_API_KEY || process.env.OPENROUTER_API_KEY || pro
 // Default to Claude directly (Anthropic's OpenAI-compatible endpoint); OPENROUTER_API_KEY or LLM_* override.
 const LLM_BASE =
   process.env.LLM_BASE_URL ||
-  (process.env.LLM_API_KEY ? "https://api.openai.com/v1" : process.env.OPENROUTER_API_KEY ? "https://openrouter.ai/api/v1" : "https://api.anthropic.com/v1");
-const LLM_MODEL = process.env.PERSONA_MODEL || process.env.LLM_MODEL_NAME || (process.env.OPENROUTER_API_KEY && !process.env.LLM_API_KEY ? "anthropic/claude-haiku-5.5" : "claude-haiku-5-5");
+  (process.env.LLM_API_KEY
+    ? "https://api.openai.com/v1"
+    : process.env.OPENROUTER_API_KEY
+      ? "https://openrouter.ai/api/v1"
+      : "https://api.anthropic.com/v1");
+const LLM_MODEL =
+  process.env.PERSONA_MODEL ||
+  process.env.LLM_MODEL_NAME ||
+  (process.env.OPENROUTER_API_KEY && !process.env.LLM_API_KEY ? "anthropic/claude-haiku-5.5" : "claude-haiku-5-5");
 if (!LLM_KEY) {
-  console.error("No LLM key. Put ANTHROPIC_API_KEY in .env.local (or run with OPENROUTER_API_KEY / LLM_API_KEY + LLM_BASE_URL).");
+  console.error(
+    "No LLM key. Put ANTHROPIC_API_KEY in .env.local (or run with OPENROUTER_API_KEY / LLM_API_KEY + LLM_BASE_URL).",
+  );
   process.exit(1);
 }
 
@@ -66,7 +75,10 @@ delete process.env.GOOGLE_PLACES_API_KEY;
 // ── LLM client (OpenAI-compatible, like MiroFish's) ──
 type Msg = { role: "system" | "user" | "assistant"; content: string };
 let llmCalls = 0;
-async function chat(messages: Msg[], opts: { json?: boolean; temperature?: number; maxTokens?: number } = {}): Promise<string> {
+async function chat(
+  messages: Msg[],
+  opts: { json?: boolean; temperature?: number; maxTokens?: number } = {},
+): Promise<string> {
   llmCalls++;
   const body: Record<string, unknown> = { model: LLM_MODEL, messages, max_tokens: opts.maxTokens ?? 400 };
   // Claude 5 models reject `temperature` on the OpenAI-compatible endpoint; other providers still take it.
@@ -98,7 +110,10 @@ async function chat(messages: Msg[], opts: { json?: boolean; temperature?: numbe
   throw new Error("LLM: gave up after retries");
 }
 function parseJson<T>(text: string): T {
-  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "").trim();
+  const cleaned = text
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```\s*$/, "")
+    .trim();
   const start = cleaned.search(/[[{]/);
   return JSON.parse(cleaned.slice(start)) as T;
 }
@@ -163,12 +178,21 @@ Return ONLY a JSON object {"personas": [...]} with exactly ${PEOPLE} personas. E
   }
 }
 Make the hidden constraints diverse and in tension with each other, but such that at least one restaurant could plausibly work for the group. The "hidden" block is ground truth the person knows about themselves but would not post in a group chat.`;
-  const out = await chat([{ role: "system", content: sys }, { role: "user", content: `Seed document:\n\n${seed}` }], { json: true, temperature: 0.9, maxTokens: 2500 });
+  const out = await chat(
+    [
+      { role: "system", content: sys },
+      { role: "user", content: `Seed document:\n\n${seed}` },
+    ],
+    { json: true, temperature: 0.9, maxTokens: 2500 },
+  );
   const parsed = parseJson<{ personas: Persona[] }>(out);
   return parsed.personas.slice(0, PEOPLE);
 }
 
-const personaSystem = (p: Persona, T: Awaited<ReturnType<typeof tacit>>) => `You are ${p.name}, ${p.age}, ${p.mbti}. ${p.bio}
+const personaSystem = (
+  p: Persona,
+  T: Awaited<ReturnType<typeof tacit>>,
+) => `You are ${p.name}, ${p.age}, ${p.mbti}. ${p.bio}
 ${p.persona}
 Texting style: ${p.texting_style}
 
@@ -221,17 +245,33 @@ async function runPersonaChat(p: Persona, userId: string, eventId: string, T: Aw
 
 // ── Elicitation accuracy: what the assistant wrote down vs the ground truth ──
 function setEq(a: readonly string[], b: readonly string[]) {
-  const A = new Set(a), B = new Set(b);
+  const A = new Set(a),
+    B = new Set(b);
   return A.size === B.size && [...A].every((x) => B.has(x));
 }
 function jaccard(a: readonly string[], b: readonly string[]) {
-  const A = new Set(a), B = new Set(b);
+  const A = new Set(a),
+    B = new Set(b);
   const inter = [...A].filter((x) => B.has(x)).length;
   const uni = new Set([...A, ...B]).size;
   return uni === 0 ? 1 : inter / uni;
 }
 type Accuracy = ReturnType<typeof accuracy>;
-function accuracy(h: Hidden, c: { availableSlots: string[] | null; budgetMax: number | null; budgetFlex: number; maxTravelMin: number | null; dietary: string[]; dietaryConfirmed: boolean; likedCuisines: string[]; dislikedCuisines: string[]; weights: Record<string, number>; concessionOrder: string[] | null }) {
+function accuracy(
+  h: Hidden,
+  c: {
+    availableSlots: string[] | null;
+    budgetMax: number | null;
+    budgetFlex: number;
+    maxTravelMin: number | null;
+    dietary: string[];
+    dietaryConfirmed: boolean;
+    likedCuisines: string[];
+    dislikedCuisines: string[];
+    weights: Record<string, number>;
+    concessionOrder: string[] | null;
+  },
+) {
   return {
     slotsExact: setEq(h.availableSlots, c.availableSlots ?? []),
     slotsJaccard: jaccard(h.availableSlots, c.availableSlots ?? []),
@@ -243,7 +283,10 @@ function accuracy(h: Hidden, c: { availableSlots: string[] | null; budgetMax: nu
     dietExact: c.dietaryConfirmed && setEq(h.dietary, c.dietary),
     likesJaccard: jaccard(h.likedCuisines, c.likedCuisines),
     dislikesJaccard: jaccard(h.dislikedCuisines, c.dislikedCuisines),
-    budgetVsTravelRight: (c.weights.budget > c.weights.travel) === (h.budgetVsTravel === "budget") || c.weights.budget === c.weights.travel ? (c.weights.budget !== c.weights.travel) : false,
+    budgetVsTravelRight:
+      c.weights.budget > c.weights.travel === (h.budgetVsTravel === "budget") || c.weights.budget === c.weights.travel
+        ? c.weights.budget !== c.weights.travel
+        : false,
     concessionFirstRight: !!c.concessionOrder && c.concessionOrder[0] === h.concessionOrder[0],
   };
 }
@@ -261,19 +304,30 @@ async function main() {
   const stamp = Date.now();
   const users = [] as { id: string; persona: Persona }[];
   for (const [i, p] of personas.entries()) {
-    const u = await T.createUser({ email: `${p.name.toLowerCase()}${i}.${stamp}@personas.test`, displayName: p.name, password: "persona-pass-1234" });
+    const u = await T.createUser({
+      email: `${p.name.toLowerCase()}${i}.${stamp}@personas.test`,
+      displayName: p.name,
+      password: "persona-pass-1234",
+    });
     users.push({ id: u.id, persona: p });
   }
   const event = await T.createEvent(users[0].id, "Dinner this weekend", LOCATION || null);
   for (const u of users.slice(1)) await T.joinEvent(event.inviteCode, u.id);
 
   console.log("\nchatting with the assistant…");
-  const chats = [] as { persona: Persona; userId: string; run: Awaited<ReturnType<typeof runPersonaChat>>; acc: Accuracy }[];
+  const chats = [] as {
+    persona: Persona;
+    userId: string;
+    run: Awaited<ReturnType<typeof runPersonaChat>>;
+    acc: Accuracy;
+  }[];
   for (const u of users) {
     const run = await runPersonaChat(u.persona, u.id, event.id, T);
     const acc = accuracy(u.persona.hidden, run.constraints);
     chats.push({ persona: u.persona, userId: u.id, run, acc });
-    console.log(`  ${u.persona.name}: ${run.turns} turns, ready=${run.ready}${run.missing.length ? ` (still missing ${run.missing.join(",")})` : ""}`);
+    console.log(
+      `  ${u.persona.name}: ${run.turns} turns, ready=${run.ready}${run.missing.length ? ` (still missing ${run.missing.join(",")})` : ""}`,
+    );
   }
 
   // Negotiation (only possible if everyone got to ready)
@@ -298,68 +352,137 @@ async function main() {
       const out = await chat(
         [
           { role: "system", content: sys },
-          { role: "user", content: `The app just posted this to the group chat: "${line}". Rate how happy you honestly are with this plan from 1 (no way) to 5 (perfect) and say why in one short message, in character. Return ONLY JSON: {"rating": n, "comment": "..."}` },
+          {
+            role: "user",
+            content: `The app just posted this to the group chat: "${line}". Rate how happy you honestly are with this plan from 1 (no way) to 5 (perfect) and say why in one short message, in character. Return ONLY JSON: {"rating": n, "comment": "..."}`,
+          },
         ],
         { json: true, temperature: 0.7, maxTokens: 120 },
       );
       const parsed = parseJson<{ rating: number; comment: string }>(out);
-      const truePrefs = T.compile(T.mergeConstraints(T.emptyConstraints(), {
-        availableSlots: c.persona.hidden.availableSlots as never,
-        budgetMax: c.persona.hidden.budgetMax,
-        budgetFlex: c.persona.hidden.budgetFlex,
-        maxTravelMin: c.persona.hidden.maxTravelMin,
-        dietary: c.persona.hidden.dietary as never,
-        dietaryConfirmed: true,
-        likedCuisines: c.persona.hidden.likedCuisines as never,
-        dislikedCuisines: c.persona.hidden.dislikedCuisines as never,
-        concessionOrder: c.persona.hidden.concessionOrder,
-      }));
+      const truePrefs = T.compile(
+        T.mergeConstraints(T.emptyConstraints(), {
+          availableSlots: c.persona.hidden.availableSlots as never,
+          budgetMax: c.persona.hidden.budgetMax,
+          budgetFlex: c.persona.hidden.budgetFlex,
+          maxTravelMin: c.persona.hidden.maxTravelMin,
+          dietary: c.persona.hidden.dietary as never,
+          dietaryConfirmed: true,
+          likedCuisines: c.persona.hidden.likedCuisines as never,
+          dislikedCuisines: c.persona.hidden.dislikedCuisines as never,
+          concessionOrder: c.persona.hidden.concessionOrder,
+        }),
+      );
       const full = T.getRestaurant(result.proposal.restaurantId);
       const trueBucket = full ? T.bucket(truePrefs, full, result.proposal.slot) : 0;
       const trueVerdict = full ? T.evaluate(truePrefs, full, result.proposal.slot).verdict : "?";
-      reactions.push({ name: c.persona.name, rating: Number(parsed.rating), comment: parsed.comment, trueBucket, trueVerdict });
+      reactions.push({
+        name: c.persona.name,
+        rating: Number(parsed.rating),
+        comment: parsed.comment,
+        trueBucket,
+        trueVerdict,
+      });
     }
   }
 
   // ── Report ──
   const md: string[] = [];
-  md.push(`# Persona simulation against Tacit`, ``, `Model: \`${LLM_MODEL}\` · ${personas.length} personas · assistant on the rule-based path · ${llmCalls} LLM calls · ${new Date().toISOString()}`, ``);
+  md.push(
+    `# Persona simulation against Tacit`,
+    ``,
+    `Model: \`${LLM_MODEL}\` · ${personas.length} personas · assistant on the rule-based path · ${llmCalls} LLM calls · ${new Date().toISOString()}`,
+    ``,
+  );
   md.push(`Seed: \`${path.relative(ROOT, SEED_FILE)}\``, ``);
   md.push(`## Personas`, ``);
   for (const p of personas) {
-    md.push(`### ${p.name} (${p.age}, ${p.mbti}, ${p.openness})`, ``, p.bio, ``, p.persona, ``, `_Texting style:_ ${p.texting_style}`, ``, "```json", JSON.stringify(p.hidden), "```", ``);
+    md.push(
+      `### ${p.name} (${p.age}, ${p.mbti}, ${p.openness})`,
+      ``,
+      p.bio,
+      ``,
+      p.persona,
+      ``,
+      `_Texting style:_ ${p.texting_style}`,
+      ``,
+      "```json",
+      JSON.stringify(p.hidden),
+      "```",
+      ``,
+    );
   }
   md.push(`## Elicitation accuracy`, ``, `What the assistant wrote down vs. the persona's ground truth.`, ``);
-  md.push(`| person | turns | ready | slots exact | slots J | budget Δ | flex ok | travel Δ | diet exact | likes J | dislikes J | budget/travel weight | concession first |`);
+  md.push(
+    `| person | turns | ready | slots exact | slots J | budget Δ | flex ok | travel Δ | diet exact | likes J | dislikes J | budget/travel weight | concession first |`,
+  );
   md.push(`|---|---:|---|---|---:|---:|---|---:|---|---:|---:|---|---|`);
   for (const c of chats) {
     const a = c.acc;
-    md.push(`| ${c.persona.name} | ${c.run.turns} | ${c.run.ready ? "yes" : `no (${c.run.missing.join(", ")})`} | ${a.slotsExact ? "✓" : "✗"} | ${a.slotsJaccard.toFixed(2)} | ${a.budgetDelta ?? "–"} | ${a.flexCaptured ? "✓" : "✗"} | ${a.travelDelta ?? "–"} | ${a.dietExact ? "✓" : "✗"} | ${a.likesJaccard.toFixed(2)} | ${a.dislikesJaccard.toFixed(2)} | ${a.budgetVsTravelRight ? "✓" : "✗"} | ${a.concessionFirstRight ? "✓" : "✗"} |`);
+    md.push(
+      `| ${c.persona.name} | ${c.run.turns} | ${c.run.ready ? "yes" : `no (${c.run.missing.join(", ")})`} | ${a.slotsExact ? "✓" : "✗"} | ${a.slotsJaccard.toFixed(2)} | ${a.budgetDelta ?? "–"} | ${a.flexCaptured ? "✓" : "✗"} | ${a.travelDelta ?? "–"} | ${a.dietExact ? "✓" : "✗"} | ${a.likesJaccard.toFixed(2)} | ${a.dislikesJaccard.toFixed(2)} | ${a.budgetVsTravelRight ? "✓" : "✗"} | ${a.concessionFirstRight ? "✓" : "✗"} |`,
+    );
   }
-  const rate = (k: keyof Accuracy) => `${Math.round((chats.filter((c) => c.acc[k] === true).length / chats.length) * 100)}%`;
-  md.push(``, `Exact slots ${rate("slotsExact")} · budget within $5 ${rate("budgetWithin5")} · travel within 5 min ${rate("travelWithin5")} · diet exact ${rate("dietExact")} · weight direction ${rate("budgetVsTravelRight")} · first concession ${rate("concessionFirstRight")}`, ``);
+  const rate = (k: keyof Accuracy) =>
+    `${Math.round((chats.filter((c) => c.acc[k] === true).length / chats.length) * 100)}%`;
+  md.push(
+    ``,
+    `Exact slots ${rate("slotsExact")} · budget within $5 ${rate("budgetWithin5")} · travel within 5 min ${rate("travelWithin5")} · diet exact ${rate("dietExact")} · weight direction ${rate("budgetVsTravelRight")} · first concession ${rate("concessionFirstRight")}`,
+    ``,
+  );
 
   md.push(`## Negotiation`, ``);
-  if (!allReady) md.push(`Not run: ${chats.filter((c) => !c.run.ready).map((c) => c.persona.name).join(", ")} never reached "ready" (the assistant was still missing essentials after ${MAX_TURNS} turns).`, ``);
+  if (!allReady)
+    md.push(
+      `Not run: ${chats
+        .filter((c) => !c.run.ready)
+        .map((c) => c.persona.name)
+        .join(", ")} never reached "ready" (the assistant was still missing essentials after ${MAX_TURNS} turns).`,
+      ``,
+    );
   else if (negotiationError) md.push(`Failed: ${negotiationError}`, ``);
   else if (result) {
-    const r = result.proposal ? (result.places[result.proposal.restaurantId] ?? T.getRestaurant(result.proposal.restaurantId)) : null;
-    md.push(`**${result.status}** after ${result.rounds.length} round(s), concession level ${result.concessionLevel}, ${result.leakedDims} dimension names seen by the mediator.`, ``);
-    if (result.proposal && r) md.push(`Plan: **${r.name}**, ${T.SLOT_LABELS[result.proposal.slot]}, ~$${r.pricePerPerson}/person, ${r.travelMin} min, ${r.cuisine}.`, ``);
-    if (result.reservations.length) md.push(`Reservations: ${result.reservations.map((x) => `${result!.memberNames[x.member]} (${x.dim})`).join(", ")}`, ``);
+    const r = result.proposal
+      ? (result.places[result.proposal.restaurantId] ?? T.getRestaurant(result.proposal.restaurantId))
+      : null;
+    md.push(
+      `**${result.status}** after ${result.rounds.length} round(s), concession level ${result.concessionLevel}, ${result.leakedDims} dimension names seen by the mediator.`,
+      ``,
+    );
+    if (result.proposal && r)
+      md.push(
+        `Plan: **${r.name}**, ${T.SLOT_LABELS[result.proposal.slot]}, ~$${r.pricePerPerson}/person, ${r.travelMin} min, ${r.cuisine}.`,
+        ``,
+      );
+    if (result.reservations.length)
+      md.push(
+        `Reservations: ${result.reservations.map((x) => `${result!.memberNames[x.member]} (${x.dim})`).join(", ")}`,
+        ``,
+      );
     if (result.conflicts.length) md.push(`Conflicts: ${result.conflicts.join(", ")}`, ``);
     for (const round of result.rounds) {
-      md.push(`- Round ${round.round}${round.level ? ` (concession ${round.level})` : ""}: ` + round.proposals.map((p) => {
-        const pr = result!.places[p.proposal.restaurantId] ?? T.getRestaurant(p.proposal.restaurantId);
-        return `${p.retried ? "↺ " : ""}${pr?.name} ${T.SLOT_LABELS[p.proposal.slot]} ${p.tally.accept}/${p.tally.reluctant}/${p.tally.reject}`;
-      }).join(" · "));
+      md.push(
+        `- Round ${round.round}${round.level ? ` (concession ${round.level})` : ""}: ` +
+          round.proposals
+            .map((p) => {
+              const pr = result!.places[p.proposal.restaurantId] ?? T.getRestaurant(p.proposal.restaurantId);
+              return `${p.retried ? "↺ " : ""}${pr?.name} ${T.SLOT_LABELS[p.proposal.slot]} ${p.tally.accept}/${p.tally.reluctant}/${p.tally.reject}`;
+            })
+            .join(" · "),
+      );
     }
     md.push(``);
   }
 
   if (reactions.length) {
-    md.push(`## Reactions (personas see only the public plan)`, ``, `| person | says | true verdict | true bucket | comment |`, `|---|---:|---|---:|---|`);
-    for (const x of reactions) md.push(`| ${x.name} | ${x.rating}/5 | ${x.trueVerdict} | ${x.trueBucket} | ${x.comment.replace(/\|/g, "/")} |`);
+    md.push(
+      `## Reactions (personas see only the public plan)`,
+      ``,
+      `| person | says | true verdict | true bucket | comment |`,
+      `|---|---:|---|---:|---|`,
+    );
+    for (const x of reactions)
+      md.push(`| ${x.name} | ${x.rating}/5 | ${x.trueVerdict} | ${x.trueBucket} | ${x.comment.replace(/\|/g, "/")} |`);
     const agree = reactions.filter((x) => Math.abs(x.rating - x.trueBucket) <= 1).length;
     md.push(``, `Self-reported rating within 1 of the true utility bucket: ${agree}/${reactions.length}.`, ``);
   }
@@ -367,13 +490,27 @@ async function main() {
   md.push(`## Transcripts`, ``);
   for (const c of chats) {
     md.push(`### ${c.persona.name}`, ``);
-    for (const t of c.run.transcript) md.push(`- **${t.who === "assistant" ? "assistant" : c.persona.name}:** ${t.text.replace(/\n/g, " ")}`);
+    for (const t of c.run.transcript)
+      md.push(`- **${t.who === "assistant" ? "assistant" : c.persona.name}:** ${t.text.replace(/\n/g, " ")}`);
     md.push(``, `Assistant's summary: ${T.describeConstraints(c.run.constraints).join(" · ") || "(nothing)"}`, ``);
   }
 
   const outMd = path.join(OUT_DIR, "personas-report.md");
   writeFileSync(outMd, md.join("\n"));
-  writeFileSync(path.join(OUT_DIR, "personas-run.json"), JSON.stringify({ model: LLM_MODEL, personas, chats: chats.map((c) => ({ name: c.persona.name, run: c.run, acc: c.acc })), result, reactions }, null, 2));
+  writeFileSync(
+    path.join(OUT_DIR, "personas-run.json"),
+    JSON.stringify(
+      {
+        model: LLM_MODEL,
+        personas,
+        chats: chats.map((c) => ({ name: c.persona.name, run: c.run, acc: c.acc })),
+        result,
+        reactions,
+      },
+      null,
+      2,
+    ),
+  );
   console.log(`\nwrote ${outMd}`);
   if (result) console.log(`negotiation: ${result.status}`);
   process.exit(0);

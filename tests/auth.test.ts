@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { AuthError, authenticate, createSession, createUser, deleteSession, getUserBySession, hashPassword, verifyPassword } from "@/lib/auth";
+import {
+  AuthError,
+  authenticate,
+  createSession,
+  createUser,
+  deleteSession,
+  getUserBySession,
+  hashPassword,
+  verifyPassword,
+} from "@/lib/auth";
 import { db, resetDbForTests } from "@/lib/db";
 
 beforeEach(() => resetDbForTests());

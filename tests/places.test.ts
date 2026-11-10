@@ -2,9 +2,19 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { SLOTS } from "@/lib/constraints";
-import { haversineKm, inferCuisine, openSlots, resolvePool, toPool, toRestaurant, type PlaceResult } from "@/lib/places";
+import {
+  haversineKm,
+  inferCuisine,
+  openSlots,
+  resolvePool,
+  toPool,
+  toRestaurant,
+  type PlaceResult,
+} from "@/lib/places";
 
-const fixture = JSON.parse(readFileSync(path.join(__dirname, "fixtures/places-nearby.json"), "utf8")) as { places: PlaceResult[] };
+const fixture = JSON.parse(readFileSync(path.join(__dirname, "fixtures/places-nearby.json"), "utf8")) as {
+  places: PlaceResult[];
+};
 const CENTER = { lat: 37.4275, lng: -122.1697 }; // Stanford
 const byId = (id: string) => fixture.places.find((p) => p.id === id)!;
 
@@ -44,7 +54,17 @@ describe("openSlots", () => {
 describe("toRestaurant", () => {
   it("maps price level, travel time, flags and hours", () => {
     const r = toRestaurant(byId("ChIJ_sushi"), CENTER)!;
-    expect(r).toMatchObject({ id: "ChIJ_sushi", name: "Sakura Omakase", cuisine: "japanese", pricePerPerson: 55, travelMin: 3, seafoodHeavy: true, vegetarianFriendly: false, spicy: false, halal: false });
+    expect(r).toMatchObject({
+      id: "ChIJ_sushi",
+      name: "Sakura Omakase",
+      cuisine: "japanese",
+      pricePerPerson: 55,
+      travelMin: 3,
+      seafoodHeavy: true,
+      vegetarianFriendly: false,
+      spicy: false,
+      halal: false,
+    });
     expect(r.open).toEqual(["fri_dinner", "sat_dinner"]);
   });
   it("estimates travel from distance at city speed", () => {
@@ -81,7 +101,10 @@ describe("resolvePool", () => {
 
   it("uses the seed when there is no location or no key", async () => {
     expect(await resolvePool(null, "k")).toMatchObject({ source: "seed", reason: "no location given" });
-    expect(await resolvePool("Palo Alto", undefined)).toMatchObject({ source: "seed", reason: "no GOOGLE_PLACES_API_KEY" });
+    expect(await resolvePool("Palo Alto", undefined)).toMatchObject({
+      source: "seed",
+      reason: "no GOOGLE_PLACES_API_KEY",
+    });
   });
 
   it("geocodes, fetches nearby places and maps them", async () => {
@@ -98,10 +121,18 @@ describe("resolvePool", () => {
   });
 
   it("falls back when too few places map, when the place is unknown, or when the API errors", async () => {
-    expect(await resolvePool("Stanford", "k", fakeFetch({ places: fixture.places.slice(0, 2) }))).toMatchObject({ source: "seed", reason: "only 2 usable places nearby" });
-    const noGeo = vi.fn(async () => new Response(JSON.stringify({ places: [] }), { status: 200 })) as unknown as typeof fetch;
+    expect(await resolvePool("Stanford", "k", fakeFetch({ places: fixture.places.slice(0, 2) }))).toMatchObject({
+      source: "seed",
+      reason: "only 2 usable places nearby",
+    });
+    const noGeo = vi.fn(
+      async () => new Response(JSON.stringify({ places: [] }), { status: 200 }),
+    ) as unknown as typeof fetch;
     expect(await resolvePool("Atlantis", "k", noGeo)).toMatchObject({ source: "seed", reason: "location not found" });
     const boom = vi.fn(async () => new Response("nope", { status: 403 })) as unknown as typeof fetch;
-    expect(await resolvePool("Stanford", "k", boom)).toMatchObject({ source: "seed", reason: "Places places:searchText 403" });
+    expect(await resolvePool("Stanford", "k", boom)).toMatchObject({
+      source: "seed",
+      reason: "Places places:searchText 403",
+    });
   });
 });

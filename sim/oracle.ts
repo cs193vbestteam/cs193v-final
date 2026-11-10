@@ -27,14 +27,22 @@ export const nashOf = (utilities: readonly number[]): number => utilities.reduce
 export const minOf = (utilities: readonly number[]): number => (utilities.length ? Math.min(...utilities) : 0);
 
 /** True utility of every person for one proposal, in member order. */
-export function utilitiesOf(group: readonly Preferences[], restaurants: readonly Restaurant[], proposal: Proposal): number[] {
+export function utilitiesOf(
+  group: readonly Preferences[],
+  restaurants: readonly Restaurant[],
+  proposal: Proposal,
+): number[] {
   const r = restaurants.find((x) => x.id === proposal.restaurantId);
   if (!r) return group.map(() => 0);
   return group.map((p) => utility(p, r, proposal.slot).value);
 }
 
 /** True when no member has a hard rule violated by this proposal. */
-export function isFeasible(group: readonly Preferences[], restaurants: readonly Restaurant[], proposal: Proposal): boolean {
+export function isFeasible(
+  group: readonly Preferences[],
+  restaurants: readonly Restaurant[],
+  proposal: Proposal,
+): boolean {
   const r = restaurants.find((x) => x.id === proposal.restaurantId);
   if (!r) return false;
   return group.every((p) => utility(p, r, proposal.slot).violated === null);

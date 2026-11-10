@@ -22,7 +22,12 @@ export type PlaceResult = {
   priceLevel?: string;
   location?: { latitude: number; longitude: number };
   servesVegetarianFood?: boolean;
-  regularOpeningHours?: { periods?: { open: { day: number; hour: number; minute?: number }; close?: { day: number; hour: number; minute?: number } }[] };
+  regularOpeningHours?: {
+    periods?: {
+      open: { day: number; hour: number; minute?: number };
+      close?: { day: number; hour: number; minute?: number };
+    }[];
+  };
 };
 
 export const PLACE_FIELDS = [
@@ -145,7 +150,13 @@ export function toPool(results: PlaceResult[], center: LatLng): Restaurant[] {
 
 type Fetcher = typeof fetch;
 
-async function postPlaces<T>(path: string, body: unknown, key: string, fieldMask: string, fetcher: Fetcher): Promise<T> {
+async function postPlaces<T>(
+  path: string,
+  body: unknown,
+  key: string,
+  fieldMask: string,
+  fetcher: Fetcher,
+): Promise<T> {
   const res = await fetcher(`https://places.googleapis.com/v1/${path}`, {
     method: "POST",
     headers: { "content-type": "application/json", "X-Goog-Api-Key": key, "X-Goog-FieldMask": fieldMask },
@@ -170,7 +181,12 @@ export async function geocode(location: string, key: string, fetcher: Fetcher = 
 }
 
 /** Restaurants within `radiusM` of a point (Nearby Search caps at 20 results). */
-export async function nearbyRestaurants(center: LatLng, key: string, radiusM = 5000, fetcher: Fetcher = fetch): Promise<PlaceResult[]> {
+export async function nearbyRestaurants(
+  center: LatLng,
+  key: string,
+  radiusM = 5000,
+  fetcher: Fetcher = fetch,
+): Promise<PlaceResult[]> {
   const data = await postPlaces<{ places?: PlaceResult[] }>(
     "places:searchNearby",
     {
@@ -186,13 +202,19 @@ export async function nearbyRestaurants(center: LatLng, key: string, radiusM = 5
   return data.places ?? [];
 }
 
-export type ResolvedPool = { source: "places"; location: string; center: LatLng; restaurants: Restaurant[] } | { source: "seed"; location: string | null; reason: string };
+export type ResolvedPool =
+  | { source: "places"; location: string; center: LatLng; restaurants: Restaurant[] }
+  | { source: "seed"; location: string | null; reason: string };
 
 /**
  * The pool for a plan near `location`. Falls back to the seed when there is no
  * key, the place can't be found, or fewer than 5 restaurants map cleanly.
  */
-export async function resolvePool(location: string | null, key = process.env.GOOGLE_PLACES_API_KEY, fetcher: Fetcher = fetch): Promise<ResolvedPool> {
+export async function resolvePool(
+  location: string | null,
+  key = process.env.GOOGLE_PLACES_API_KEY,
+  fetcher: Fetcher = fetch,
+): Promise<ResolvedPool> {
   const where = location?.trim() || null;
   if (!where) return { source: "seed", location: null, reason: "no location given" };
   if (!key) return { source: "seed", location: where, reason: "no GOOGLE_PLACES_API_KEY" };
@@ -200,7 +222,8 @@ export async function resolvePool(location: string | null, key = process.env.GOO
     const center = await geocode(where, key, fetcher);
     if (!center) return { source: "seed", location: where, reason: "location not found" };
     const restaurants = toPool(await nearbyRestaurants(center, key, 5000, fetcher), center);
-    if (restaurants.length < 5) return { source: "seed", location: where, reason: `only ${restaurants.length} usable places nearby` };
+    if (restaurants.length < 5)
+      return { source: "seed", location: where, reason: `only ${restaurants.length} usable places nearby` };
     return { source: "places", location: where, center, restaurants };
   } catch (err) {
     return { source: "seed", location: where, reason: (err as Error).message };

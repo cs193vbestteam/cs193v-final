@@ -79,7 +79,11 @@ export function synthPerson(rng: Rng): Constraints {
     raw[d] = 0.1 + rng.next() * 0.9;
     sum += raw[d];
   }
-  const weights: Record<SoftDim, number> = { budget: raw.budget / sum, travel: raw.travel / sum, cuisine: raw.cuisine / sum };
+  const weights: Record<SoftDim, number> = {
+    budget: raw.budget / sum,
+    travel: raw.travel / sum,
+    cuisine: raw.cuisine / sum,
+  };
 
   const concessionOrder: SoftDim[] = rng.shuffle(SOFT_DIMS);
 

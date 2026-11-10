@@ -21,7 +21,9 @@ const render = async (url = firstUrl) => {
   await act(async () => root.render(createElement(CopyInvite, { url })));
 };
 const button = () => container.querySelector("button")!;
-const click = async () => { await act(async () => button().click()); };
+const click = async () => {
+  await act(async () => button().click());
+};
 const status = () => container.querySelector('[role="status"]')!.textContent;
 
 beforeEach(() => {
@@ -44,7 +46,11 @@ afterEach(async () => {
 describe("CopyInvite", () => {
   it("confirms success only after the write resolves and resets the confirmation", async () => {
     let resolve!: () => void;
-    writeText.mockReturnValue(new Promise<void>(r => { resolve = r; }));
+    writeText.mockReturnValue(
+      new Promise<void>((r) => {
+        resolve = r;
+      }),
+    );
     await render();
     await click();
     expect(writeText).toHaveBeenCalledWith(firstUrl);
@@ -59,24 +65,30 @@ describe("CopyInvite", () => {
     expect(status()).toBe("");
   });
 
-  it.each(["denied", "unavailable", "missing-method", "synchronous-error"])("offers manual copying when clipboard is %s", async (failure) => {
-    if (failure === "denied") writeText.mockRejectedValue(new Error("Permission denied"));
-    if (failure === "unavailable") clipboard(undefined);
-    if (failure === "missing-method") clipboard({});
-    if (failure === "synchronous-error") writeText.mockImplementation(() => { throw new Error("Blocked"); });
-    await render();
-    await click();
-    expect(status()).toContain("Couldn't copy automatically");
-    expect(button().textContent).toBe("Copy invite link");
-    expect(button().disabled).toBe(false);
-    const input = container.querySelector("input")!;
-    expect(input.readOnly).toBe(true);
-    expect(input.value).toBe(firstUrl);
-    expect(input.closest("label")?.textContent).toContain("Invitation link");
-    await act(async () => input.focus());
-    expect(input.selectionStart).toBe(0);
-    expect(input.selectionEnd).toBe(firstUrl.length);
-  });
+  it.each(["denied", "unavailable", "missing-method", "synchronous-error"])(
+    "offers manual copying when clipboard is %s",
+    async (failure) => {
+      if (failure === "denied") writeText.mockRejectedValue(new Error("Permission denied"));
+      if (failure === "unavailable") clipboard(undefined);
+      if (failure === "missing-method") clipboard({});
+      if (failure === "synchronous-error")
+        writeText.mockImplementation(() => {
+          throw new Error("Blocked");
+        });
+      await render();
+      await click();
+      expect(status()).toContain("Couldn't copy automatically");
+      expect(button().textContent).toBe("Copy invite link");
+      expect(button().disabled).toBe(false);
+      const input = container.querySelector("input")!;
+      expect(input.readOnly).toBe(true);
+      expect(input.value).toBe(firstUrl);
+      expect(input.closest("label")?.textContent).toContain("Invitation link");
+      await act(async () => input.focus());
+      expect(input.selectionStart).toBe(0);
+      expect(input.selectionEnd).toBe(firstUrl.length);
+    },
+  );
 
   it("can retry successfully after a failure and removes the manual fallback", async () => {
     writeText.mockRejectedValueOnce(new Error("Denied"));
@@ -104,20 +116,28 @@ describe("CopyInvite", () => {
     expect(button().textContent).toBe("Copied!");
   });
 
-  it.each(["resolve", "reject"])("ignores an old pending write that later %ss after the URL changes", async (outcome) => {
-    let resolve!: () => void;
-    let reject!: (error: Error) => void;
-    writeText.mockReturnValueOnce(new Promise<void>((yes, no) => { resolve = yes; reject = no; }));
-    await render();
-    await click();
-    await render(secondUrl);
-    await click();
-    expect(button().textContent).toBe("Copied!");
-    await act(async () => outcome === "resolve" ? resolve() : reject(new Error("Old failure")));
-    expect(button().textContent).toBe("Copied!");
-    expect(status()).not.toContain("Couldn't");
-    expect(writeText).toHaveBeenLastCalledWith(secondUrl);
-  });
+  it.each(["resolve", "reject"])(
+    "ignores an old pending write that later %ss after the URL changes",
+    async (outcome) => {
+      let resolve!: () => void;
+      let reject!: (error: Error) => void;
+      writeText.mockReturnValueOnce(
+        new Promise<void>((yes, no) => {
+          resolve = yes;
+          reject = no;
+        }),
+      );
+      await render();
+      await click();
+      await render(secondUrl);
+      await click();
+      expect(button().textContent).toBe("Copied!");
+      await act(async () => (outcome === "resolve" ? resolve() : reject(new Error("Old failure"))));
+      expect(button().textContent).toBe("Copied!");
+      expect(status()).not.toContain("Couldn't");
+      expect(writeText).toHaveBeenLastCalledWith(secondUrl);
+    },
+  );
 
   it("cleans up the success timer on unmount", async () => {
     await render();
@@ -130,7 +150,11 @@ describe("CopyInvite", () => {
 
   it("does not start a timer if a pending write resolves after unmount", async () => {
     let resolve!: () => void;
-    writeText.mockReturnValue(new Promise<void>(r => { resolve = r; }));
+    writeText.mockReturnValue(
+      new Promise<void>((r) => {
+        resolve = r;
+      }),
+    );
     await render();
     await click();
     await act(async () => root.unmount());

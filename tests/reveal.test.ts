@@ -18,7 +18,9 @@ function installObserver() {
   observe = vi.fn();
   disconnect = vi.fn();
   class FakeIO {
-    constructor(cb: Callback) { callbacks.push(cb); }
+    constructor(cb: Callback) {
+      callbacks.push(cb);
+    }
     observe = observe;
     disconnect = disconnect;
     unobserve = vi.fn();

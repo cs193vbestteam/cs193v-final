@@ -1,13 +1,7 @@
 import { z } from "zod";
 import { db } from "./db";
 import { decrypt, decryptJson, encrypt, encryptJson } from "./crypto";
-import {
-  type Constraints,
-  ConstraintsSchema,
-  emptyConstraints,
-  mergeConstraints,
-  missingFields,
-} from "./constraints";
+import { type Constraints, ConstraintsSchema, emptyConstraints, mergeConstraints, missingFields } from "./constraints";
 import { extract, type ChatTurn } from "./extract";
 import { OPENING_MESSAGE } from "./extract-rules";
 import { configuredSelector } from "./mediator-llm";
@@ -86,7 +80,11 @@ async function addMember(eventId: string, userId: string) {
   if (Number(rows[0].n) === 0) await addMessage(eventId, userId, "assistant", OPENING_MESSAGE);
 }
 
-export async function createEvent(userId: string, title: string, location: string | null = null): Promise<EventSummary> {
+export async function createEvent(
+  userId: string,
+  title: string,
+  location: string | null = null,
+): Promise<EventSummary> {
   const client = await db();
   const where = LocationSchema.parse(location ?? "") || null;
   const pool = await resolvePool(where);
@@ -104,7 +102,16 @@ export async function createEvent(userId: string, title: string, location: strin
   if (pool.source === "seed" && where) console.info(`Plan "${event.title}": using seed pool (${pool.reason})`);
   await client.execute({
     sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    args: [event.id, event.title, event.inviteCode, userId, Date.now(), where, restaurants ? JSON.stringify(restaurants) : null, pool.source],
+    args: [
+      event.id,
+      event.title,
+      event.inviteCode,
+      userId,
+      Date.now(),
+      where,
+      restaurants ? JSON.stringify(restaurants) : null,
+      pool.source,
+    ],
   });
   await addMember(event.id, userId);
   return event;
@@ -155,7 +162,11 @@ export async function listMembers(eventId: string, viewerId: string): Promise<Me
           WHERE m.event_id = ? ORDER BY m.joined_at`,
     args: [eventId],
   });
-  return rows.map((r) => ({ userId: String(r.user_id), displayName: String(r.display_name), ready: Number(r.ready) === 1 }));
+  return rows.map((r) => ({
+    userId: String(r.user_id),
+    displayName: String(r.display_name),
+    ready: Number(r.ready) === 1,
+  }));
 }
 
 async function addMessage(eventId: string, userId: string, role: ChatTurn["role"], content: string) {
@@ -286,7 +297,9 @@ const isLegacyTally = (t: unknown): t is LegacyTally => !!t && typeof t === "obj
 export function upgradeResult(raw: Record<string, unknown>): StoredResult {
   const fix = (t: unknown) =>
     isLegacyTally(t) ? { accept: t.yes, reluctant: t.meh, reject: t.no, dims: t.reasons ?? {}, rejectDims: {} } : t;
-  const rounds = ((raw.rounds as { round: number; level?: number; proposals: { proposal: unknown; tally: unknown }[] }[]) ?? []).map((r) => ({
+  const rounds = (
+    (raw.rounds as { round: number; level?: number; proposals: { proposal: unknown; tally: unknown }[] }[]) ?? []
+  ).map((r) => ({
     round: r.round,
     level: r.level ?? 0,
     proposals: r.proposals.map((p) => ({ ...p, tally: fix(p.tally) })),
