@@ -1,7 +1,9 @@
 import "server-only";
 import { db } from "./db";
 import { decryptJson } from "./crypto";
-import { makeAgent, maskGroup, type Agent, type PrivateAgent } from "./agent";
+import { makeAgent, maskGroup, resolverFor, type Agent, type PrivateAgent } from "./agent";
+import { llmJudge, type LlmBudget } from "./agent-llm";
+import { anthropicKey, llmNegotiationEnabled } from "./anthropic";
 import { poolForEvent } from "./pool";
 import { scenarioFor } from "./scenario";
 
@@ -16,6 +18,8 @@ import { scenarioFor } from "./scenario";
  */
 export async function agentsForEvent(
   eventId: string,
+  /** Checked before every LLM call an agent makes; false means answer with code (#4). */
+  budget?: LlmBudget,
 ): Promise<{ agents: Agent[]; userIds: string[]; readyCount: number }> {
   const client = await db();
   const { rows } = await client.execute({
@@ -28,9 +32,17 @@ export async function agentsForEvent(
   const members: PrivateAgent[] = [];
   const userIds: string[] = [];
   let readyCount = 0;
+  const apiKey = llmNegotiationEnabled() ? anthropicKey() : undefined;
   for (const row of rows) {
     const constraints = scenario.parseConstraints(decryptJson(String(row.constraints_enc)));
-    members.push(makeAgent(scenario.compile(constraints), lookup, constraints.startPoint));
+    const prefs = scenario.compile(constraints);
+    const agent = makeAgent(prefs, lookup, constraints.startPoint);
+    // LLM mode: this person's agent reasons over their OWN summary only (their words, notes, priorities).
+    if (apiKey) {
+      const about = scenario.describeConstraints(constraints);
+      agent.judgeAll = llmJudge({ apiKey, about, prefs, resolve: resolverFor(lookup, constraints.startPoint), budget });
+    }
+    members.push(agent);
     userIds.push(String(row.user_id));
     if (Number(row.ready) === 1) readyCount++;
   }

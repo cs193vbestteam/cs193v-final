@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
  */
 const SRC = path.resolve(__dirname, "../src/lib");
 const FORBIDDEN = ["db", "crypto", "vault", "events", "auth", "session", "extract", "extract-rules"];
-const ENTRY_POINTS = ["negotiate", "mediator", "evaluate", "preferences", "agent"];
+const ENTRY_POINTS = ["negotiate", "mediator", "evaluate", "preferences", "agent", "agent-llm", "mediator-llm"];
 
 function imports(file: string): string[] {
   const src = readFileSync(path.join(SRC, `${file}.ts`), "utf8");

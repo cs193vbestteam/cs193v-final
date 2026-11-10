@@ -3,7 +3,7 @@ import { db } from "./db";
 import { decrypt, decryptJson, encrypt, encryptJson } from "./crypto";
 import type { Constraints } from "./constraints";
 import type { ChatTurn } from "./extract";
-import { configuredSelector } from "./mediator-llm";
+import { configuredFinalPicker, configuredSelector } from "./mediator-llm";
 import { negotiate, type NegotiationResult } from "./negotiate";
 import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./pool";
 import { DEFAULT_SCENARIO, parseScenarioId, ScenarioIdSchema, scenarioFor, type ScenarioId } from "./scenario";
@@ -317,7 +317,9 @@ export async function setReady(eventId: string, userId: string, ready: boolean):
  */
 export async function runNegotiation(eventId: string, userId: string): Promise<StoredResult> {
   await requireMember(eventId, userId);
-  const { agents, userIds, readyCount } = await agentsForEvent(eventId);
+  // Every LLM call in the negotiation (agents and mediator) counts against the plan's daily budget (#4).
+  const budget = async () => (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed;
+  const { agents, userIds, readyCount } = await agentsForEvent(eventId, budget);
   if (readyCount < 2) throw new AccessError("At least 2 people need to be ready first");
   if (readyCount !== agents.length) {
     throw new AccessError("Everyone who joined must be ready before finding a plan");
@@ -326,7 +328,14 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
   const memberNames = userIds.map((id) => members.find((m) => m.userId === id)?.displayName ?? "Someone");
   const { restaurants } = await poolForEvent(eventId);
 
-  const outcome = await negotiate(agents, { restaurants, maxRounds: 6, perRound: 5, selector: configuredSelector() });
+  const lookup = (id: string) => restaurants.find((r) => r.id === id);
+  const outcome = await negotiate(agents, {
+    restaurants,
+    maxRounds: 6,
+    perRound: 5,
+    selector: configuredSelector(lookup, budget),
+    finalPicker: configuredFinalPicker(lookup, budget),
+  });
   const mentioned = new Set<string>();
   if (outcome.proposal) mentioned.add(outcome.proposal.restaurantId);
   for (const round of outcome.rounds) for (const p of round.proposals) mentioned.add(p.proposal.restaurantId);
