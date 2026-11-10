@@ -6,6 +6,9 @@ import { CUISINES, type Cuisine } from "@/lib/constraints";
 import {
   CUISINE_QUERY_TYPES,
   MAX_NEARBY_CALLS,
+  MIN_RATING,
+  MIN_REVIEWS,
+  PLACE_FIELDS,
   POOL_TARGET,
   cuisineQueryOrder,
   gatherPlaces,
@@ -18,6 +21,8 @@ import {
   toRestaurant,
   type PlaceResult,
 } from "@/lib/places";
+import { candidatePool, shortlist } from "@/lib/mediator";
+import { summarize } from "@/lib/pool";
 import type { Restaurant } from "@/lib/restaurants";
 
 const fixture = JSON.parse(readFileSync(path.join(__dirname, "fixtures/places-nearby.json"), "utf8")) as {
@@ -219,7 +224,7 @@ describe("mergePools", () => {
 describe("gatherPlaces", () => {
   it("merges the general page with one page per missing cuisine", async () => {
     const { fetcher, queries } = placesFetch(RECORDED);
-    const got = await gatherPlaces(CENTER, "k", fetcher);
+    const got = await gatherPlaces(CENTER, "k", fetcher, { maxCalls: 6 });
     // The general page has japanese, mexican, thai, mediterranean and american, so the
     // five cuisine queries go to the five cuisines it lacks.
     expect(queries).toEqual(["general", "chinese", "korean", "vietnamese", "indian", "italian"]);
@@ -258,7 +263,7 @@ describe("gatherPlaces", () => {
       expect(mock).toHaveBeenCalledTimes(expected);
       expect(got.calls).toBe(expected);
     }
-    expect(MAX_NEARBY_CALLS).toBeLessThanOrEqual(8);
+    expect(MAX_NEARBY_CALLS).toBe(1 + CUISINES.length); // the general page, then every cuisine once
   });
 
   it("makes a single call when the general page already fills the pool", async () => {
@@ -274,7 +279,7 @@ describe("gatherPlaces", () => {
       ...Object.fromEntries(CUISINES.map((c) => [c, fullPage(CUISINE_QUERY_TYPES[c][0], c)])),
     };
     const { fetcher, queries } = placesFetch(pages);
-    const got = await gatherPlaces(CENTER, "k", fetcher);
+    const got = await gatherPlaces(CENTER, "k", fetcher, { maxCalls: 6 });
     expect(got.restaurants).toHaveLength(POOL_TARGET);
     const perQuery = queries.slice(1).map((c) => got.restaurants.filter((r) => r.id.startsWith(`${c}_`)).length);
     expect(perQuery).toEqual([8, 8, 8, 8, 8]); // 20 general + 40 shared evenly by 5 cuisine pages
@@ -282,7 +287,7 @@ describe("gatherPlaces", () => {
 
   it("keeps the rest of the pool when some queries fail", async () => {
     const { fetcher } = placesFetch(RECORDED, ["korean", "indian"]);
-    const got = await gatherPlaces(CENTER, "k", fetcher);
+    const got = await gatherPlaces(CENTER, "k", fetcher, { maxCalls: 6 });
     expect(got).toMatchObject({ calls: 6, failedCalls: 2 });
     const ids = got.restaurants.map((r) => r.id);
     expect(ids).toEqual(
@@ -360,5 +365,79 @@ describe("resolvePool", () => {
       source: "seed",
       reason: "Places places:searchNearby 500",
     });
+  });
+});
+
+describe("ratings, closed places and what the group is shown", () => {
+  const sushi = byId("ChIJ_sushi");
+
+  it("carries Google's rating, address and Maps link onto the restaurant", () => {
+    const r = toRestaurant(
+      {
+        ...sushi,
+        rating: 4.6,
+        userRatingCount: 812,
+        businessStatus: "OPERATIONAL",
+        formattedAddress: "123 University Ave, Palo Alto, CA",
+        googleMapsUri: "https://maps.google.com/?cid=1",
+      },
+      CENTER,
+    )!;
+    expect(r).toMatchObject({
+      rating: 4.6,
+      ratingCount: 812,
+      address: "123 University Ave, Palo Alto, CA",
+      mapsUrl: "https://maps.google.com/?cid=1",
+    });
+    // A place Google says nothing more about still maps, without the extra fields.
+    const plain = toRestaurant(sushi, CENTER)!;
+    expect(plain.rating).toBeUndefined();
+    expect(plain.mapsUrl).toBeUndefined();
+  });
+
+  it("leaves out places that are closed, and poorly rated ones with enough reviews to trust", () => {
+    expect(toRestaurant({ ...sushi, businessStatus: "CLOSED_PERMANENTLY" }, CENTER)).toBeNull();
+    expect(toRestaurant({ ...sushi, businessStatus: "CLOSED_TEMPORARILY" }, CENTER)).toBeNull();
+    expect(toRestaurant({ ...sushi, rating: MIN_RATING - 0.1, userRatingCount: MIN_REVIEWS }, CENTER)).toBeNull();
+    // Three bad reviews are not enough to drop a place; a rating at the bar is kept.
+    expect(toRestaurant({ ...sushi, rating: 2.0, userRatingCount: 3 }, CENTER)).not.toBeNull();
+    expect(toRestaurant({ ...sushi, rating: MIN_RATING, userRatingCount: 500 }, CENTER)).not.toBeNull();
+  });
+
+  it("asks Google for the rating fields, and for every cuisine by default", async () => {
+    expect(PLACE_FIELDS).toContain("places.rating");
+    expect(PLACE_FIELDS).toContain("places.businessStatus");
+    const { fetcher, queries } = placesFetch(RECORDED);
+    const got = await gatherPlaces(CENTER, "k", fetcher);
+    expect(got.calls).toBe(1 + CUISINES.length);
+    expect([...queries.slice(1)].sort()).toEqual([...CUISINES].sort());
+  });
+
+  it("the mediator tries the better-reviewed of two otherwise identical places first", () => {
+    const twin = (id: string, rating?: number, ratingCount?: number): Restaurant => ({
+      ...restaurant(id, "thai"),
+      ...(rating !== undefined ? { rating, ratingCount } : {}),
+    });
+    const pool = candidatePool(
+      [twin("plain"), twin("loved", 4.8, 900), twin("meh", 3.6, 900), twin("new", 5, 2)],
+      ["sat_dinner"],
+    );
+    const lookup = (id: string) => pool.find((c) => c.r.id === id)?.r;
+    const round2 = [{ round: 1, level: 0, proposals: [] }];
+    expect(shortlist(pool, round2, 4, lookup).map((c) => c.r.id)).toEqual(["loved", "plain", "new", "meh"]);
+  });
+
+  it("shows the group the chosen place's public facts, and nothing when there are none", () => {
+    const rated: Restaurant = {
+      ...restaurant("a", "thai"),
+      rating: 4.5,
+      ratingCount: 120,
+      address: "1 Main St",
+      mapsUrl: "https://maps.google.com/?cid=2",
+    };
+    const out = summarize([rated, restaurant("b", "thai")], ["a", "b"]);
+    expect(out.a).toMatchObject({ rating: 4.5, ratingCount: 120, address: "1 Main St" });
+    expect(out.b).not.toHaveProperty("rating");
+    expect(out.b).not.toHaveProperty("mapsUrl");
   });
 });

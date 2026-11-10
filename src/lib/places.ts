@@ -16,9 +16,11 @@ export { KM_PER_MIN, haversineKm, type LatLng } from "./geo";
  *
  * Nearby Search returns at most 20 places per call and has no paging, so one
  * call gives a small, popularity-ranked pool. gatherPlaces() widens it: one
- * general query, then one query per cuisine for the cuisines the general page
- * covers least, merged and de-duplicated by place id. The number of calls per
- * plan is capped (MAX_NEARBY_CALLS) because every call is billed.
+ * general query, then one query per cuisine (least-covered first), merged and
+ * de-duplicated by place id, so no cuisine is missing just because it is less
+ * popular nearby. The number of calls per plan is capped (MAX_NEARBY_CALLS)
+ * because every call is billed. Closed places and poorly rated ones are left
+ * out; the rating, address and Maps link are kept for the group to see.
  */
 
 /** The subset of a Places "New" result we read. Kept small so fixtures stay honest. */
@@ -30,6 +32,12 @@ export type PlaceResult = {
   priceLevel?: string;
   location?: { latitude: number; longitude: number };
   servesVegetarianFood?: boolean;
+  rating?: number;
+  userRatingCount?: number;
+  /** OPERATIONAL, CLOSED_TEMPORARILY or CLOSED_PERMANENTLY. */
+  businessStatus?: string;
+  formattedAddress?: string;
+  googleMapsUri?: string;
   regularOpeningHours?: {
     periods?: {
       open: { day: number; hour: number; minute?: number };
@@ -47,7 +55,19 @@ export const PLACE_FIELDS = [
   "places.location",
   "places.servesVegetarianFood",
   "places.regularOpeningHours",
+  // Rating fields are in the same billing tier as price level and hours, which we already ask for;
+  // status, address and the Maps link are in a lower one.
+  "places.rating",
+  "places.userRatingCount",
+  "places.businessStatus",
+  "places.formattedAddress",
+  "places.googleMapsUri",
 ].join(",");
+
+/** A place rated below this, by at least MIN_REVIEWS people, is left out of the pool. */
+export const MIN_RATING = 3.5;
+/** Fewer reviews than this say too little to drop a place, or to prefer it. */
+export const MIN_REVIEWS = 20;
 
 /** Typical spend per person for each Google price level. */
 export const PRICE_BY_LEVEL: Record<string, number> = {
@@ -64,7 +84,7 @@ export const NEARBY_PAGE_SIZE = 20;
 /** The most restaurants one plan's pool keeps. */
 export const POOL_TARGET = 60;
 /** Hard cap on Nearby Search calls per plan (geocoding is one more call on top). */
-export const MAX_NEARBY_CALLS = 6;
+export const MAX_NEARBY_CALLS = 1 + CUISINES.length;
 
 /** Places types (Table A, valid in `includedTypes`) to ask for when widening the pool for one cuisine. */
 export const CUISINE_QUERY_TYPES: Record<Cuisine, readonly string[]> = {
@@ -137,6 +157,10 @@ export function openSlots(hours: PlaceResult["regularOpeningHours"]): Slot[] {
 /** Map one Places result onto our Restaurant shape. Returns null for things we can't place. */
 export function toRestaurant(p: PlaceResult, center: LatLng): Restaurant | null {
   if (!p.id || !p.location) return null;
+  // Closed for good or for now: not somewhere to send a group this weekend.
+  if (p.businessStatus && p.businessStatus !== "OPERATIONAL") return null;
+  const reviews = p.userRatingCount ?? 0;
+  if (p.rating !== undefined && reviews >= MIN_REVIEWS && p.rating < MIN_RATING) return null;
   const types = [...(p.types ?? []), p.primaryType ?? ""].map((t) => t.toLowerCase());
   const name = p.displayName?.text ?? "Unnamed place";
   const cuisine = inferCuisine(types, name);
@@ -155,6 +179,9 @@ export function toRestaurant(p: PlaceResult, center: LatLng): Restaurant | null 
     seafoodHeavy: /seafood|sushi|fish|oyster|crab/.test(joined),
     halal: /halal/.test(joined),
     open: openSlots(p.regularOpeningHours),
+    ...(p.rating !== undefined ? { rating: p.rating, ratingCount: reviews } : {}),
+    ...(p.formattedAddress ? { address: p.formattedAddress } : {}),
+    ...(p.googleMapsUri ? { mapsUrl: p.googleMapsUri } : {}),
   };
 }
 
