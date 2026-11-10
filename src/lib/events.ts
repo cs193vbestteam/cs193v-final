@@ -1,17 +1,14 @@
 import { z } from "zod";
 import { db } from "./db";
 import { decrypt, decryptJson, encrypt, encryptJson } from "./crypto";
-import { type Constraints, ConstraintsSchema, emptyConstraints, mergeConstraints, missingFields } from "./constraints";
-import { extract, type ChatTurn } from "./extract";
-import { OPENING_MESSAGE } from "./extract-rules";
+import type { Constraints } from "./constraints";
+import type { ChatTurn } from "./extract";
 import { configuredSelector } from "./mediator-llm";
 import { negotiate, type NegotiationResult } from "./negotiate";
-import { resolvePool } from "./places";
 import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./pool";
-import { canLocate, resolveStart } from "./start-point";
+import { DEFAULT_SCENARIO, parseScenarioId, ScenarioIdSchema, scenarioFor, type ScenarioId } from "./scenario";
 import { agentsForEvent } from "./vault";
 import { clearRateKey, hit, LIMITS, rateKey, waitText } from "./ratelimit";
-import { resolveYelpPool } from "./yelp-pool";
 
 /**
  * Data access for plans ("events"). Every function takes the acting userId explicitly
@@ -22,14 +19,14 @@ export class AccessError extends Error {}
 /** Too many requests; the message is safe to show. */
 export class RateLimitError extends AccessError {}
 
-const RESTAURANT_SEED_SIZE = 16;
-
 export type EventSummary = {
   id: string;
   title: string;
   inviteCode: string;
   creatorId: string;
   decided: boolean;
+  /** What the group is deciding. Plans stored before scenarios existed are meals. */
+  scenario: ScenarioId;
   /** Where the plan happens, as typed by the creator. Public. */
   location: string | null;
   poolSource: PoolSource;
@@ -104,41 +101,46 @@ function newInviteCode(): string {
 
 function rowToEvent(row: Record<string, unknown>): EventSummary {
   const pool = row.pool_json ? (JSON.parse(String(row.pool_json)) as unknown[]) : null;
+  const scenario = parseScenarioId(row.scenario);
   return {
     id: String(row.id),
     title: String(row.title),
     inviteCode: String(row.invite_code),
     creatorId: String(row.creator_id),
     decided: row.result_json !== null && row.result_json !== undefined,
+    scenario,
     location: row.location ? String(row.location) : null,
     poolSource: pool?.length ? ((row.pool_source as PoolSource) ?? "places") : "seed",
-    poolSize: pool?.length ?? RESTAURANT_SEED_SIZE,
+    poolSize: pool?.length ?? scenarioFor(scenario).seedPool.length,
   };
 }
 
-async function addMember(eventId: string, userId: string) {
+async function addMember(event: Pick<EventSummary, "id" | "scenario">, userId: string) {
+  const eventId = event.id;
+  const scenario = scenarioFor(event.scenario);
   const client = await db();
   const now = Date.now();
   await client.execute({
     sql: "INSERT INTO members (event_id, user_id, constraints_enc, ready, joined_at) VALUES (?, ?, ?, 0, ?) ON CONFLICT DO NOTHING",
-    args: [eventId, userId, encryptJson(emptyConstraints()), now],
+    args: [eventId, userId, encryptJson(scenario.emptyConstraints()), now],
   });
   const { rows } = await client.execute({
     sql: "SELECT COUNT(*) AS n FROM messages WHERE event_id = ? AND user_id = ?",
     args: [eventId, userId],
   });
-  if (Number(rows[0].n) === 0) await addMessage(eventId, userId, "assistant", OPENING_MESSAGE);
+  if (Number(rows[0].n) === 0) await addMessage(eventId, userId, "assistant", scenario.openingMessage);
 }
 
 export async function createEvent(
   userId: string,
   title: string,
   location: string | null = null,
+  scenarioId: ScenarioId = DEFAULT_SCENARIO,
 ): Promise<EventSummary> {
   const client = await db();
+  const scenario = scenarioFor(ScenarioIdSchema.parse(scenarioId));
   const where = LocationSchema.parse(location ?? "") || null;
-  // The local Yelp dataset, when configured, comes first: it is free and offline (yelp-pool.ts).
-  const pool = (await resolveYelpPool(where)) ?? (await resolvePool(where));
+  const pool = await scenario.resolvePool(where);
   const restaurants = pool.source === "seed" ? null : pool.restaurants;
   const event: EventSummary = {
     id: crypto.randomUUID(),
@@ -146,13 +148,14 @@ export async function createEvent(
     inviteCode: newInviteCode(),
     creatorId: userId,
     decided: false,
+    scenario: scenario.id,
     location: where,
     poolSource: pool.source,
-    poolSize: restaurants?.length ?? RESTAURANT_SEED_SIZE,
+    poolSize: restaurants?.length ?? scenario.seedPool.length,
   };
   if (pool.source === "seed" && where) console.info(`Plan "${event.title}": using seed pool (${pool.reason})`);
   await client.execute({
-    sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+    sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source, scenario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     args: [
       event.id,
       event.title,
@@ -162,9 +165,10 @@ export async function createEvent(
       where,
       restaurants ? JSON.stringify(restaurants) : null,
       pool.source,
+      scenario.id,
     ],
   });
-  await addMember(event.id, userId);
+  await addMember(event, userId);
   return event;
 }
 
@@ -177,7 +181,7 @@ export async function getEventByCode(code: string): Promise<EventSummary | null>
 export async function joinEvent(code: string, userId: string): Promise<EventSummary> {
   const event = await getEventByCode(code);
   if (!event) throw new AccessError("That invite link doesn't exist");
-  await addMember(event.id, userId);
+  await addMember(event, userId);
   return event;
 }
 
@@ -239,14 +243,21 @@ export async function getMyMessages(eventId: string, userId: string): Promise<Ch
   return rows.map((r) => ({ role: r.role as ChatTurn["role"], content: decrypt(String(r.content_enc)) }));
 }
 
-export async function getMyConstraints(eventId: string, userId: string): Promise<Constraints> {
+/** A member's stored constraints together with the scenario that defines them. */
+async function loadConstraints(eventId: string, userId: string) {
   await requireMember(eventId, userId);
   const client = await db();
   const { rows } = await client.execute({
-    sql: "SELECT constraints_enc FROM members WHERE event_id = ? AND user_id = ?",
+    sql: `SELECT m.constraints_enc, e.scenario FROM members m JOIN events e ON e.id = m.event_id
+          WHERE m.event_id = ? AND m.user_id = ?`,
     args: [eventId, userId],
   });
-  return ConstraintsSchema.parse(decryptJson(String(rows[0].constraints_enc)));
+  const scenario = scenarioFor(parseScenarioId(rows[0].scenario));
+  return { scenario, constraints: scenario.parseConstraints(decryptJson(String(rows[0].constraints_enc))) };
+}
+
+export async function getMyConstraints(eventId: string, userId: string): Promise<Constraints> {
+  return (await loadConstraints(eventId, userId)).constraints;
 }
 
 async function saveConstraints(eventId: string, userId: string, c: Constraints, ready: boolean) {
@@ -261,9 +272,9 @@ export async function sendMessage(
   eventId: string,
   userId: string,
   text: string,
-): Promise<{ messages: ChatTurn[]; constraints: Constraints }> {
+): Promise<{ messages: ChatTurn[]; constraints: Constraints; scenario: ScenarioId }> {
   const content = MessageSchema.parse(text);
-  const current = await getMyConstraints(eventId, userId); // also checks membership
+  const { scenario, constraints: current } = await loadConstraints(eventId, userId); // also checks membership
   const chat = await hit(rateKey.chat(userId), LIMITS.chatPerUser);
   if (!chat.allowed) {
     throw new RateLimitError(`You're sending messages very quickly. Please try again ${waitText(chat.retryAfterMs)}.`);
@@ -271,19 +282,11 @@ export async function sendMessage(
   await addMessage(eventId, userId, "user", content);
 
   const history = await getMyMessages(eventId, userId);
-  // A start point is only asked for, and only resolved, when this plan's pool has coordinates.
   const { restaurants } = await poolForEvent(eventId);
   // Only count LLM calls when there is a key to spend; past the plan's daily budget, use the rules.
   const allowLLM = !process.env.ANTHROPIC_API_KEY || (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed;
-  const extracted = await extract(history, current, { askStart: canLocate(restaurants) }, allowLLM);
-  const { reply, update } = await resolveStart(extracted.update, extracted.reply, restaurants);
+  const { reply, constraints: next } = await scenario.chatTurn(history, current, restaurants, { allowLLM });
 
-  let next = current;
-  try {
-    next = mergeConstraints(current, update);
-  } catch {
-    // Ignore an invalid update rather than breaking the chat.
-  }
   // Changing constraints un-readies you, so the group re-checks with fresh info.
   const changed = JSON.stringify(next) !== JSON.stringify(current);
   const client = await db();
@@ -295,13 +298,14 @@ export async function sendMessage(
   await saveConstraints(eventId, userId, next, wasReady && !changed);
   await addMessage(eventId, userId, "assistant", reply);
 
-  return { messages: await getMyMessages(eventId, userId), constraints: next };
+  return { messages: await getMyMessages(eventId, userId), constraints: next, scenario: scenario.id };
 }
 
 export async function setReady(eventId: string, userId: string, ready: boolean): Promise<void> {
-  const c = await getMyConstraints(eventId, userId);
-  if (ready && missingFields(c).length > 0) {
-    throw new AccessError("Tell your assistant a bit more first: it still needs " + missingFields(c).join(", "));
+  const { scenario, constraints: c } = await loadConstraints(eventId, userId);
+  const missing = scenario.missingFields(c);
+  if (ready && missing.length > 0) {
+    throw new AccessError("Tell your assistant a bit more first: it still needs " + missing.join(", "));
   }
   await saveConstraints(eventId, userId, c, ready);
 }

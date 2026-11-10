@@ -1,26 +1,31 @@
 import { db } from "./db";
-import { RESTAURANTS, type Restaurant } from "./restaurants";
+import type { Restaurant } from "./restaurants";
+import { parseScenarioId, scenarioFor, type ScenarioId } from "./scenario";
 
 /**
  * The candidate pool of a plan: public information (where the group might
  * eat), stored per event so proposal ids stay stable for its whole life.
- * Plans created without a location, or before Places was wired in, use the seed.
+ * Plans created without a location, or before Places was wired in, use their
+ * scenario's seed.
  */
 export type PoolSource = "places" | "yelp" | "seed";
 
-export async function poolForEvent(eventId: string): Promise<{ restaurants: Restaurant[]; source: PoolSource }> {
+export async function poolForEvent(
+  eventId: string,
+): Promise<{ restaurants: Restaurant[]; source: PoolSource; scenario: ScenarioId }> {
   const client = await db();
   const { rows } = await client.execute({
-    sql: "SELECT pool_json, pool_source FROM events WHERE id = ?",
+    sql: "SELECT pool_json, pool_source, scenario FROM events WHERE id = ?",
     args: [eventId],
   });
+  const scenario = parseScenarioId(rows[0]?.scenario);
   const raw = rows[0]?.pool_json;
   if (raw) {
     const restaurants = JSON.parse(String(raw)) as Restaurant[];
     if (Array.isArray(restaurants) && restaurants.length)
-      return { restaurants, source: (rows[0].pool_source as PoolSource) ?? "places" };
+      return { restaurants, source: (rows[0].pool_source as PoolSource) ?? "places", scenario };
   }
-  return { restaurants: RESTAURANTS, source: "seed" };
+  return { restaurants: scenarioFor(scenario).seedPool, source: "seed", scenario };
 }
 
 /**

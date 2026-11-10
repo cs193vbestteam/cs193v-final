@@ -5,8 +5,8 @@ import { AutoRefresh, CopyInvite, NegotiateButton } from "@/components/GroupActi
 import { PrivateChat } from "@/components/PrivateChat";
 import { ResultCard } from "@/components/ResultCard";
 import { joinEventAction } from "@/app/actions";
-import { describeConstraints, missingFields } from "@/lib/constraints";
 import { getEventByCode, getMyConstraints, getMyMessages, getResult, isMember, listMembers } from "@/lib/events";
+import { scenarioFor } from "@/lib/scenario";
 import { requireUser } from "@/lib/session";
 
 const POOL_LABEL = { places: "real places", yelp: "places from the Yelp Open Dataset", seed: "seed places" } as const;
@@ -45,6 +45,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
     getMyConstraints(event.id, user.id),
     getResult(event.id, user.id),
   ]);
+  const { describeConstraints, missingFields } = scenarioFor(event.scenario);
   const me = members.find((m) => m.userId === user.id)!;
   const readyCount = members.filter((m) => m.ready).length;
   const h = await headers();

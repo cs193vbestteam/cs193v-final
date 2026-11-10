@@ -70,6 +70,7 @@ src/
     e/[code]/page.tsx  plan page: private chat + group panel
   components/          client components (chat, auth form, buttons)
   lib/
+    scenario.ts        what a group is deciding (today: a meal); the one place a new scenario plugs in
     constraints.ts     what the private chat collects (+ weights, concession order, pending question)
     extract*.ts        chat → constraints (LLM or rules; probes for weights and concessions)
     preferences.ts     hard / soft / concession_order contract; compile(), relax()
