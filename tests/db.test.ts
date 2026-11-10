@@ -81,6 +81,14 @@ describe("production driver (pg over the Postgres wire protocol)", () => {
     );
   });
 
+  it("adds the plan columns to an events table created before they existed", async () => {
+    await pglite.exec("ALTER TABLE events DROP COLUMN location, DROP COLUMN pool_json, DROP COLUMN pool_source");
+    await resetDbForTests();
+    const a = await createUser({ email: "old-pg@test.dev", displayName: "Old", password: "password123" });
+    const e = await createEvent(a.id, "Brunch", "Palo Alto, CA");
+    expect(e.location).toBe("Palo Alto, CA");
+  });
+
   it("runs the plan flow: create, join twice, chat", async () => {
     const a = await createUser({ email: "a-pg@test.dev", displayName: "A", password: "password123" });
     const b = await createUser({ email: "b-pg@test.dev", displayName: "B", password: "password123" });
