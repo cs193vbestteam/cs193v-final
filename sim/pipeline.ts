@@ -107,6 +107,16 @@ export function countingAgent(agent: Agent, counter: { dims: number; calls: numb
       return j;
     },
     compare: (finalists, level) => agent.compare(finalists, level),
+    // The time check before round 1: each "can't make it" is a dimension name the mediator hears.
+    ...(agent.freeAt
+      ? {
+          freeAt(slot) {
+            const free = agent.freeAt!(slot);
+            if (!free) counter.dims++;
+            return free;
+          },
+        }
+      : {}),
   };
 }
 

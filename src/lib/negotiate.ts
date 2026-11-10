@@ -154,6 +154,20 @@ async function finalPick(
   }
 }
 
+const dimsOf = (bag: Tally["dims"]) =>
+  Object.entries(bag)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .join();
+function sameTally(a: Tally, b: Tally): boolean {
+  return (
+    a.accept === b.accept &&
+    a.reluctant === b.reluctant &&
+    a.reject === b.reject &&
+    dimsOf(a.dims) === dimsOf(b.dims) &&
+    dimsOf(a.rejectDims) === dimsOf(b.rejectDims)
+  );
+}
+
 function reservationsFor(t: Tried): Reservation[] {
   return t.judgements.flatMap((j, i) => (j.verdict === "reluctant" && j.dim ? [{ member: i, dim: j.dim }] : []));
 }
@@ -180,11 +194,24 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   };
   if (agents.length === 0) return empty;
 
-  const pool = candidatePool(restaurants);
+  let pool = candidatePool(restaurants);
   const tried = new Map<string, Tried>();
   const rounds: RoundFeedback[] = [];
   let level = 0;
   let leakedDims = 0;
+
+  // Before any restaurant: which times can everyone make? Only the count per time is used, and each
+  // "can't" is the same word a "reject: time" would have been, so it is counted the same way. Without
+  // this, a first round spread over every time spends most of its proposals learning the calendar.
+  let nobodyFree = false;
+  if (agents.every((a) => a.freeAt)) {
+    const offered = [...new Set(pool.map((c) => c.slot))];
+    const free = new Map(offered.map((slot) => [slot, agents.filter((a) => a.freeAt!(slot)).length]));
+    for (const n of free.values()) leakedDims += agents.length - n;
+    const common = new Set(offered.filter((slot) => free.get(slot) === agents.length));
+    nobodyFree = offered.length > 0 && common.size === 0;
+    pool = pool.filter((c) => common.has(c.slot));
+  }
 
   const finish = (
     status: NegotiationResult["status"],
@@ -229,6 +256,12 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
     return entry;
   };
 
+  // No time suits everyone: no restaurant can change that, so nobody is asked about any.
+  if (nobodyFree) return finish("no_deal", null, [], ["time"]);
+
+  /** Near-misses whose answers did not move when asked again after a concession: not worth a third ask. */
+  const stuck = new Set<string>();
+
   /** Every unanimously accepted candidate so far. Non-empty means the group has agreed and is exploring. */
   const unanimous: Tried[] = [];
   let explored = 0;
@@ -252,7 +285,7 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
     const retries: Proposal[] = [];
     if (level > 0 && !exploring) {
       const nearMisses = [...tried.values()]
-        .filter((t) => t.level < level && t.tally.reject <= Math.ceil(agents.length / 2))
+        .filter((t) => t.level < level && t.tally.reject <= Math.ceil(agents.length / 2) && !stuck.has(key(t.proposal)))
         .sort(
           (a, b) =>
             a.tally.reject - b.tally.reject ||
@@ -270,7 +303,11 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
     const batch = [...retries, ...picks.map(({ r, slot }) => ({ restaurantId: r.id, slot }))];
     const answers = await judgeBatch(batch);
     batch.forEach((proposal, k) => {
+      const before = tried.get(key(proposal))?.tally;
       const entry = record(proposal, answers[k], log, k < retries.length);
+      // The concession changed nobody's answer here. Its place next round goes to something new;
+      // the re-check at the end still looks at it once more at the final level.
+      if (before && sameTally(before, entry.tally)) stuck.add(key(proposal));
       if (entry.tally.accept === agents.length) unanimous.push(entry);
     });
     if (log.proposals.length === 0) break;

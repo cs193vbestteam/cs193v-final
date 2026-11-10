@@ -25,6 +25,12 @@ export type Agent = {
    */
   judgeAll?: (ps: readonly Proposal[], level: number) => Promise<Judgement[]>;
   /**
+   * Can this person make this time at all? Asked once, before any restaurant is proposed, so no
+   * proposal is spent on a time someone cannot make (#64). It says nothing a "reject: time"
+   * verdict would not have said. Optional: without it the mediator learns times from rejects.
+   */
+  freeAt?: (slot: Slot) => boolean;
+  /**
    * This person's part of the final comparison, masked. For each finalist
    * after the first it holds their 1..5 bucket for that finalist relative to
    * their bucket for the first, as exponents of 2, 3 and 5, plus pairwise masks
@@ -40,7 +46,7 @@ export type Agent = {
  * is what one person's side holds; it is never handed to the mediator, which
  * only ever gets the `Agent`s that `maskGroup` returns.
  */
-export type PrivateAgent = Pick<Agent, "judge" | "judgeAll"> & {
+export type PrivateAgent = Pick<Agent, "judge" | "judgeAll" | "freeAt"> & {
   /** 1..5 utility bucket for one proposal. */
   bucket: (p: Proposal, level: number) => Bucket;
 };
@@ -63,7 +69,10 @@ export function makeAgent(
 ): PrivateAgent {
   const at = resolverFor(lookup, start);
   const resolve = (p: Proposal): [Restaurant | undefined, Slot] => [at(p), p.slot];
+  const times = prefs.hard.find((h) => h.dim === "time");
   return {
+    // Time is a hard rule that no concession loosens, so the answer holds for the whole negotiation.
+    freeAt: (slot) => !times || times.val.includes(slot),
     judge(p, level) {
       const [r, slot] = resolve(p);
       return r ? evaluate(prefs, r, slot, level) : { verdict: "reject", dim: "time" };
@@ -92,6 +101,7 @@ export function maskGroup(members: readonly PrivateAgent[]): Agent[] {
   return members.map((member, i) => ({
     judge: (p, level) => member.judge(p, level),
     ...(member.judgeAll ? { judgeAll: member.judgeAll } : {}),
+    ...(member.freeAt ? { freeAt: member.freeAt } : {}),
     compare(finalists, level) {
       if (finalists.length < 2) return [];
       const [first, ...rest] = finalists;

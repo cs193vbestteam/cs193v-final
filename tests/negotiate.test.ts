@@ -242,7 +242,13 @@ describe("exploring after the first unanimous accept", () => {
 
   it("picks among every unanimous candidate seen, so the chosen plan is never worse by the buckets", async () => {
     let improved = 0;
-    for (const c of cases) {
+    // More groups than the other tests use: since #64 most groups already land on a good plan in
+    // round 1, so an exploring round improves on it in only a few of every hundred.
+    const many = (() => {
+      const rng = makeRng(11);
+      return Array.from({ length: 300 }, (_, i) => synthCase(rng, i, { restaurants: 30, minSize: 3, maxSize: 6 }));
+    })();
+    for (const c of many) {
       const base = await run(c, { finalists: 99 });
       const more = await run(c, { exploreRounds: 1, finalists: 99 });
       if (base.status !== "agreed" || !more.rounds.some((r) => r.exploring)) continue;
@@ -272,8 +278,10 @@ describe("exploring after the first unanimous accept", () => {
   it("counts towards maxRounds and stops when it runs out", async () => {
     for (const c of cases) {
       const oneRound = await run(c, { maxRounds: 1, exploreRounds: 1 });
-      expect(oneRound.rounds).toHaveLength(1);
-      expect(oneRound.rounds[0].exploring).toBeUndefined();
+      // No round at all when no time suits everyone (#64): nothing is proposed.
+      expect(oneRound.rounds.length).toBeLessThanOrEqual(1);
+      if (oneRound.rounds.length === 0) expect(oneRound.conflicts).toEqual(["time"]);
+      else expect(oneRound.rounds[0].exploring).toBeUndefined();
       const many = await run(c, { exploreRounds: 50 });
       expect(many.rounds.length).toBeLessThanOrEqual(6);
       if (many.rounds.some((r) => r.exploring)) expect(many.status).toBe("agreed");
@@ -308,5 +316,69 @@ describe("exploring after the first unanimous accept", () => {
     const c = cases.find((x) => x.prefs.length >= 4)!;
     const result = await run(c, { exploreRounds: 1 });
     expect(JSON.stringify(result.rounds)).not.toMatch(/budget|maxTravel|weights|prefer|avoid|member/);
+  });
+});
+
+describe("times first, and no pointless re-asks (#64)", () => {
+  const cases = (() => {
+    const rng = makeRng(64);
+    return Array.from({ length: 40 }, (_, i) => synthCase(rng, i, { restaurants: 30, minSize: 3, maxSize: 6 }));
+  })();
+  const at = (p: { proposal: { restaurantId: string; slot: string } }) =>
+    `${p.proposal.restaurantId}@${p.proposal.slot}`;
+
+  it("a group free at one time only is never proposed another", async () => {
+    const people = [
+      c({ availableSlots: ["fri_dinner"], budgetMax: 40 }),
+      c({ availableSlots: ["fri_dinner", "sat_dinner"], budgetMax: 60 }),
+      c({ availableSlots: ["fri_dinner", "sun_lunch"], budgetMax: 50 }),
+    ];
+    const result = await negotiate(group(people));
+    expect(result.rounds.length).toBeGreaterThan(0);
+    expect(result.rounds[0].proposals).toHaveLength(5);
+    for (const round of result.rounds)
+      for (const p of round.proposals) {
+        expect(p.proposal.slot).toBe("fri_dinner");
+        expect(p.tally.rejectDims.time).toBeUndefined();
+      }
+    expect(result.proposal?.slot).toBe("fri_dinner");
+  });
+
+  it("with no time everyone can make, nobody is asked about any restaurant", async () => {
+    const people = [c({ availableSlots: ["sat_lunch"] }), c({ availableSlots: ["sun_dinner"] })];
+    const counter = { dims: 0, calls: 0 };
+    const agents = maskGroup(people.map(agentFor)).map((a) => ({ ...countingAgent(a, counter), freeAt: a.freeAt }));
+    const result = await negotiate(agents);
+    expect(result).toMatchObject({ status: "no_deal", conflicts: ["time"], rounds: [] });
+    expect(counter.calls).toBe(0);
+    // Each "can't make it" is counted like the time reject it replaces.
+    expect(result.leakedDims).toBe(8);
+  });
+
+  it("assistants that cannot be asked about times still work, as before", async () => {
+    const people = [c({ availableSlots: ["fri_dinner"], budgetMax: 40 }), c({ budgetMax: 60 })];
+    const agents = group(people).map(({ judge, compare }) => ({ judge, compare }));
+    const result = await negotiate(agents);
+    expect(result.status).not.toBe("no_deal");
+    expect(result.rounds[0].proposals.some((p) => p.tally.rejectDims.time)).toBe(true);
+  });
+
+  it("never asks a proposal twice at one level, nor a third time once a re-ask changed nothing", async () => {
+    let reasked = 0;
+    for (const sim of cases) {
+      const result = await negotiate(agentsFor(sim), { restaurants: sim.restaurants });
+      const seen = new Map<string, { level: number; tally: string }[]>();
+      for (const round of result.rounds)
+        for (const p of round.proposals) {
+          const history = seen.get(at(p)) ?? [];
+          expect(history.some((h) => h.level === round.level)).toBe(false);
+          // If the last two asks gave the same tally, there must not be this further one.
+          const [a, b] = history.slice(-2);
+          if (a && b) expect(a.tally).not.toBe(b.tally);
+          if (history.length) reasked++;
+          seen.set(at(p), [...history, { level: round.level, tally: JSON.stringify(p.tally) }]);
+        }
+    }
+    expect(reasked).toBeGreaterThan(0);
   });
 });

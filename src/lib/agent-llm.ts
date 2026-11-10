@@ -2,7 +2,7 @@ import { z } from "zod";
 import { callTool } from "./anthropic";
 import { SLOT_LABELS, SOFT_DIM_LABELS } from "./constraints";
 import { evaluate, utility, type Dim, type Judgement, type Proposal } from "./evaluate";
-import { relax, type Preferences } from "./preferences";
+import { SOFT_DIM_TO_RULE, relax, type Preferences } from "./preferences";
 import type { Restaurant } from "./restaurants";
 
 /**
@@ -167,8 +167,35 @@ export function agentPrompt(
 export function llmJudge(args: LlmJudgeArgs) {
   // The model's latest verdict per option, for this negotiation: a fallback never overrides it.
   const memory = new Map<string, Judgement>();
+  /** The concession level each remembered verdict was given at. */
+  const givenAt = new Map<string, number>();
+  /** Every option this person has been asked about so far. */
+  const seen = new Set<string>();
   const keyOf = (p: Proposal) => `${p.restaurantId}@${p.slot}`;
-  return async (proposals: readonly Proposal[], level: number): Promise<Judgement[]> => {
+
+  /**
+   * An option asked again (#64): the earlier verdict still stands when nothing that could change it
+   * has. A concession only ever loosens, so an accept stays an accept; an objection stays unless the
+   * thing objected to is among what this person has been asked to loosen since. Decided here, on the
+   * person's own side, so the mediator learns nothing from it; it only saves the model call.
+   */
+  const stillStands = (p: Proposal, level: number): Judgement | null => {
+    const earlier = memory.get(keyOf(p));
+    const from = givenAt.get(keyOf(p));
+    // Asked before and it breaks a hard rule: no concession moves those, and the model is not needed to say so.
+    if (seen.has(keyOf(p))) {
+      const r = args.resolve(p);
+      const broken = r ? utility(relax(args.prefs, level), r, p.slot).violated : "time";
+      if (broken) return { verdict: "reject", dim: broken };
+    }
+    if (!earlier || from === undefined || from > level) return null;
+    if (earlier.verdict === "accept" || from === level) return earlier;
+    if (!earlier.dim) return null;
+    const since = args.prefs.concession_order.slice(from, level).map((d) => SOFT_DIM_TO_RULE[d] as Dim);
+    return since.includes(earlier.dim) ? null : earlier;
+  };
+
+  const ask = async (proposals: readonly Proposal[], level: number): Promise<Judgement[]> => {
     const restaurants = proposals.map(args.resolve);
     const fallback: Fallback = (i) => {
       const remembered = memory.get(keyOf(proposals[i]));
@@ -190,11 +217,25 @@ export function llmJudge(args: LlmJudgeArgs) {
       });
       const answered: boolean[] = [];
       const verdicts = guard(args.prefs, proposals, restaurants, level, out, fallback, answered);
-      verdicts.forEach((v, i) => answered[i] && memory.set(keyOf(proposals[i]), v));
+      verdicts.forEach((v, i) => {
+        if (!answered[i]) return;
+        memory.set(keyOf(proposals[i]), v);
+        givenAt.set(keyOf(proposals[i]), level);
+      });
       return verdicts;
     } catch (err) {
       console.error("LLM agent failed, using earlier or cautious verdicts:", (err as Error).message);
       return allFallback();
     }
+  };
+
+  return async (proposals: readonly Proposal[], level: number): Promise<Judgement[]> => {
+    const standing = proposals.map((p) => stillStands(p, level));
+    proposals.forEach((p) => seen.add(keyOf(p)));
+    const open = proposals.filter((_, i) => !standing[i]);
+    // Nothing left to ask: no call at all.
+    const fresh = open.length ? await ask(open, level) : [];
+    let next = 0;
+    return standing.map((j) => j ?? fresh[next++]);
   };
 }
