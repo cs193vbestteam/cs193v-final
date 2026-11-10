@@ -322,3 +322,78 @@ export function upgradeResult(raw: Record<string, unknown>): StoredResult {
     places: (raw.places as StoredResult["places"]) ?? {},
   } as StoredResult;
 }
+
+// ---------------------------------------------------------------------------
+// Deletion (#5). Every statement is scoped by id, so nothing outside the plan or
+// user being removed is touched. Each function is ordered so that a failure
+// halfway leaves at most a cleared result behind, never another person's data.
+//
+// Decisions:
+// - A decided plan is un-decided whenever someone leaves or deletes their account:
+//   the stored result names every member, and the people left can simply run it again.
+// - A plan whose creator leaves or deletes their account is handed over to the member
+//   who joined earliest after them, so nobody else loses their chat. A plan with
+//   nobody else in it is deleted.
+// ---------------------------------------------------------------------------
+
+async function creatorOf(eventId: string): Promise<string | null> {
+  const client = await db();
+  const { rows } = await client.execute({ sql: "SELECT creator_id FROM events WHERE id = ?", args: [eventId] });
+  return rows[0] ? String(rows[0].creator_id) : null;
+}
+
+/**
+ * Plans `userId` created (only `eventId`, if given) go to the earliest-joined other member;
+ * the ones with no other member are deleted, which cascades to their members and messages.
+ */
+async function handOverOrDeleteCreated(userId: string, eventId?: string) {
+  const client = await db();
+  const onlyOne = eventId ? " AND id = ?" : "";
+  const scope = eventId ? [eventId] : [];
+  const others = "FROM members m WHERE m.event_id = events.id AND m.user_id <> ?";
+  await client.execute({
+    sql: `UPDATE events SET creator_id = (SELECT m.user_id ${others} ORDER BY m.joined_at, m.user_id LIMIT 1)
+          WHERE creator_id = ?${onlyOne} AND EXISTS (SELECT 1 ${others})`,
+    args: [userId, userId, ...scope, userId],
+  });
+  await client.execute({ sql: `DELETE FROM events WHERE creator_id = ?${onlyOne}`, args: [userId, ...scope] });
+}
+
+/** Deletes a plan with everyone's constraints, chats and the stored result. Creator only. */
+export async function deletePlan(eventId: string, userId: string): Promise<void> {
+  const creator = await creatorOf(eventId);
+  if (!creator) throw new AccessError("That plan doesn't exist");
+  if (creator !== userId) throw new AccessError("Only the person who created this plan can delete it");
+  const client = await db();
+  // members and messages go with it (ON DELETE CASCADE); deleted explicitly too, so this never depends on it.
+  await client.execute({ sql: "DELETE FROM messages WHERE event_id = ?", args: [eventId] });
+  await client.execute({ sql: "DELETE FROM members WHERE event_id = ?", args: [eventId] });
+  await client.execute({ sql: "DELETE FROM events WHERE id = ? AND creator_id = ?", args: [eventId, userId] });
+}
+
+/** Removes one member's constraints and private chat from a plan and un-decides it. */
+export async function leavePlan(eventId: string, userId: string): Promise<void> {
+  await requireMember(eventId, userId);
+  const client = await db();
+  await client.execute({ sql: "UPDATE events SET result_json = NULL, decided_at = NULL WHERE id = ?", args: [eventId] });
+  if ((await creatorOf(eventId)) === userId) await handOverOrDeleteCreated(userId, eventId);
+  await client.execute({ sql: "DELETE FROM messages WHERE event_id = ? AND user_id = ?", args: [eventId, userId] });
+  await client.execute({ sql: "DELETE FROM members WHERE event_id = ? AND user_id = ?", args: [eventId, userId] });
+}
+
+/**
+ * Deletes a user and everything stored about them: account (incl. encrypted email), sessions,
+ * memberships, constraints and private chats. Their plans are handed over or deleted (see above).
+ */
+export async function deleteAccount(userId: string): Promise<void> {
+  const client = await db();
+  await client.execute({
+    sql: "UPDATE events SET result_json = NULL, decided_at = NULL WHERE id IN (SELECT event_id FROM members WHERE user_id = ?)",
+    args: [userId],
+  });
+  await handOverOrDeleteCreated(userId);
+  await client.execute({ sql: "DELETE FROM messages WHERE user_id = ?", args: [userId] });
+  await client.execute({ sql: "DELETE FROM members WHERE user_id = ?", args: [userId] });
+  await client.execute({ sql: "DELETE FROM sessions WHERE user_id = ?", args: [userId] });
+  await client.execute({ sql: "DELETE FROM users WHERE id = ?", args: [userId] });
+}
