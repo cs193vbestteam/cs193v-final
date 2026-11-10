@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { ZodError } from "zod";
 import { headers } from "next/headers";
 import { AuthError, authenticate, checkIpLimit, createUser } from "@/lib/auth";
-import { describeConstraints, missingFields, type MissingField } from "@/lib/constraints";
+import type { MissingField } from "@/lib/constraints";
 import type { ChatTurn } from "@/lib/extract";
 import {
   AccessError,
@@ -18,6 +18,7 @@ import {
   sendMessage,
   setReady,
 } from "@/lib/events";
+import { DEFAULT_SCENARIO, ScenarioIdSchema, scenarioFor } from "@/lib/scenario";
 import { endSession, requireUser, startSession } from "@/lib/session";
 import { safeNext } from "@/lib/redirect";
 
@@ -74,7 +75,9 @@ export async function createEventAction(_: FormState, form: FormData): Promise<F
   const user = await requireUser();
   let code: string;
   try {
-    code = (await createEvent(user.id, String(form.get("title") ?? ""), String(form.get("location") ?? ""))).inviteCode;
+    const scenario = ScenarioIdSchema.parse(form.get("scenario") ?? DEFAULT_SCENARIO);
+    code = (await createEvent(user.id, String(form.get("title") ?? ""), String(form.get("location") ?? ""), scenario))
+      .inviteCode;
   } catch (err) {
     return { error: friendly(err) };
   }
@@ -101,8 +104,9 @@ export async function sendMessageAction(
 ): Promise<ChatState | { error: string }> {
   const user = await requireUser(`/e/${inviteCode}`);
   try {
-    const { messages, constraints } = await sendMessage(eventId, user.id, text);
+    const { messages, constraints, scenario } = await sendMessage(eventId, user.id, text);
     revalidatePath(`/e/${inviteCode}`);
+    const { describeConstraints, missingFields } = scenarioFor(scenario);
     return { messages, summary: describeConstraints(constraints), missing: missingFields(constraints) };
   } catch (err) {
     return { error: friendly(err) };

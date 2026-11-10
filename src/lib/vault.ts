@@ -1,10 +1,9 @@
 import "server-only";
 import { db } from "./db";
 import { decryptJson } from "./crypto";
-import { ConstraintsSchema } from "./constraints";
 import { makeAgent, type Agent } from "./agent";
 import { poolForEvent } from "./pool";
-import { compile } from "./preferences";
+import { scenarioFor } from "./scenario";
 
 /**
  * The only place that turns stored (encrypted) preferences into something the
@@ -23,14 +22,15 @@ export async function agentsForEvent(
     sql: "SELECT user_id, constraints_enc, ready FROM members WHERE event_id = ? ORDER BY joined_at",
     args: [eventId],
   });
-  const { restaurants } = await poolForEvent(eventId);
+  const { restaurants, scenario: scenarioId } = await poolForEvent(eventId);
+  const scenario = scenarioFor(scenarioId);
   const lookup = (id: string) => restaurants.find((r) => r.id === id);
   const agents: Agent[] = [];
   const userIds: string[] = [];
   let readyCount = 0;
   for (const row of rows) {
-    const constraints = ConstraintsSchema.parse(decryptJson(String(row.constraints_enc)));
-    agents.push(makeAgent(compile(constraints), lookup, constraints.startPoint));
+    const constraints = scenario.parseConstraints(decryptJson(String(row.constraints_enc)));
+    agents.push(makeAgent(scenario.compile(constraints), lookup, constraints.startPoint));
     userIds.push(String(row.user_id));
     if (Number(row.ready) === 1) readyCount++;
   }

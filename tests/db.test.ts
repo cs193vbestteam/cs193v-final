@@ -3,7 +3,7 @@ import { PGLiteSocketServer } from "@electric-sql/pglite-socket";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { authenticate, createUser } from "@/lib/auth";
 import { db, isPostgresUrl, isUniqueViolation, resetDbForTests, toPostgresPlaceholders } from "@/lib/db";
-import { createEvent, getMyMessages, joinEvent, listMembers, sendMessage } from "@/lib/events";
+import { createEvent, getEventByCode, getMyMessages, joinEvent, listMembers, sendMessage } from "@/lib/events";
 
 describe("helpers", () => {
   it("translates ? placeholders to $n", () => {
@@ -99,6 +99,15 @@ describe("production driver (pg over the Postgres wire protocol)", () => {
     const a = await createUser({ email: "old-pg@test.dev", displayName: "Old", password: "password123" });
     const e = await createEvent(a.id, "Brunch", "Palo Alto, CA");
     expect(e.location).toBe("Palo Alto, CA");
+  });
+
+  it("reads a plan stored before scenarios existed as a meal", async () => {
+    const a = await createUser({ email: "pre-scenario@test.dev", displayName: "Pre", password: "password123" });
+    const e = await createEvent(a.id, "Old dinner");
+    await pglite.exec("ALTER TABLE events DROP COLUMN scenario");
+    await resetDbForTests();
+    expect((await getEventByCode(e.inviteCode))?.scenario).toBe("meal");
+    expect((await sendMessage(e.id, a.id, "Saturday dinner, under $30")).scenario).toBe("meal");
   });
 
   it("runs the plan flow: create, join twice, chat", async () => {
