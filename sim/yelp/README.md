@@ -12,7 +12,7 @@ The dataset is not in this repository and must not be added to it.
    - `yelp_academic_dataset_review.json`
    - `yelp_academic_dataset_user.json`
 
-**Licence.** Yelp describes the dataset as intended for educational use, and the download includes its Dataset User Agreement as a PDF. Read it before using the data. As we understand it, the data may be used for academic and personal purposes, may not be used commercially, and may not be redistributed, which is why only our code and the aggregate numbers it produces are committed, never the records themselves.
+**Licence.** Yelp describes the dataset as intended for educational use, and the download includes its Dataset User Agreement (`Dataset_User_Agreement.pdf`). Read it before using the data. As we understand it, the data may be used for academic and personal purposes, may not be used commercially, and may not be redistributed, which is why only our code and the aggregate numbers it produces are committed, never the records themselves.
 
 ## How to run
 

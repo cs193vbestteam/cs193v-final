@@ -173,9 +173,42 @@ The budget spent: 36.9 dimension names per group on average (median 15, range 0â
 
 **First acceptable, not best.** The protocol stops at the first round with a unanimous candidate and chooses only among that round's unanimous candidates. That is why 91% of agreements happen in rounds 1â€“2 while only 50% hit the optimum: round-1 agreements are optimal in 27 of 75 cases (36%), round-2 agreements in 39 of 60 (65%), because the second round has learned from the first. That description is of the shipped default. The study above measures the two ways out that were proposed here: more candidates per round (`perRound`) does not help, while one more round after the first agreement (`exploreRounds`) does, modestly.
 
+## Real reviewers: the Yelp Open Dataset
+
+The synthetic people above are our guesses. To see whether the picture holds for real ones, `sim/yelp/` runs the same comparison on the [Yelp Open Dataset](https://business.yelp.com/data/resources/open-dataset/): real restaurants in one city, personas derived from real review histories, and groups that are actual friends. `sim/yelp/README.md` has the method in full; in short, a reviewer with 20 or more restaurant reviews in the city becomes a persona (liked and disliked cuisines, budget, travel radius and weights, all from the earlier 80% of their reviews), groups of 3 to 6 are grown along the friends graph, and each group gets 30 restaurants still in business near its middle. Availability is the one ingredient reviews cannot supply, so weekend slots are drawn as for the synthetic people.
+
+**Do the personas mean anything?** Each persona is checked against the latest 20% of that reviewer's reviews, which it never saw (Table Y1).
+
+| city | restaurants (open) | personas | held-out reviews | hard rules allow a place they later went to (a random place) | later place scores above a random one | later 4-5 star place scores above a later 1-2 star one |
+|---|---:|---:|---:|---:|---:|---:|
+| Philadelphia | 3807 (2191) | 3557 | 33,234 | 91% (73%) | 63% | 48% |
+| Tampa | 1938 (1260) | 1336 | 11,657 | 87% (70%) | 62% | 48% |
+| New Orleans | 1283 (785) | 881 | 7,433 | 95% (90%) | 54% | 46% |
+
+The personas capture where someone will go: their budget and travel limits admit about nine in ten of the places they later visited, clearly more than a random place in the city, and a later visit outscores a random place 54 to 63% of the time against a 50% coin flip. They do not capture how much someone will like it once there: a later 4-5 star place outscores a later 1-2 star one 46 to 48% of the time, which is chance. Price band, distance and cuisine say what is acceptable; they do not say what will be good. That is the limit of what these personas can stand in for.
+
+**Protocol results.** Table Y2 puts 200 friend groups per city next to the synthetic "all" row of Table 1 (seed 1), with the same seed, pool size and protocol settings (ratios are mean / median over groups where the oracle found a feasible plan).
+
+| groups | n | agreed | oracle feasible | agreed given feasible | Nash ratio protocol | Nash ratio naive | max-min ratio protocol | hits optimum | agreed in round 1 | rounds (mean) | leaked dims (mean) | leaked / person / round |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| synthetic | 200 | 74% | 75% | 99% | 0.930 / 0.999 | 0.455 / 0.566 | 0.959 | 50% | 75 of 148 | 2.87 | 36.9 | 2.15 |
+| Yelp, Philadelphia | 200 | 78% | 78% | 100% | 0.936 / 0.948 | 0.854 / 0.936 | 0.984 | 21% | 143 of 156 | 2.17 | 19.6 | 1.29 |
+| Yelp, Tampa | 200 | 83% | 83% | 100% | 0.910 / 0.932 | 0.761 / 0.903 | 0.964 | 33% | 138 of 166 | 2.02 | 17.7 | 1.29 |
+| Yelp, New Orleans | 200 | 78% | 78% | 100% | 0.961 / 1.000 | 0.795 / 0.965 | 0.995 | 52% | 129 of 155 | 2.27 | 21.5 | 1.37 |
+
+**What carries over.** In every city the protocol reached unanimous agreement in every group where the oracle found a plan, and the `no_deal` groups are exactly the infeasible ones, as in the synthetic run. Mean Nash ratio is 0.91 to 0.96 against 0.93, and the worst-off member keeps 96 to 99% of what the oracle could give them.
+
+**What is different.** Real friends are easier to please, and it shows in three places.
+
+- *They agree at once.* 83 to 92% of agreements come in round 1, against 51% for synthetic groups. Fewer rounds means fewer answers, so the mediator sees about half as many dimension names (18 to 22 per group against 37).
+- *The naive baseline is no longer weak.* Taking the most-voted round-1 candidate keeps 76 to 85% of the oracle's Nash welfare here, against 46% on synthetic groups. On Philadelphia the protocol's advantage over naive is 0.08, not 0.48. The synthetic generator draws every member independently, which overstates how much friends disagree and therefore how much the protocol adds.
+- *It stops too early.* In Philadelphia only 21% of feasible groups end on the oracle's optimum, against 50% for synthetic groups, although the Nash ratio is the same. With an average of 31 feasible candidates out of 120, something acceptable to everyone usually turns up in the first five proposals, and the protocol takes it. This is the "first acceptable, not best" behaviour from the discussion above, and it bites harder on real groups. The `exploreRounds` option studied above targets exactly this; it was not run on the Yelp groups, and they are where it should matter most.
+
+**Caveats specific to this section.** Availability is synthetic, and the share of feasible groups (78 to 83%) depends on it. Travel is measured from the middle of each group for everyone, not from each person's own start point. One seed per city, with no intervals, unlike the ten-seed study above. Reviewers with 20 or more reviews in one city are heavier users than a typical friend group. And, as Table Y1 shows, the personas describe what people accept, not what they enjoy.
+
 ## Threats to validity
 
-- **Synthetic preferences.** The distributions in `synth.ts` are our guesses; real friends are more correlated (shared budgets and neighbourhoods) and less tidy (a "hard" ceiling that bends).
+- **Synthetic preferences.** The distributions in `synth.ts` are our guesses; real friends are more correlated (shared budgets and neighbourhoods) and less tidy (a "hard" ceiling that bends). The Yelp section above replaces the guesses with real reviewers for cuisine, budget and travel, and finds real groups easier than synthetic ones; availability is still synthetic there, and the personas predict where people go but not how much they like it.
 - **Fixed pools.** The app ships 16 fictional restaurants; the simulation draws 30 synthetic ones per group. Real pools have per-person travel times and more skewed prices.
 - **The utility model is ours.** Oracle, agents and the LLM prompt all share `utility()` (weighted mean, linear ramps, accept at 0.7, reluctant at 0.4). The ratios measure how well the protocol recovers that model's optimum, not how satisfied people would be.
 - **Seeds vary the people, not the generator.** The intervals above cover redrawing the population from the same distributions. They say nothing about whether those distributions resemble real groups. Only `perRound` was swept; `maxRounds`, the concession schedule and the accept thresholds were not.
@@ -184,7 +217,7 @@ The budget spent: 36.9 dimension names per group on average (median 15, range 0â
 
 ## How to reproduce
 
-One command regenerates every number in this document:
+One command regenerates every number in this document except the Yelp section, which needs a separate download (below):
 
 ```
 npm run sim:study
@@ -199,3 +232,11 @@ npm run sim:study -- --llm-baseline --llm-groups 40
 ```
 
 That adds 40 model calls on the first 40 groups of seed 1 and rewrites the "LLM baseline" table. Without the flag, or without a key, that table is left exactly as it is. `npx vitest run tests/sim.test.ts tests/study.test.ts` runs the harness tests, including the fake-API tests for the baseline and the multi-seed aggregation.
+
+For the Yelp section, download the dataset (see `sim/yelp/README.md`; it is not in this repository) and run, once per city:
+
+```
+npm run sim:yelp -- --data data/yelp --city Philadelphia --groups 200 --seed 1 --out sim/out/yelp
+```
+
+which writes `report.json` and `report.md` into `--out`. `npx vitest run tests/yelp.test.ts` runs its tests on made-up records.
