@@ -1,5 +1,6 @@
 import { SLOT_LABELS } from "@/lib/constraints";
-import type { Dim } from "@/lib/evaluate";
+import type { Dim, Proposal } from "@/lib/evaluate";
+import { PlanOptions, type OptionTile } from "./PlanOptions";
 import type { StoredResult } from "@/lib/events";
 import type { Tally } from "@/lib/mediator";
 import { getRestaurant } from "@/lib/restaurants";
@@ -41,8 +42,28 @@ export function ResultCard({ result }: { result: StoredResult }) {
   const roundCount = result.roundCount ?? result.rounds.length;
   const showPlan = r && result.proposal && result.status !== "no_deal";
   const names = result.memberNames ?? [];
-  // The shortlist minus its first entry, which is the plan shown at the top.
-  const others = showPlan ? (result.options ?? []).slice(1) : [];
+  // One tile per option on the shortlist, the plan first. Results stored before shortlists have the plan only.
+  const listed = result.options?.length ? result.options : result.proposal ? [{ proposal: result.proposal }] : [];
+  const tiles: OptionTile[] = showPlan
+    ? listed.flatMap((o: { proposal: Proposal; everyoneIn?: boolean }) => {
+        const p = place(o.proposal.restaurantId);
+        if (!p) return [];
+        return [
+          {
+            key: `${o.proposal.restaurantId}-${o.proposal.slot}`,
+            name: p.name,
+            when: SLOT_LABELS[o.proposal.slot],
+            cuisine: p.cuisine,
+            pricePerPerson: p.pricePerPerson,
+            ...(p.travelMin !== undefined ? { travelMin: p.travelMin } : {}),
+            ...(p.rating !== undefined ? { rating: p.rating, ratingCount: p.ratingCount } : {}),
+            ...(p.address ? { address: p.address } : {}),
+            ...(p.mapsUrl ? { mapsUrl: p.mapsUrl } : {}),
+            ...(o.everyoneIn !== undefined ? { everyoneIn: o.everyoneIn } : {}),
+          },
+        ];
+      })
+    : [];
   const reservations = (result.reservations ?? []).map((x) => ({
     name: names[x.member] ?? "Someone",
     dim: DIM_LABEL[x.dim],
@@ -59,62 +80,11 @@ export function ResultCard({ result }: { result: StoredResult }) {
               {SLOT_LABELS[result.proposal!.slot]} · ~${r.pricePerPerson}/person
               {r.travelMin !== undefined ? ` · ${r.travelMin} min away` : ""} · {r.cuisine}
             </div>
-            {(r.rating !== undefined || r.address || r.mapsUrl) && (
-              <div className="mt-1 text-sm text-ink-2">
-                {r.rating !== undefined && (
-                  <span>
-                    {r.rating.toFixed(1)} on Google
-                    {r.ratingCount ? ` (${r.ratingCount.toLocaleString("en-US")} reviews)` : ""}
-                  </span>
-                )}
-                {r.rating !== undefined && r.address ? " · " : ""}
-                {r.address}
-                {r.mapsUrl && /^https:\/\//.test(r.mapsUrl) && (
-                  <>
-                    {r.rating !== undefined || r.address ? " · " : ""}
-                    <a href={r.mapsUrl} target="_blank" rel="noopener noreferrer" className="underline">
-                      Open in Google Maps
-                    </a>
-                  </>
-                )}
-              </div>
-            )}
             {result.explanation && <p className="mt-2 text-sm italic text-ink-2">{result.explanation}</p>}
-            {others.length > 0 && (
-              <div className="mt-4">
-                <div className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
-                  Best fit above · {others.length} more that {others.length === 1 ? "works" : "work"} for the group
-                </div>
-                <ol className="mt-1.5 space-y-2" start={2}>
-                  {others.map((o, i) => {
-                    const p = place(o.proposal.restaurantId);
-                    if (!p) return null;
-                    return (
-                      <li key={`${o.proposal.restaurantId}-${o.proposal.slot}`} className="text-sm">
-                        <div className="text-ink">
-                          <span className="font-mono text-[0.6875rem] text-ink-3">{i + 2}. </span>
-                          {p.name}
-                          {o.everyoneIn === false && <span className="text-amber-ink"> · a stretch for some</span>}
-                        </div>
-                        <div className="text-ink-2">
-                          {SLOT_LABELS[o.proposal.slot]} · ~${p.pricePerPerson}/person
-                          {p.travelMin !== undefined ? ` · ${p.travelMin} min away` : ""} · {p.cuisine}
-                          {p.rating !== undefined ? ` · ${p.rating.toFixed(1)} on Google` : ""}
-                          {p.mapsUrl && /^https:\/\//.test(p.mapsUrl) && (
-                            <>
-                              {" · "}
-                              <a href={p.mapsUrl} target="_blank" rel="noopener noreferrer" className="underline">
-                                Map
-                              </a>
-                            </>
-                          )}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ol>
-              </div>
+            {tiles.length > 1 && (
+              <p className="mt-2 text-xs text-ink-3">Best fit of {tiles.length} places that work for the group.</p>
             )}
+            <PlanOptions tiles={tiles} />
           </div>
         ) : (
           <p className="mt-2 text-sm text-ink-2">
