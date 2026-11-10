@@ -4,7 +4,7 @@ import Link from "next/link";
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
     <Link href="/" aria-label="Settle home" className={`group inline-flex items-baseline gap-0.5 ${className}`}>
-      <span className="font-serif text-[1.65rem] italic leading-none tracking-tight text-ink">settle</span>
+      <span className="font-serif text-[1.65rem] italic leading-none tracking-tight text-ink">Settle</span>
       <span
         aria-hidden
         className="mb-[1px] inline-block h-[0.42rem] w-[0.42rem] rounded-full bg-seal transition-transform duration-500 ease-out group-hover:scale-150"
