@@ -196,6 +196,13 @@ function dietFlags(text: string): Dietary[] {
   return found;
 }
 
+/**
+ * Words that make a free-text reply an answer to "anything you can't or won't eat?" even when
+ * none of the four restaurant flags applies: ingredients, allergens, diets, and eating words.
+ */
+const FOOD_WORD =
+  /\b(food|foods|eat|eating|dish(es)?|meals?|ingredients?|allerg(y|ies|ic)|intoleran(t|ce)|anything with|nuts?|peanuts?|tree ?nuts?|almonds?|cashews?|walnuts?|gluten|wheat|celiac|coeliac|dairy|milk|lactose|cheese|butter|cream|eggs?|soy|soya|tofu|sesame|beef|chicken|lamb|mutton|meat|meats|red meat|poultry|turkey|duck|bacon|ham|mushrooms?|onions?|garlic|cilantro|coriander|tomato(es)?|peppers?|corn|beans?|legumes?|lentils?|peas|celery|mustard|sulphites?|sulfites?|msg|alcohol|wine|beer|sugar|sweets|carbs?|kosher|keto|paleo|pescatarian|raw|offal|organ meats?|liver|fruit|berries|strawberr(y|ies)|kiwi|avocado|coconut|olives?|rice|bread|pasta|noodles)\b/i;
+
 const note = (text: string) => text.trim().replace(/\s+/g, " ").slice(0, 160);
 
 export function extractDietary(text: string): {
@@ -277,8 +284,10 @@ export function extractBareAnswer(text: string, pending: MissingField | undefine
     if (/\?\s*$/.test(text) || /^(idk|i don'?t know|not sure|dunno|maybe|hmm+|what|huh)$/.test(bare)) return {};
     const listed = bareDietList(bare);
     if (listed) return listed;
-    // A free-text answer to "anything you can't eat?" is an answer: map what we can, keep their words.
+    // Free text counts as the answer only when it is about food (#51): "tell me a joke" must not
+    // mark the question answered, or someone with an allergy could be marked done without saying so.
     const flags = dietFlags(bare);
+    if (!flags.length && !FOOD_WORD.test(bare)) return {};
     return { ...(flags.length ? { dietary: flags } : {}), avoidNotes: [note(text)], dietaryConfirmed: true };
   }
   return {};
