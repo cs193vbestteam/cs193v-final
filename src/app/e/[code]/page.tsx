@@ -126,6 +126,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
                 inviteCode={code}
                 isCreator={event.creatorId === user.id}
                 title={event.title}
+                nextOwner={members.find((m) => m.userId !== user.id)?.displayName}
               />
             </div>
           </section>
