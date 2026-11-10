@@ -8,15 +8,13 @@ For how the system is put together, what it stores and how private data is prote
 
 ## See it live
 
-**Live site:** _link to be added once this repository is deployed._
+**Live site:** https://cs193v-final.vercel.app
 
-Until then, the way to see it is to run it yourself, which takes a few commands and needs no accounts or keys (next section).
-
-An earlier version of the app is online at https://miniproject-europium.vercel.app. It has the same idea and flow but an older design, and it lacks most of what is described here.
+To try the whole flow there you need two people, or two browser windows: sign up in one, start a plan and copy the invite link, then open the link in a private (incognito) window and sign up as a second person. Tell each assistant something like `Saturday dinner, under $40, 20 minutes, no restrictions`, press "I'm done" in both, then "Find a plan".
 
 ## Run your own copy
 
-You need [Node.js](https://nodejs.org) 22 or newer. Nothing else: no database to install and no API keys.
+To run it on your own machine you need [Node.js](https://nodejs.org) 22 or newer. Nothing else: no database to install and no API keys.
 
 ```bash
 git clone https://github.com/cs193vbestteam/cs193v-final.git
@@ -62,7 +60,7 @@ Both are paid services billed to whoever owns the key. Set a quota or budget ale
    - `ENCRYPTION_KEY`: the output of `npm run gen-key`. Use a new one, not the one from your laptop.
    - `DATABASE_URL`: the Neon connection string.
    - `ANTHROPIC_API_KEY` and `GOOGLE_PLACES_API_KEY`, if you want Claude and real restaurants.
-4. **Deploy.** The tables are created automatically on the first request. Sign up on the deployed site to check it.
+4. **Deploy.** The tables are created automatically on the first request. Sign up on the deployed site to check it. If you add or change a variable later, redeploy: Vercel does not apply it to a deployment that already exists. If sign-up fails with "Something went wrong", the usual cause is that `DATABASE_URL` is missing, is not enabled for Production, or does not start with `postgresql://`.
 
 Never change `ENCRYPTION_KEY` once there is real data: everything encrypted with the old key becomes unreadable. Never commit `.env.local` or any real key; `CONTRIBUTING.md` says what to do if one leaks.
 

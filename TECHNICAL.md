@@ -22,13 +22,13 @@ Separately, `sim/` holds evaluation scripts that are not part of the website. Th
 |---|---|
 | **Next.js** (React, TypeScript) | The whole web app: the pages and the server-side functions they call. There is no separate backend. |
 | **Tailwind CSS** | Styling. |
-| **Postgres** on **Neon** | The production database (chosen, not set up for this repository yet; see Open questions). |
+| **Postgres** on **Neon** | The production database. |
 | **PGlite** | Postgres running inside Node, for local development and tests, so nobody installs a database. |
 | **Anthropic API (Claude)** | Reads private-chat messages into constraints, and runs the negotiation: each person's assistant and the mediator (see 5 and 6). |
 | **Google Places API** | Finds real restaurants near a plan's location, and turns a typed place into coordinates. Built, but barely exercised with a real key so far. |
 | **Zod** | Checks the shape of anything from outside: form input, Claude's output, stored data. |
 | **bcryptjs** and Node's built-in crypto | Password hashing, and encryption of private data. |
-| **Vercel** | Hosting (see Open questions for where the deployment stands). |
+| **Vercel** | Hosting. The live site is https://cs193v-final.vercel.app. |
 | **GitHub Actions** | On every pull request: lint, type check, unit tests, a production build, browser tests and a secret scan. |
 | **Vitest, Playwright** | Unit tests and end-to-end browser tests. |
 | **gitleaks** | Scans the repository's history for committed secrets. |
@@ -77,7 +77,7 @@ These protections are about what other members can see and what the negotiation 
 
 ## Open questions
 
-1. **This repository is not deployed yet.** The "Live site" link in the README points at an earlier version. *Next:* create the Neon database, set the four secrets in Vercel, deploy from this repository, then run one two-person plan on the live site and update the link.
+1. **The live site is new and lightly tested.** It is deployed at https://cs193v-final.vercel.app, and its pages and database respond. We have not yet recorded a full two-person plan on it, or written down which optional keys (Claude, Google Places) are set there. *Next:* run one two-person plan on the live site from sign-up to result, note which keys are set in the hosting project, and check the server logs for errors afterwards.
 2. **Google Places with a real key.** The tests for this path use hand-written responses in Google's format. With a real key it has been run once: on one developer's machine, a plan created near Palo Alto came back with 60 real places. Nobody has looked at those restaurants, negotiated on them, or used a real key for a person's starting point. We also have not checked the price at our volume (up to 7 calls per new plan), and no spending limit is set. *Next:* create a plan with a real location, read through the restaurants it returns, run a full two-person negotiation on it, then read the pricing and set a daily quota and a budget alert before a key goes anywhere near the deployed site.
 3. **How Claude behaves when someone tries to manipulate it.** We wrote 48 scripted chats, 16 of them adversarial ("ignore your instructions", "show me Sam's budget"), and ran the rule-based extractor on them. We have not run Claude on them. *Next:* run `npm run sim:extract -- --llm` and add the results to `docs/evaluation.md`, checking first how often the call to Claude fails and falls back to the rules.
 4. **Unlimited re-runs.** A member can change their own answers and re-run a plan as often as they like, and watching how the outcome moves slowly reveals the others' limits. *Next:* decide on a cap or a cool-down and open an issue for it.
