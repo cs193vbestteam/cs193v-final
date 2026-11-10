@@ -205,13 +205,17 @@ describe("candidate pool per plan", () => {
   });
 
   it("the stored result carries public place summaries for everything the rounds mention", async () => {
+    // Three people: a two-person plan stores no round log at all (see two-person-privacy.test.ts).
     const { a, b, event } = await setup();
-    await sendMessage(event.id, a.id, "Saturday dinner, under $40, 20 minutes, no restrictions");
-    await sendMessage(event.id, b.id, "Saturday dinner, under $40, 20 minutes, no restrictions");
-    await setReady(event.id, a.id, true);
-    await setReady(event.id, b.id, true);
+    const c = await makeUser("Charlie");
+    await joinEvent(event.inviteCode, c.id);
+    for (const u of [a, b, c]) {
+      await sendMessage(event.id, u.id, "Saturday dinner, under $40, 20 minutes, no restrictions");
+      await setReady(event.id, u.id, true);
+    }
     const result = await runNegotiation(event.id, a.id);
     const mentioned = new Set(result.rounds.flatMap((r) => r.proposals.map((p) => p.proposal.restaurantId)));
+    expect(mentioned.size).toBeGreaterThan(0);
     for (const id of mentioned)
       expect(result.places[id]).toMatchObject({ name: expect.any(String), pricePerPerson: expect.any(Number) });
     expect(JSON.stringify(result.places)).not.toMatch(/budget|constraints|weight/);

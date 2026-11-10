@@ -128,6 +128,16 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expectNoSecrets(alex, BLAKE);
   });
 
+  await test.step("with two people, only the outcome is shown: any count would be the other person's answer", async () => {
+    for (const page of [alex, blake]) {
+      await expect(page.getByText(/\d+ rounds?, 2 people/)).toBeVisible();
+      await expect(page.getByText("stays hidden")).toBeVisible();
+      await expect(page.getByText("How they decided")).toHaveCount(0);
+      const text = await page.locator("body").innerText();
+      expect(text).not.toMatch(/reject|reluctant|Round \d/i);
+    }
+  });
+
   await test.step("someone outside the plan sees only the invitation", async () => {
     await signUp(casey, CASEY, planPath);
     await expect(casey.getByRole("button", { name: "Join plan" })).toBeVisible();
