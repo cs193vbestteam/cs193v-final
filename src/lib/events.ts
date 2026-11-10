@@ -44,7 +44,52 @@ export type StoredResult = NegotiationResult & {
   memberNames: string[];
   places: Record<string, PlaceSummary>;
   decidedAt: number;
+  /**
+   * "full": the round log with anonymous counts. "outcome": only the plan (or
+   * that there is none) and how many rounds it took; see `forGroupSize`.
+   */
+  detail: "full" | "outcome";
+  /** Rounds run. Kept on its own because `rounds` is empty when `detail` is "outcome". */
+  roundCount: number;
 };
+
+/**
+ * The smallest group whose counts are anonymous. In a group of two every count
+ * is about one identifiable person: each member knows their own answer, so
+ * "1x reject, price" next to a $38 restaurant is the other person's ceiling.
+ */
+export const MIN_GROUP_FOR_DETAIL = 3;
+
+/**
+ * What a group of this size may see of a negotiation. Below
+ * `MIN_GROUP_FOR_DETAIL` that is the outcome and the number of rounds only: no
+ * per-option tallies, no dimension names, no conflicts, no named reservations,
+ * no utility buckets, and no place other than the chosen one. Applied before a
+ * result is stored and again when one is read, so results stored before this
+ * rule existed are covered too.
+ */
+export function forGroupSize(result: StoredResult): StoredResult {
+  const roundCount = result.roundCount ?? result.rounds.length;
+  if (result.participants >= MIN_GROUP_FOR_DETAIL) return { ...result, detail: "full", roundCount };
+  const chosen = result.proposal?.restaurantId;
+  return {
+    status: result.status,
+    proposal: result.proposal,
+    tally: null,
+    rounds: [],
+    concessionLevel: 0,
+    finalists: [],
+    reservations: [],
+    conflicts: [],
+    leakedDims: 0,
+    participants: result.participants,
+    memberNames: [],
+    places: chosen && result.places[chosen] ? { [chosen]: result.places[chosen] } : {},
+    decidedAt: result.decidedAt,
+    detail: "outcome",
+    roundCount,
+  };
+}
 
 export const TitleSchema = z.string().trim().min(1, "Give your plan a name").max(80, "Name is too long");
 export const LocationSchema = z.string().trim().max(120, "Location is too long");
@@ -280,13 +325,16 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
   if (outcome.proposal) mentioned.add(outcome.proposal.restaurantId);
   for (const round of outcome.rounds) for (const p of round.proposals) mentioned.add(p.proposal.restaurantId);
   for (const f of outcome.finalists) mentioned.add(f.proposal.restaurantId);
-  const result: StoredResult = {
+  // Small groups store the outcome only: what the page must not show is never written (forGroupSize).
+  const result = forGroupSize({
     ...outcome,
     participants: agents.length,
     memberNames,
     places: summarize(restaurants, mentioned),
     decidedAt: Date.now(),
-  };
+    detail: "full",
+    roundCount: outcome.rounds.length,
+  });
   const client = await db();
   await client.execute({
     sql: "UPDATE events SET result_json = ?, decided_at = ? WHERE id = ?",
@@ -300,7 +348,7 @@ export async function getResult(eventId: string, userId: string): Promise<Stored
   const client = await db();
   const { rows } = await client.execute({ sql: "SELECT result_json FROM events WHERE id = ?", args: [eventId] });
   const raw = rows[0]?.result_json;
-  return raw ? upgradeResult(JSON.parse(String(raw))) : null;
+  return raw ? forGroupSize(upgradeResult(JSON.parse(String(raw)))) : null;
 }
 
 type LegacyTally = { yes: number; meh: number; no: number; reasons: Record<string, number> };
@@ -329,6 +377,8 @@ export function upgradeResult(raw: Record<string, unknown>): StoredResult {
     leakedDims: (raw.leakedDims as number) ?? 0,
     memberNames: (raw.memberNames as string[]) ?? [],
     places: (raw.places as StoredResult["places"]) ?? {},
+    detail: raw.detail === "outcome" ? "outcome" : "full",
+    roundCount: (raw.roundCount as number) ?? rounds.length,
   } as StoredResult;
 }
 

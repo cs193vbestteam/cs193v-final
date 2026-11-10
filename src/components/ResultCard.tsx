@@ -36,6 +36,9 @@ export function ResultCard({ result }: { result: StoredResult }) {
         ? { border: "border-amber/40", text: "text-amber-ink", stamp: "border-amber text-amber-ink" }
         : { border: "border-seal/35", text: "text-seal-ink", stamp: "border-seal text-seal-ink" };
   const tried = result.rounds.reduce((n, round) => n + round.proposals.length, 0);
+  // Small groups get the outcome only: any count would be one person's answer (events.ts, forGroupSize).
+  const outcomeOnly = result.detail === "outcome";
+  const roundCount = result.roundCount ?? result.rounds.length;
   const showPlan = r && result.proposal && result.status !== "no_deal";
   const names = result.memberNames ?? [];
   const reservations = (result.reservations ?? []).map((x) => ({
@@ -90,90 +93,102 @@ export function ResultCard({ result }: { result: StoredResult }) {
 
       <div className="my-4 border-t border-dashed border-line-strong" />
 
-      <details className="group px-4 pb-4 text-xs text-ink-2">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3 marker:hidden [&::-webkit-details-marker]:hidden">
-          <span>
-            How they decided: {result.rounds.length} round{result.rounds.length === 1 ? "" : "s"}, {tried} options,{" "}
-            {result.participants} people
-          </span>
-          <span aria-hidden className="transition-transform duration-300 group-open:rotate-180">
-            ↓
-          </span>
-        </summary>
+      {outcomeOnly ? (
+        <div className="px-4 pb-4 text-xs text-ink-2">
+          <p className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
+            {roundCount} round{roundCount === 1 ? "" : "s"}, {result.participants} people
+          </p>
+          <p className="mt-2 text-ink-3">
+            With {result.participants === 2 ? "two" : "so few"} people, how the assistants got here stays hidden: any
+            count would be one person&apos;s answer.
+          </p>
+        </div>
+      ) : (
+        <details className="group px-4 pb-4 text-xs text-ink-2">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3 marker:hidden [&::-webkit-details-marker]:hidden">
+            <span>
+              How they decided: {result.rounds.length} round{result.rounds.length === 1 ? "" : "s"}, {tried} options,{" "}
+              {result.participants} people
+            </span>
+            <span aria-hidden className="transition-transform duration-300 group-open:rotate-180">
+              ↓
+            </span>
+          </summary>
 
-        <ol className="mt-3 space-y-3">
-          {result.rounds.map((round) => (
-            <li key={round.round}>
-              <div className="flex items-baseline justify-between font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
-                <span>Round {round.round}</span>
-                {round.level > 0 && <span className="text-amber-ink">concession step {round.level}</span>}
+          <ol className="mt-3 space-y-3">
+            {result.rounds.map((round) => (
+              <li key={round.round}>
+                <div className="flex items-baseline justify-between font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
+                  <span>Round {round.round}</span>
+                  {round.level > 0 && <span className="text-amber-ink">concession step {round.level}</span>}
+                </div>
+                <ul className="mt-1.5 space-y-1.5">
+                  {round.proposals.map((p) => {
+                    const name = place(p.proposal.restaurantId)?.name ?? "?";
+                    const why = describeDims(p.tally);
+                    return (
+                      <li
+                        key={`${p.proposal.restaurantId}-${p.proposal.slot}`}
+                        className="grid grid-cols-[1fr_4rem] items-center gap-3"
+                      >
+                        <span className="truncate" title={why || undefined}>
+                          {p.retried && (
+                            <span className="text-amber-ink" title="asked again after a concession step">
+                              ↺{" "}
+                            </span>
+                          )}
+                          <span className="text-ink">{name}</span>
+                          <span className="text-ink-3"> · {SLOT_LABELS[p.proposal.slot]}</span>
+                          {why && <span className="text-ink-3"> · {why}</span>}
+                        </span>
+                        <TallyBar tally={p.tally} people={result.participants} />
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
+          </ol>
+
+          {result.finalists?.length > 0 && (
+            <div className="mt-4">
+              <div className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
+                Final pick · Nash product of 1–5 buckets
               </div>
-              <ul className="mt-1.5 space-y-1.5">
-                {round.proposals.map((p) => {
-                  const name = place(p.proposal.restaurantId)?.name ?? "?";
-                  const why = describeDims(p.tally);
+              <ul className="mt-1.5 space-y-1">
+                {result.finalists.map((f) => {
+                  const chosen =
+                    result.proposal &&
+                    f.proposal.restaurantId === result.proposal.restaurantId &&
+                    f.proposal.slot === result.proposal.slot;
                   return (
                     <li
-                      key={`${p.proposal.restaurantId}-${p.proposal.slot}`}
-                      className="grid grid-cols-[1fr_4rem] items-center gap-3"
+                      key={`${f.proposal.restaurantId}-${f.proposal.slot}`}
+                      className="flex items-center justify-between gap-3"
                     >
-                      <span className="truncate" title={why || undefined}>
-                        {p.retried && (
-                          <span className="text-amber-ink" title="asked again after a concession step">
-                            ↺{" "}
-                          </span>
-                        )}
-                        <span className="text-ink">{name}</span>
-                        <span className="text-ink-3"> · {SLOT_LABELS[p.proposal.slot]}</span>
-                        {why && <span className="text-ink-3"> · {why}</span>}
+                      <span className={chosen ? "text-ink" : "text-ink-2"}>
+                        {chosen ? "★ " : ""}
+                        {place(f.proposal.restaurantId)?.name ?? "?"} · {SLOT_LABELS[f.proposal.slot]}
                       </span>
-                      <TallyBar tally={p.tally} people={result.participants} />
+                      <span className="flex items-center gap-2 font-mono text-[0.6875rem] text-ink-3">
+                        <span aria-label={`buckets ${f.buckets.join(", ")}`}>{f.buckets.join(" · ")}</span>
+                        <span className="text-ink">= {f.nash}</span>
+                      </span>
                     </li>
                   );
                 })}
               </ul>
-            </li>
-          ))}
-        </ol>
-
-        {result.finalists?.length > 0 && (
-          <div className="mt-4">
-            <div className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
-              Final pick · Nash product of 1–5 buckets
             </div>
-            <ul className="mt-1.5 space-y-1">
-              {result.finalists.map((f) => {
-                const chosen =
-                  result.proposal &&
-                  f.proposal.restaurantId === result.proposal.restaurantId &&
-                  f.proposal.slot === result.proposal.slot;
-                return (
-                  <li
-                    key={`${f.proposal.restaurantId}-${f.proposal.slot}`}
-                    className="flex items-center justify-between gap-3"
-                  >
-                    <span className={chosen ? "text-ink" : "text-ink-2"}>
-                      {chosen ? "★ " : ""}
-                      {place(f.proposal.restaurantId)?.name ?? "?"} · {SLOT_LABELS[f.proposal.slot]}
-                    </span>
-                    <span className="flex items-center gap-2 font-mono text-[0.6875rem] text-ink-3">
-                      <span aria-label={`buckets ${f.buckets.join(", ")}`}>{f.buckets.join(" · ")}</span>
-                      <span className="text-ink">= {f.nash}</span>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
+          )}
 
-        <p className="mt-3 text-ink-3">
-          Only anonymous counts and dimension names are shown; buckets are sorted so they can&apos;t be traced back to
-          anyone.
-          {typeof result.leakedDims === "number" &&
-            ` The mediator saw ${result.leakedDims} dimension name${result.leakedDims === 1 ? "" : "s"} in total, and no numbers.`}
-        </p>
-      </details>
+          <p className="mt-3 text-ink-3">
+            Only anonymous counts and dimension names are shown; buckets are sorted so they can&apos;t be traced back to
+            anyone.
+            {typeof result.leakedDims === "number" &&
+              ` The mediator saw ${result.leakedDims} dimension name${result.leakedDims === 1 ? "" : "s"} in total, and no numbers.`}
+          </p>
+        </details>
+      )}
     </div>
   );
 }

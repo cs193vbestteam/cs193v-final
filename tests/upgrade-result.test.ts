@@ -63,6 +63,7 @@ describe("upgradeResult", () => {
       participants: 2,
       decidedAt: 2,
     };
-    expect(upgradeResult(fresh)).toEqual(fresh);
+    // Shape only: what a group of this size may see is decided by forGroupSize, not here.
+    expect(upgradeResult(fresh)).toEqual({ ...fresh, detail: "full", roundCount: 1 });
   });
 });
