@@ -1,8 +1,8 @@
 import type { Cuisine, Slot } from "./constraints";
 
 /**
- * Hard-coded, fictional restaurant data for v1.
- * TODO: replace with a real places API (Yelp / Google Places) once the core loop works.
+ * Hard-coded, fictional restaurant data: the seed pool, used when a plan has no
+ * location or Google Places is off (see places.ts and pool.ts).
  */
 export type Restaurant = {
   id: string;
