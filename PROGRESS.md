@@ -39,7 +39,7 @@ We did not keep the Week 8 goals in the repository, so this uses the fifteen iss
 | Clean up the code; move the database to Postgres | Done |
 | Mobile layout and contrast fixes | Done |
 | Rate limits; deleting plans and accounts | Done |
-| More real restaurants; travel from each person's start | Built, not switched on |
+| More real restaurants; travel from each person's start | Built; goes live next week |
 | Evaluation over several seeds, with a Claude baseline | Done |
 | Keep exploring after the first agreement | Done: the app ends with a shortlist of six |
 | Evaluate the extractor, including prompt injection | Done for both; Claude run once |
@@ -52,16 +52,16 @@ How the scope changed:
 
 - **One kind of plan, not two.** We considered movie night, then hotel picking, and dropped both. Hotels had no free source of prices.
 - **The negotiation now uses Claude.** The original design used plain code. Claude-driven assistants can act on what people say in their own words, such as an allergy; code still enforces the hard rules and ranks the options.
-- **Real restaurants are postponed** until we decide who pays for Google Places.
+- **Real restaurants go live a week late,** on one member's Google billing account.
 - **More evaluation than planned:** the ten-seed study, the Yelp personas, the extractor suite and the masked final pick.
 
 ## Problems and questions
 
 **1. The cost of paid services.**
 
-- _What slows us:_ Claude on the live site runs on one member's personal API key, and Google Places needs a billing account nobody has set up.
+- _What slows us:_ Claude on the live site runs on one member's personal API key, and so does our Google Places key.
 - _What we tried:_ the app runs with no keys; each plan is capped at 300 model calls a day; we developed on the free Yelp dataset; and we read Google's pricing (up to 12 searches per new plan; roughly 90 plans a month free, then about 45 cents each).
-- _Where we need help:_ is there course credit or a shared key for the Anthropic API, and may we use a personal billing account for Google Places?
+- _Where we need help:_ is there course credit or a shared key for the Anthropic API, and is a personal billing account acceptable for Google?
 
 **2. The Claude-driven negotiation is only lightly verified against the real model.**
 
@@ -91,6 +91,6 @@ How the scope changed:
 
 **Pathways for the next two weeks,** beyond the table:
 
-1. _Real restaurants on the live site_: add the Google key with a quota, then tell each private assistant what is nearby, so it asks better questions.
+1. _Real restaurants on the live site_ (next week): add the Google key with a quota, then tell each private assistant what is nearby, so it asks better questions.
 2. _Shorter negotiations with Claude:_ find why its assistants say "reluctant" where code accepts, so an easy group settles in two rounds, not six.
 3. _From shortlist to decision:_ try an in-app vote on the six options, and check that it leaks nobody's limits.
