@@ -123,6 +123,46 @@
     },
 
     {
+      "id": "clear-11",
+      "category": "clear",
+      "note": "A region, not a cuisine. \"Asian\" means East and Southeast Asian here, not Indian (#62).",
+      "turns": ["Friday night, Asian food please. $35 max, 20 minutes, no restrictions."],
+      "expected": {
+        "availableSlots": ["fri_dinner"],
+        "budgetMax": 35,
+        "maxTravelMin": 20,
+        "dietary": [],
+        "dietaryConfirmed": true,
+        "likedCuisines": ["japanese", "chinese", "korean", "thai", "vietnamese"]
+      }
+    },
+    {
+      "id": "clear-12",
+      "category": "clear",
+      "note": "A dish standing for a cuisine.",
+      "turns": ["Saturday dinner, under $40, 15 minutes, no restrictions. Something like ramen would be great."],
+      "expected": {
+        "availableSlots": ["sat_dinner"],
+        "budgetMax": 40,
+        "maxTravelMin": 15,
+        "likedCuisines": ["japanese"]
+      }
+    },
+    {
+      "id": "clear-13",
+      "category": "clear",
+      "note": "A region to avoid.",
+      "turns": ["Sunday lunch, $30, 20 minutes, I'm vegetarian. Anything but Western food."],
+      "expected": {
+        "availableSlots": ["sun_lunch"],
+        "budgetMax": 30,
+        "maxTravelMin": 20,
+        "dietary": ["vegetarian"],
+        "dislikedCuisines": ["american", "italian", "mediterranean"]
+      }
+    },
+
+    {
       "id": "vague-01",
       "category": "vague",
       "note": "Nothing concrete was said, so no number may be invented.",

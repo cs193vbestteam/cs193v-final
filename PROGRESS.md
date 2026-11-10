@@ -21,7 +21,7 @@ Where Settle stands, how that compares with our plan, what is in the way, and wh
 - _Protocol against a planner that reads everything:_ over ten seeds of 200 synthetic groups, it agrees in 98.8% of the groups where a plan exists and keeps 94% of the best possible group welfare. A "most votes in round one" baseline keeps 44%.
 - _Claude as a planner with no privacy,_ on 40 groups: a valid plan in 45% of the solvable ones, against 100% for the protocol.
 - _Personas from real reviewers:_ built from the Yelp Open Dataset in three cities.
-- _The extractors on 48 scripted chats,_ 16 of them adversarial: the rule-based one gets 78% of fields right on ordinary chats and committed no violations.
+- _The extractors on 51 scripted chats,_ 16 of them adversarial: on ordinary chats the rules get 78% of fields right and Claude 95% (one run); neither committed a violation.
 
 **What we learned.**
 
@@ -43,7 +43,7 @@ We did not keep the Week 8 goals in the repository, so this uses the fifteen iss
 | More real restaurants; travel from each person's start | Built, not switched on |
 | Evaluation over several seeds, with a Claude baseline | Done |
 | Keep exploring after the first agreement | Done, off by default |
-| Evaluate the extractor, including prompt injection | Done for the rules; Claude not run yet |
+| Evaluate the extractor, including prompt injection | Done for both; Claude run once |
 | Browser tests in CI | Done |
 | Evaluate on real preferences (Yelp) | Done, with the caveat above |
 | Hide individual scores in the final step (stretch) | Done |
