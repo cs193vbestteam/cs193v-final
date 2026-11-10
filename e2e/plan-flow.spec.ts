@@ -115,12 +115,22 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
   await test.step("the assistants negotiate and the group gets a plan", async () => {
     await alex.getByRole("button", { name: "Find a plan" }).click();
     await expect(alex.getByText("Everyone's in")).toBeVisible();
-    await expect(alex.getByText(/~\$\d+\/person/)).toBeVisible();
+    // The plan on the page is the first price line; the same line is repeated on the tiles of the pop-out.
+    const planLine = (page: Page) => page.getByText(/~\$\d+\/person/).first();
+    await expect(planLine(alex)).toBeVisible();
     await blake.reload();
     await expect(blake.getByText("Everyone's in")).toBeVisible();
     // Both see the same plan.
-    const plan = (page: Page) => page.getByText(/~\$\d+\/person/).innerText();
-    expect(await plan(blake)).toBe(await plan(alex));
+    expect(await planLine(blake).innerText()).toBe(await planLine(alex).innerText());
+
+    // The pop-out lists the options, one tile each, the plan first.
+    await alex.getByRole("button", { name: /See (all \d options|the plan)/ }).click();
+    const window = alex.getByRole("dialog", { name: "The plan" });
+    await expect(window).toBeVisible();
+    await expect(window.getByText("1 · Best fit")).toBeVisible();
+    expect(await window.getByRole("listitem").count()).toBeGreaterThanOrEqual(1);
+    await window.getByRole("button", { name: "Close" }).click();
+    await expect(window).toBeHidden();
   });
 
   await test.step("the result reveals nobody's limits", async () => {
