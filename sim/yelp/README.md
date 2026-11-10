@@ -40,7 +40,7 @@ Writes `sim/out/yelp/report.json` and `report.md` and prints the summary. `--cit
 
 - **Availability.** Reviews do not say when someone is free, so weekend slots are drawn from the same distribution as the synthetic people.
 - **Travel is measured from the middle of the group** for everyone, as the app does for a plan without start points. Per-person start points (#8) are not used here, because the oracle scores a candidate once per group.
-- **Dislikes are sparse.** People rarely go back to a cuisine they dislike, so few personas carry a disliked cuisine.
+- **Personas are less constrained than the synthetic people.** Prices take only four values and the budget is a high percentile of what someone already paid, so price rarely rules anything out; the 60% bar means dietary rules almost never apply (no Philadelphia persona has one); and people rarely go back to a cuisine they dislike, so few personas carry a disliked cuisine. Groups of such personas agree more easily for that reason alone. `docs/evaluation.md` has the measured figures.
 - **Dietary flags are keyword guesses** from categories, as they are for live Google results.
 - **Reviewers are not everyone.** People with 20+ reviews in one city are heavier and more opinionated users than a typical group of friends.
 
@@ -54,4 +54,4 @@ For local development the app can also take a plan's candidates straight from th
 
 The plan then shows "places from the Yelp Open Dataset". Any other location falls through to Google Places (if a key is set) or the seed. Only the business file is needed for this; the review and user files are for the evaluation above.
 
-**Local only.** The dataset may not be redistributed, so this source must never run on a deployed site. It switches itself off on Vercel, and the data folder is git-ignored. It is also a frozen snapshot of eleven metropolitan areas, so expect closed or changed places.
+**Local only.** The dataset may not be redistributed, so this source must never run on a deployed site. It switches itself off in every production build (`NODE_ENV=production`, which `next build` and `next start` set on any host) and on Vercel, so it only works under `npm run dev`; the data folder is git-ignored. It is also a frozen snapshot of eleven metropolitan areas, so expect closed or changed places.

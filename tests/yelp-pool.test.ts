@@ -61,11 +61,15 @@ const dataset = (): YelpBusiness[] => [
 ];
 
 describe("switching the source on", () => {
-  it("is off unless a folder is configured, and always off on Vercel", () => {
+  it("is off unless a folder is configured, and always off in production and on Vercel", () => {
     expect(yelpDatasetDir({})).toBeNull();
     expect(yelpDatasetDir({ YELP_DATASET_DIR: "  " })).toBeNull();
     expect(yelpDatasetDir({ YELP_DATASET_DIR: " /data/yelp " })).toBe("/data/yelp");
     expect(yelpDatasetDir({ YELP_DATASET_DIR: "/data/yelp", VERCEL: "1" })).toBeNull();
+    // Any host: `next build` and `next start` run with NODE_ENV=production.
+    expect(yelpDatasetDir({ YELP_DATASET_DIR: "/data/yelp", NODE_ENV: "production" })).toBeNull();
+    expect(yelpDatasetDir({ YELP_DATASET_DIR: "/data/yelp", NODE_ENV: "development" })).toBe("/data/yelp");
+    expect(yelpDatasetDir({ YELP_DATASET_DIR: "/data/yelp", NODE_ENV: "test" })).toBe("/data/yelp");
   });
 });
 
@@ -177,6 +181,17 @@ describe("reading the dataset from disk", () => {
       const stored = await poolForEvent(e.id);
       expect(stored.source).toBe("yelp");
       expect(stored.restaurants).toHaveLength(60);
+    });
+
+    it("ignores the dataset in a production process, even with the folder configured", async () => {
+      process.env.YELP_DATASET_DIR = dir;
+      vi.stubEnv("NODE_ENV", "production");
+      try {
+        const a = await user();
+        expect((await createEvent(a.id, "Dinner", "Philadelphia")).poolSource).toBe("seed");
+      } finally {
+        vi.unstubAllEnvs();
+      }
     });
 
     it("leaves other places, and plans made with the source off, on the seed", async () => {

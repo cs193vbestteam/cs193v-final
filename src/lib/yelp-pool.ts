@@ -19,7 +19,8 @@ import { toRestaurant, type YelpBusiness, type YelpRestaurant } from "./yelp-bus
  *
  * This is never to be deployed. The dataset is licensed for educational use
  * and may not be redistributed, so it must not be served from a public site:
- * the source switches itself off on Vercel, and the data is never committed.
+ * the source switches itself off in every production build (and on Vercel
+ * whatever the build), and the data is never committed.
  * It is also a frozen snapshot of eleven metropolitan areas.
  */
 
@@ -29,10 +30,16 @@ export const CITY_RADIUS_KM = 8;
 
 type Env = Record<string, string | undefined>;
 
-/** The dataset folder, or null when the source is off (not configured, or running on Vercel). */
+/**
+ * The dataset folder, or null when the source is off: not configured, or
+ * anything that is not local development. `NODE_ENV=production` is what
+ * `next build` / `next start` set on every host, so a stray YELP_DATASET_DIR
+ * cannot switch the source on in a deployment, whoever hosts it; `VERCEL`
+ * also covers Vercel's preview and development environments.
+ */
 export function yelpDatasetDir(env: Env = process.env): string | null {
   const dir = env.YELP_DATASET_DIR?.trim();
-  if (!dir || env.VERCEL) return null;
+  if (!dir || env.NODE_ENV === "production" || env.VERCEL) return null;
   return dir;
 }
 
