@@ -40,7 +40,14 @@ export async function agentsForEvent(
     // LLM mode: this person's agent reasons over their OWN summary only (their words, notes, priorities).
     if (apiKey) {
       const about = scenario.describeConstraints(constraints);
-      agent.judgeAll = llmJudge({ apiKey, about, prefs, resolve: resolverFor(lookup, constraints.startPoint), budget });
+      agent.judgeAll = llmJudge({
+        apiKey,
+        about,
+        prefs,
+        resolve: resolverFor(lookup, constraints.startPoint),
+        budget,
+        codeSeesAll: constraints.avoidNotes.length === 0,
+      });
     }
     members.push(agent);
     userIds.push(String(row.user_id));

@@ -15,8 +15,14 @@ import type { Restaurant } from "./restaurants";
  * Guardrails, in code, after the model answers:
  *   - a proposal that breaks a hard rule (not free then, over the most they'd pay, too far,
  *     their diet flags, closed) is a reject whatever the model said;
- *   - anything missing, malformed or late falls back to the code agent's verdict;
  *   - each call is checked against the plan's LLM budget first (#4).
+ *
+ * Fallbacks must never be more permissive than the model (review of #57). The code agent
+ * cannot read what the person said in their own words (avoidNotes such as "allergic to
+ * peanuts"), so when a call fails, times out, is cut short or omits an option:
+ *   - an option the model already judged keeps the model's latest verdict (memory);
+ *   - an option it never judged gets the code verdict, but for someone with notes the code
+ *     can't check, "accept" is lowered to "reluctant" (diet): it can't become "everyone's in".
  */
 
 export type LlmBudget = () => Promise<boolean>;
@@ -79,19 +85,32 @@ export type LlmJudgeArgs = {
   /** Resolves a proposal to the restaurant as THIS person travels to it. */
   resolve: (p: Proposal) => Restaurant | undefined;
   budget?: LlmBudget;
+  /**
+   * False when the person said things the code agent can't check (avoidNotes). Then a code
+   * fallback never answers "accept" on their behalf.
+   */
+  codeSeesAll?: boolean;
 };
 
 function codeVerdict(prefs: Preferences, r: Restaurant | undefined, p: Proposal, level: number): Judgement {
   return r ? evaluate(prefs, r, p.slot, level) : { verdict: "reject", dim: "time" };
 }
 
-/** The model's verdicts, made safe: hard rules win, bad or missing answers fall back to code. */
+/** A verdict for an option the model did not answer: code by default; the caller may be stricter. */
+export type Fallback = (index: number) => Judgement;
+
+/**
+ * The model's verdicts, made safe: hard rules win, and an option the model did not answer
+ * (missing id, malformed reply) gets `fallback(i)`. `answered[i]` says which came from the model.
+ */
 export function guard(
   prefs: Preferences,
   proposals: readonly Proposal[],
   restaurants: readonly (Restaurant | undefined)[],
   level: number,
   modelOut: unknown,
+  fallback: Fallback = (i) => codeVerdict(prefs, restaurants[i], proposals[i], level),
+  answered: boolean[] = [],
 ): Judgement[] {
   const parsed = Output.safeParse(modelOut);
   const byId = new Map(parsed.success ? parsed.data.verdicts.map((v) => [v.id, v]) : []);
@@ -101,11 +120,15 @@ export function guard(
     const broken = utility(relax(prefs, level), r, p.slot).violated;
     if (broken) return { verdict: "reject", dim: broken };
     const v = byId.get(i);
-    if (!v) return codeVerdict(prefs, r, p, level);
+    if (!v) return fallback(i);
+    answered[i] = true;
     if (v.verdict === "accept") return { verdict: "accept" };
     return v.dim ? { verdict: v.verdict, dim: v.dim as Dim } : { verdict: v.verdict };
   });
 }
+
+/** Room for one verdict per option (about 40 tokens each), so a long batch isn't cut off. */
+export const maxTokensFor = (n: number) => Math.min(4000, 120 + 45 * n);
 
 /** The prompt for one round: this person's own summary and the public facts of each option. */
 export function agentPrompt(
@@ -142,23 +165,36 @@ export function agentPrompt(
 
 /** judgeAll for one person: one LLM call per round, guarded, with code as the fallback. */
 export function llmJudge(args: LlmJudgeArgs) {
+  // The model's latest verdict per option, for this negotiation: a fallback never overrides it.
+  const memory = new Map<string, Judgement>();
+  const keyOf = (p: Proposal) => `${p.restaurantId}@${p.slot}`;
   return async (proposals: readonly Proposal[], level: number): Promise<Judgement[]> => {
     const restaurants = proposals.map(args.resolve);
-    const fallback = () => proposals.map((p, i) => codeVerdict(args.prefs, restaurants[i], p, level));
+    const fallback: Fallback = (i) => {
+      const remembered = memory.get(keyOf(proposals[i]));
+      if (remembered) return remembered;
+      const code = codeVerdict(args.prefs, restaurants[i], proposals[i], level);
+      // The code can't read their own words: never say "accept" for them without the model.
+      return args.codeSeesAll === false && code.verdict === "accept" ? { verdict: "reluctant", dim: "diet" } : code;
+    };
+    const allFallback = () => proposals.map((_, i) => fallback(i));
     if (proposals.length === 0) return [];
-    if (args.budget && !(await args.budget())) return fallback();
+    if (args.budget && !(await args.budget())) return allFallback();
     try {
       const out = await callTool({
         apiKey: args.apiKey,
         system: AGENT_SYSTEM,
         user: agentPrompt(args.about, args.prefs, proposals, restaurants, level),
         tool: TOOL,
-        maxTokens: 400,
+        maxTokens: maxTokensFor(proposals.length),
       });
-      return guard(args.prefs, proposals, restaurants, level, out);
+      const answered: boolean[] = [];
+      const verdicts = guard(args.prefs, proposals, restaurants, level, out, fallback, answered);
+      verdicts.forEach((v, i) => answered[i] && memory.set(keyOf(proposals[i]), v));
+      return verdicts;
     } catch (err) {
-      console.error("LLM agent failed, using the code verdicts:", (err as Error).message);
-      return fallback();
+      console.error("LLM agent failed, using earlier or cautious verdicts:", (err as Error).message);
+      return allFallback();
     }
   };
 }

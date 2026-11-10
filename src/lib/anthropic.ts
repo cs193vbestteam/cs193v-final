@@ -44,7 +44,9 @@ export async function callTool(opts: {
     signal: AbortSignal.timeout(opts.timeoutMs ?? 12_000),
   });
   if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
-  const data = (await res.json()) as { content?: { type: string; input?: unknown }[] };
+  const data = (await res.json()) as { content?: { type: string; input?: unknown }[]; stop_reason?: string };
+  // A reply cut off at the token limit is partial: treat it as a failure, not as a full answer.
+  if (data.stop_reason === "max_tokens") throw new Error("Anthropic API: reply cut off at max_tokens");
   const block = data.content?.find((b) => b.type === "tool_use");
   if (!block) throw new Error("Anthropic API: no tool call in the reply");
   return block.input;

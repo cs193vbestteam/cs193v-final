@@ -315,10 +315,23 @@ export async function setReady(eventId: string, userId: string, ready: boolean):
  * The vault decrypts each member's preferences and wraps them in an opaque
  * Agent. This function, and the negotiation engine below it, never see them.
  */
+/**
+ * Starting new LLM calls in a negotiation stops after this long; later steps answer with code.
+ * Each call may still take up to 12 s, so the worst case stays under the route's 60 s limit.
+ */
+export const LLM_NEGOTIATION_MS = 30_000;
+
+/**
+ * Whether the negotiation may make one more LLM call: before the deadline, and within the
+ * plan's daily LLM budget (#4, shared with the chat). Past the deadline nothing is counted.
+ */
+export function llmGate(eventId: string, deadline: number, now: () => number = Date.now) {
+  return async () => now() < deadline && (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed;
+}
+
 export async function runNegotiation(eventId: string, userId: string): Promise<StoredResult> {
   await requireMember(eventId, userId);
-  // Every LLM call in the negotiation (agents and mediator) counts against the plan's daily budget (#4).
-  const budget = async () => (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed;
+  const budget = llmGate(eventId, Date.now() + LLM_NEGOTIATION_MS);
   const { agents, userIds, readyCount } = await agentsForEvent(eventId, budget);
   if (readyCount < 2) throw new AccessError("At least 2 people need to be ready first");
   if (readyCount !== agents.length) {
