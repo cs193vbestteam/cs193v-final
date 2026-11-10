@@ -9,6 +9,9 @@ import { getEventByCode, getMyConstraints, getMyMessages, getResult, isMember, l
 import { scenarioFor } from "@/lib/scenario";
 import { requireUser } from "@/lib/session";
 
+// Finding a plan can make a few LLM calls per round (agents + mediator); give it room on Vercel.
+export const maxDuration = 60;
+
 const POOL_LABEL = { places: "real places", yelp: "places from the Yelp Open Dataset", seed: "seed places" } as const;
 
 export default async function EventPage({ params }: { params: Promise<{ code: string }> }) {

@@ -20,6 +20,11 @@ export type Agent = {
   /** verdict + at most one dimension name. `level` = concession steps requested so far. */
   judge: (p: Proposal, level: number) => Judgement;
   /**
+   * The same verdicts for a whole round at once, in order. Present when the assistant is an
+   * LLM (agent-llm.ts), which judges a round in one call; negotiate() uses it when it can.
+   */
+  judgeAll?: (ps: readonly Proposal[], level: number) => Promise<Judgement[]>;
+  /**
    * This person's part of the final comparison, masked. For each finalist
    * after the first it holds their 1..5 bucket for that finalist relative to
    * their bucket for the first, as exponents of 2, 3 and 5, plus pairwise masks
@@ -35,19 +40,29 @@ export type Agent = {
  * is what one person's side holds; it is never handed to the mediator, which
  * only ever gets the `Agent`s that `maskGroup` returns.
  */
-export type PrivateAgent = Pick<Agent, "judge"> & {
+export type PrivateAgent = Pick<Agent, "judge" | "judgeAll"> & {
   /** 1..5 utility bucket for one proposal. */
   bucket: (p: Proposal, level: number) => Bucket;
 };
+
+/** A proposal's restaurant as this person travels to it: from their own start when known. */
+export function resolverFor(
+  lookup: (id: string) => Restaurant | undefined,
+  start: LatLng | null,
+): (p: Proposal) => Restaurant | undefined {
+  return (p) => {
+    const r = lookup(p.restaurantId);
+    return r && start && r.location ? { ...r, travelMin: travelMinutes(start, r.location) } : r;
+  };
+}
 
 export function makeAgent(
   prefs: Preferences,
   lookup: (id: string) => Restaurant | undefined = getRestaurant,
   start: LatLng | null = null,
 ): PrivateAgent {
-  const fromStart = (r: Restaurant | undefined) =>
-    r && start && r.location ? { ...r, travelMin: travelMinutes(start, r.location) } : r;
-  const resolve = (p: Proposal): [Restaurant | undefined, Slot] => [fromStart(lookup(p.restaurantId)), p.slot];
+  const at = resolverFor(lookup, start);
+  const resolve = (p: Proposal): [Restaurant | undefined, Slot] => [at(p), p.slot];
   return {
     judge(p, level) {
       const [r, slot] = resolve(p);
@@ -76,6 +91,7 @@ export function maskGroup(members: readonly PrivateAgent[]): Agent[] {
   const keys = pairKeys(members.length);
   return members.map((member, i) => ({
     judge: (p, level) => member.judge(p, level),
+    ...(member.judgeAll ? { judgeAll: member.judgeAll } : {}),
     compare(finalists, level) {
       if (finalists.length < 2) return [];
       const [first, ...rest] = finalists;
