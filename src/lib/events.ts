@@ -4,6 +4,7 @@ import { decrypt, decryptJson, encrypt, encryptJson } from "./crypto";
 import type { Constraints } from "./constraints";
 import type { ChatTurn } from "./extract";
 import { configuredExplainer, configuredSelector } from "./mediator-llm";
+import type { Proposal } from "./evaluate";
 import { negotiate, type NegotiationResult } from "./negotiate";
 import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./pool";
 import { DEFAULT_SCENARIO, parseScenarioId, ScenarioIdSchema, scenarioFor, type ScenarioId } from "./scenario";
@@ -49,7 +50,17 @@ export type StoredResult = NegotiationResult & {
   detail: "full" | "outcome";
   /** Rounds run. Kept on its own because `rounds` is empty when `detail` is "outcome". */
   roundCount: number;
+  /**
+   * The shortlist the group chooses from: up to SHORTLIST different places nobody rejects, best for
+   * the group first; the first is `proposal`. `everyoneIn` says whether everyone fully accepts it or
+   * it is a stretch for someone. In a group of two that would be the other person's answer, so it is
+   * left out there. Absent on results stored before shortlists.
+   */
+  options?: { proposal: Proposal; everyoneIn?: boolean }[];
 };
+
+/** How many options a negotiation tries to end with. */
+export const SHORTLIST = 6;
 
 /**
  * The smallest group whose counts are anonymous. In a group of two every count
@@ -70,6 +81,9 @@ export function forGroupSize(result: StoredResult): StoredResult {
   const roundCount = result.roundCount ?? result.rounds.length;
   if (result.participants >= MIN_GROUP_FOR_DETAIL) return { ...result, detail: "full", roundCount };
   const chosen = result.proposal?.restaurantId;
+  // A pair still gets the shortlist, as places only: no counts, and not who is merely reluctant.
+  const options = (result.options ?? []).map(({ proposal }) => ({ proposal }));
+  const listed = new Set([...(chosen ? [chosen] : []), ...options.map((o) => o.proposal.restaurantId)]);
   return {
     status: result.status,
     proposal: result.proposal,
@@ -82,7 +96,8 @@ export function forGroupSize(result: StoredResult): StoredResult {
     leakedDims: 0,
     participants: result.participants,
     memberNames: [],
-    places: chosen && result.places[chosen] ? { [chosen]: result.places[chosen] } : {},
+    places: Object.fromEntries(Object.entries(result.places).filter(([id]) => listed.has(id))),
+    ...(options.length ? { options } : {}),
     decidedAt: result.decidedAt,
     detail: "outcome",
     roundCount,
@@ -346,6 +361,7 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
     restaurants,
     maxRounds: 6,
     perRound: 5,
+    shortlist: SHORTLIST,
     selector: configuredSelector(lookup, budget),
     explainer: configuredExplainer(lookup, budget),
   });
@@ -356,6 +372,10 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
   // Small groups store the outcome only: what the page must not show is never written (forGroupSize).
   const result = forGroupSize({
     ...outcome,
+    options: outcome.finalists.map((f) => ({
+      proposal: f.proposal,
+      everyoneIn: f.tally.accept === agents.length,
+    })),
     participants: agents.length,
     memberNames,
     places: summarize(restaurants, mentioned),
@@ -406,6 +426,8 @@ export function upgradeResult(raw: Record<string, unknown>): StoredResult {
   const rounds = (
     (raw.rounds as { round: number; level?: number; proposals: { proposal: unknown; tally: unknown }[] }[]) ?? []
   ).map((r) => ({
+    // Keep whatever else the round carries (a shortlist's later rounds are marked `exploring`).
+    ...r,
     round: r.round,
     level: r.level ?? 0,
     proposals: r.proposals.map((p) => ({ ...p, tally: fix(p.tally) })),
