@@ -228,43 +228,30 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
     expect(t.update).toMatchObject({ budgetMax: 35, pending: null });
   });
 
-  it("asks the two trade-offs and the concession question once the essentials are in, each exactly once", () => {
+  it("asks only the concession question once the essentials are in: no trade-off questions (#48)", () => {
     let c = start(essentials);
     const t1 = ruleTurn("nothing", start({ ...essentials, dietaryConfirmed: false }));
-    expect(t1.update).toMatchObject({
-      dietaryConfirmed: true,
-      pending: "tradeoff_budget_travel",
-      probesAsked: ["tradeoff_budget_travel"],
-    });
-    expect(t1.reply).toMatch(/paying \$10 over/);
+    expect(t1.update).toMatchObject({ dietaryConfirmed: true, pending: "concession", probesAsked: ["concession"] });
+    expect(t1.reply).not.toMatch(/Which is worse|paying \$10 over|lukewarm/);
     c = mergeConstraints(c, t1.update);
 
-    const t2 = ruleTurn("paying more is worse", c);
-    expect(t2.update.weights).toMatchObject({ budget: 0.5, travel: 0.2 });
-    expect(t2.update).toMatchObject({ pending: "tradeoff_cuisine_travel", probesAsked: ["tradeoff_cuisine_travel"] });
+    const t2 = ruleTurn("I'd give up the cuisine first, then distance, budget last", c);
+    expect(t2.update).toMatchObject({ concessionOrder: ["cuisine", "travel", "budget"], pending: null });
+    expect(t2.reply).toMatch(/That's everything I need/);
     c = mergeConstraints(c, t2.update);
+    expect(c.probesAsked).toEqual(["concession"]);
+    expect(c.weights).toEqual(emptyConstraints().weights); // defaults, untouched
 
-    const t3 = ruleTurn("the travel", c);
-    expect(t3.update.weights).toMatchObject({ travel: 0.35, cuisine: 0.25 });
-    expect(t3.update).toMatchObject({ pending: "concession" });
-    c = mergeConstraints(c, t3.update);
-
-    const t4 = ruleTurn("I'd give up the cuisine first, then distance, budget last", c);
-    expect(t4.update).toMatchObject({ concessionOrder: ["cuisine", "travel", "budget"], pending: null });
-    expect(t4.reply).toMatch(/That's everything I need/);
-    c = mergeConstraints(c, t4.update);
-    expect(c.probesAsked).toEqual(["tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"]);
-
-    const t5 = ruleTurn("also I love thai", c);
-    expect(t5.update).toMatchObject({ likedCuisines: ["thai"] });
-    expect(t5.reply).not.toMatch(/Which is worse/);
+    const t3 = ruleTurn("also I love thai", c);
+    expect(t3.update).toMatchObject({ likedCuisines: ["thai"] });
+    expect(t3.reply).not.toMatch(/Which is worse/);
   });
 
-  it("'neither' on a trade-off leaves the weights alone", () => {
+  it("a chat saved while waiting on a retired trade-off question is still answered, then moves on", () => {
     const c = start({ ...essentials, pending: "tradeoff_budget_travel", probesAsked: ["tradeoff_budget_travel"] });
-    const t = ruleTurn("neither really", c);
-    expect(t.update.weights).toEqual(c.weights);
-    expect(t.update.pending).toBe("tradeoff_cuisine_travel");
+    const t = ruleTurn("paying more is worse", c);
+    expect(t.update.weights).toMatchObject({ budget: 0.5, travel: 0.2 });
+    expect(t.update.pending).toBe("concession"); // not the other trade-off
   });
 
   it("an off-topic message while a probe is pending is still understood, and the probe is repeated", () => {

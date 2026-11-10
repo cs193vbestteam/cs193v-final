@@ -518,10 +518,33 @@ summary:focus-visible {
   animation: marquee 40s linear infinite;
 }
 
+/* "I'm done" when the assistant has asked for it: a soft seal-coloured glow. */
+@keyframes attention {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 0 rgb(198 69 31 / 0.55),
+      0 8px 20px -12px rgb(22 20 15 / 0.7);
+  }
+  50% {
+    box-shadow:
+      0 0 0 7px rgb(198 69 31 / 0),
+      0 8px 20px -12px rgb(22 20 15 / 0.7);
+  }
+}
+.btn-attention {
+  outline: 2px solid var(--color-seal);
+  outline-offset: 2px;
+  animation: attention 1.8s var(--ease-in-out-quart) infinite;
+}
+
 /* ── Reduced motion: show the resolved state, skip the theatre ─ */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+  .btn-attention {
+    animation: none;
   }
   .rise,
   .reveal {

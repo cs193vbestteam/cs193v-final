@@ -4,6 +4,7 @@ import {
   type Constraints,
   type ConstraintsUpdate,
   type Cuisine,
+  DIETARY_LABELS,
   type Dietary,
   type MissingField,
   type Pending,
@@ -114,7 +115,26 @@ export function extractTime(text: string): Slot[] | undefined {
   return base.filter((s) => !unavailable.has(s));
 }
 
+/** "$$" style price levels, as on restaurant listings. */
+const PRICE_LEVEL: Record<number, number> = { 1: 20, 2: 40, 3: 70, 4: 120 };
+const MONEY_CONTEXT = /\$|\b(budget|spend|spending|per person|a head|each|dollars?|bucks|usd|price|pay)\b/i;
+const RANGE = /\$?\s*(\d{1,4})\s*(?:-|–|—|to|and|~)\s*\$?\s*(\d{1,4})(?!\d|\s*(?:min|hour))/i;
+
+/**
+ * A range "50-100": the low end is what they'd like to spend, the high end the most they'll go to.
+ * That is exactly budgetMax + budgetFlex (the stretch that is still OK).
+ */
+function budgetRange(a: number, b: number): { budgetMax: number; budgetFlex: number } {
+  const lo = Math.min(a, b);
+  const hi = Math.max(a, b);
+  return { budgetMax: lo, budgetFlex: hi - lo };
+}
+
 export function extractBudget(text: string): { budgetMax?: number; budgetFlex?: number } {
+  const range = MONEY_CONTEXT.test(text) ? text.match(RANGE) : null;
+  if (range && parseInt(range[1], 10) > 0 && parseInt(range[2], 10) > 0) {
+    return budgetRange(parseInt(range[1], 10), parseInt(range[2], 10));
+  }
   // `NOT_TIME` stops "up to 30 minutes" from being read as a $30 budget.
   const NOT_TIME = String.raw`(?!\d|\s*(?:min|hour))`;
   const patterns = [
@@ -156,13 +176,45 @@ export function extractDistance(text: string): number | undefined {
   return undefined;
 }
 
-export function extractDietary(text: string): { dietary?: Dietary[]; dietaryConfirmed?: boolean } {
+/** Anything from the sea, shellfish included: "clams", "crabs", "anything with shells", "sushi". */
+export const SEAFOOD =
+  /\b(sea ?food|from the sea|sea creatures?|fish|shell ?fish|shells?|shelled|shrimps?|prawns?|crabs?|lobsters?|clams?|oysters?|mussels?|scallops?|squid|calamari|octop(us|i)|crustaceans?|mollus[ck]s?|anchov(y|ies)|tuna|salmon|sushi|sashimi|crawfish|crayfish)\b/i;
+const SPICY = /\b(spicy|spice|spices|hot sauce|chil(i|li|e)s?|heat|jalape[nñ]os?|sriracha)\b/i;
+const VEGETARIAN = /\b(vegetarian|vegan|veggie|no meat|plant[- ]based|don'?t eat meat)\b/i;
+const HALAL = /\b(halal|no pork|pork)\b/i;
+/** "I'm allergic to peanuts", "I can't eat gluten", "I don't eat clams": a restriction in their own words. */
+const AVOID_PHRASE =
+  /\b(?:allergic to|allerg(?:y|ies) to|intoleran(?:t|ce) to|can'?t (?:eat|have)|cannot (?:eat|have)|won'?t eat|don'?t eat|do not eat|stay away from)\s+([^.;!?\n]{2,80})/i;
+
+/** Restriction flags named in `text`, read as things to avoid. */
+function dietFlags(text: string): Dietary[] {
+  const found: Dietary[] = [];
+  if (SPICY.test(text)) found.push("no_spicy");
+  if (VEGETARIAN.test(text)) found.push("vegetarian");
+  if (SEAFOOD.test(text)) found.push("no_seafood");
+  if (HALAL.test(text)) found.push("halal");
+  return found;
+}
+
+const note = (text: string) => text.trim().replace(/\s+/g, " ").slice(0, 160);
+
+export function extractDietary(text: string): {
+  dietary?: Dietary[];
+  dietaryConfirmed?: boolean;
+  avoidNotes?: string[];
+} {
   const found: Dietary[] = [];
   if (/\b(no spicy|not spicy|can'?t (eat|do|handle) spicy|no spice|mild)\b/i.test(text)) found.push("no_spicy");
   if (/\b(vegetarian|vegan|veggie|no meat)\b/i.test(text)) found.push("vegetarian");
   if (/\b(no seafood|seafood allerg\w*|allergic to (seafood|shellfish|fish)|no fish|no shellfish)\b/i.test(text))
     found.push("no_seafood");
   if (/\bhalal\b/i.test(text)) found.push("halal");
+  // "I'm allergic to shrimp", "I don't eat peanuts": map what we can, keep the rest in their words.
+  const avoid = text.match(AVOID_PHRASE);
+  if (avoid) {
+    const flags = Array.from(new Set([...found, ...dietFlags(avoid[1])]));
+    return { ...(flags.length ? { dietary: flags } : {}), avoidNotes: [note(avoid[0])], dietaryConfirmed: true };
+  }
   if (found.length) return { dietary: found };
   if (
     /\b(no (dietary )?restrictions?|no allergies|eat anything|anything('s| is)? fine|nothing special|not picky|no preferences?|all good|i'?m (easy|good|fine))\b/i.test(
@@ -177,7 +229,10 @@ export function extractDietary(text: string): { dietary?: Dietary[]; dietaryConf
 /** Words a person types when answering the diet question with a bare list ("spicy, seafood"). */
 const DIET_TOKENS: [RegExp, Dietary | "none"][] = [
   [/^(spicy|spice|hot|heat|chili|chilli)$/, "no_spicy"],
-  [/^(seafood|sea food|fish|shellfish|shrimp)$/, "no_seafood"],
+  [
+    /^(seafood|sea food|fish|shellfish|shrimps?|crabs?|clams?|lobsters?|oysters?|mussels?|scallops?|prawns?)$/,
+    "no_seafood",
+  ],
   [/^(vegetarian|vegan|veggie|veg)$/, "vegetarian"],
   [/^halal$/, "halal"],
   [/^(nothing|none|no|nope|nah|neither|na|n\/a|zero|nil)$/, "none"],
@@ -202,8 +257,13 @@ export function extractBareAnswer(text: string, pending: MissingField | undefine
   if (!bare) return {};
 
   if (pending === "budget") {
-    const m = bare.match(/^\$?\s*(\d{1,4})\s*(?:dollars|bucks|usd)?\s*(?:per person|pp|each|a head|max|tops)?$/);
-    if (m && parseInt(m[1], 10) > 0) return { budgetMax: parseInt(m[1], 10) };
+    // Any number they give in answer is the budget: "50-100", "50 to 100", "60ish", "100 max", "$$".
+    if (/\b(min|mins|minutes?|hours?|hrs?)\b/.test(bare)) return {};
+    const level = bare.match(/^(\${1,4})$/);
+    if (level) return { budgetMax: PRICE_LEVEL[level[1].length] };
+    const numbers = [...bare.matchAll(/\d{1,4}/g)].map((m) => parseInt(m[0], 10)).filter((x) => x > 0);
+    if (numbers.length >= 2) return budgetRange(numbers[0], numbers[1]);
+    if (numbers.length === 1) return { budgetMax: numbers[0] };
     return {};
   }
   if (pending === "distance") {
@@ -213,26 +273,38 @@ export function extractBareAnswer(text: string, pending: MissingField | undefine
   }
   if (pending === "diet") {
     if (POSITIVE.test(bare)) return {};
-    const tokens = bare
-      .replace(/\b(no|not|and|or|please|pls|thanks|thx|for me|i'?m|i am|just)\b/g, " ")
-      .split(/[\s,/&+]+/)
-      .filter(Boolean);
-    if (tokens.length === 0) {
-      // "no" / "none" alone were stripped above; treat the original as the answer.
-      return /^(no|nope|nah|none|nothing)$/.test(bare) ? { dietaryConfirmed: true } : {};
-    }
-    const found: Dietary[] = [];
-    let none = false;
-    for (const t of tokens) {
-      const hit = DIET_TOKENS.find(([re]) => re.test(t));
-      if (!hit) return {}; // an unknown word means this wasn't a bare diet answer
-      if (hit[1] === "none") none = true;
-      else found.push(hit[1]);
-    }
-    if (found.length) return { dietary: Array.from(new Set(found)) };
-    if (none) return { dietaryConfirmed: true };
+    // A question back, or "not sure", is not an answer to keep.
+    if (/\?\s*$/.test(text) || /^(idk|i don'?t know|not sure|dunno|maybe|hmm+|what|huh)$/.test(bare)) return {};
+    const listed = bareDietList(bare);
+    if (listed) return listed;
+    // A free-text answer to "anything you can't eat?" is an answer: map what we can, keep their words.
+    const flags = dietFlags(bare);
+    return { ...(flags.length ? { dietary: flags } : {}), avoidNotes: [note(text)], dietaryConfirmed: true };
   }
   return {};
+}
+
+/** "spicy, seafood" / "none": a bare list of known words. Undefined if any word is unknown. */
+function bareDietList(bare: string): ConstraintsUpdate | undefined {
+  const tokens = bare
+    .replace(/\b(no|not|and|or|please|pls|thanks|thx|for me|i'?m|i am|just)\b/g, " ")
+    .split(/[\s,/&+]+/)
+    .filter(Boolean);
+  if (tokens.length === 0) {
+    // "no" / "none" alone were stripped above; treat the original as the answer.
+    return /^(no|nope|nah|none|nothing)$/.test(bare) ? { dietaryConfirmed: true } : undefined;
+  }
+  const found: Dietary[] = [];
+  let none = false;
+  for (const t of tokens) {
+    const hit = DIET_TOKENS.find(([re]) => re.test(t));
+    if (!hit) return undefined; // an unknown word: not a bare list, read it as free text
+    if (hit[1] === "none") none = true;
+    else found.push(hit[1]);
+  }
+  if (found.length) return { dietary: Array.from(new Set(found)) };
+  if (none) return { dietaryConfirmed: true };
+  return undefined;
 }
 
 export function extractCuisines(text: string): { likedCuisines?: Cuisine[]; dislikedCuisines?: Cuisine[] } {
@@ -269,6 +341,29 @@ export function extractStart(text: string): string | undefined {
   return m ? cleanPlace(m[1]) : undefined;
 }
 
+const PRIORITY_WORDS: [RegExp, SoftDim][] = [
+  [/\b(price|budget|cost|money|cheap|spend(ing)?)\b/i, "budget"],
+  [/\b(distance|travel(ling)?|location|close|nearby|commute|how far)\b/i, "travel"],
+  [/\b(cuisine|food|taste|menu|what we eat)\b/i, "cuisine"],
+];
+const PRIORITY =
+  /\b(matters? (the )?most|most important|(is|are) (my )?(top |main |biggest )?priority|care (the )?most about|cares? most|is key|is what matters)\b/i;
+
+/**
+ * "Price matters most to me": a priority they volunteer replaces the trade-off questions we used to ask.
+ * That dimension gets half the weight; the other two share the rest.
+ */
+export function extractPriority(text: string): { weights?: Record<SoftDim, number> } {
+  for (const clause of splitClauses(text)) {
+    if (!PRIORITY.test(clause)) continue;
+    const dims = PRIORITY_WORDS.filter(([re]) => re.test(clause)).map(([, d]) => d);
+    if (dims.length !== 1) continue; // none named, or ambiguous
+    const top = dims[0];
+    return { weights: { budget: 0.25, travel: 0.25, cuisine: 0.25, [top]: 0.5 } };
+  }
+  return {};
+}
+
 export function extractRules(text: string, pending?: MissingField): ConstraintsUpdate {
   const update: ConstraintsUpdate = {};
   const start = extractStart(text);
@@ -280,6 +375,7 @@ export function extractRules(text: string, pending?: MissingField): ConstraintsU
   if (dist !== undefined) update.maxTravelMin = dist;
   Object.assign(update, extractDietary(text));
   Object.assign(update, extractCuisines(text));
+  Object.assign(update, extractPriority(text));
   if (Object.keys(update).length === 0) Object.assign(update, extractBareAnswer(text, pending));
   return update;
 }
@@ -309,8 +405,10 @@ export const OPENING_MESSAGE =
 
 /* ── Follow-up questions ────────────────────────────────────────────────
    "Whatever" is not an answer. A vague reply to a numeric question becomes an
-   either/or; once the essentials are in, two trade-offs set the weights and
-   one last question sets the concession order. */
+   either/or; once the essentials are in, one last question sets the concession
+   order. Weights start at the defaults and move only when the person volunteers
+   a priority ("price matters most"). The trade-off questions are no longer asked
+   (#48) but are still understood if a chat saved before that is waiting on one. */
 
 const VAGUE =
   /\b(whatever|anything|any|don'?t (really )?(care|mind)|no (real )?(limit|preference)|idk|dunno|not sure|up to you|flexible|depends|easy|随便|都行|无所谓)\b/i;
@@ -508,6 +606,16 @@ export function answerPending(
 
 export type RuleTurn = { update: ConstraintsUpdate; reply: string };
 
+/** Be honest about what a restriction in their own words can and can't do. */
+function avoidAck(update: ConstraintsUpdate): string {
+  const flags = update.dietary ?? [];
+  if (flags.length) {
+    const what = flags.map((d) => DIETARY_LABELS[d].toLowerCase()).join(", ");
+    return `Got it, noted privately: I'll only say yes to places that suit "${what}".`;
+  }
+  return "Noted privately. I can only check restaurants for spicy, vegetarian, seafood and halal, so I'll keep that in mind but can't promise every menu avoids it.";
+}
+
 /** One assistant turn on the rule-based path: read the message in context, decide what to ask next. */
 export function ruleTurn(text: string, current: Constraints, context: ProbeContext = {}): RuleTurn {
   let update: ConstraintsUpdate | null = current.pending ? answerPending(text, current.pending, current.weights) : null;
@@ -537,9 +645,11 @@ export function ruleTurn(text: string, current: Constraints, context: ProbeConte
   const gotSomething = Object.keys(update).some((k) => k !== "pending" && k !== "probesAsked");
   const ack = answeredProbe
     ? "Noted."
-    : gotSomething
-      ? "Got it, noted privately."
-      : "Sorry, I didn't catch anything specific there.";
+    : update.avoidNotes?.length
+      ? avoidAck(update)
+      : gotSomething
+        ? "Got it, noted privately."
+        : "Sorry, I didn't catch anything specific there.";
 
   if (after.pending && after.pending.startsWith("vague_"))
     return { update, reply: `${PENDING_QUESTIONS[after.pending]}` };

@@ -122,12 +122,10 @@ describe("start point in constraints", () => {
   });
 
   it("is asked about only when the plan can use it and it is not known yet", () => {
-    expect(nextProbe(essentials)).toBe("tradeoff_budget_travel");
+    expect(nextProbe(essentials)).toBe("concession");
     expect(nextProbe(essentials, { askStart: true })).toBe("start_point");
-    expect(nextProbe({ ...essentials, startPoint: start }, { askStart: true })).toBe("tradeoff_budget_travel");
-    expect(nextProbe({ ...essentials, probesAsked: ["start_point"] }, { askStart: true })).toBe(
-      "tradeoff_budget_travel",
-    );
+    expect(nextProbe({ ...essentials, startPoint: start }, { askStart: true })).toBe("concession");
+    expect(nextProbe({ ...essentials, probesAsked: ["start_point"] }, { askStart: true })).toBe("concession");
     expect(nextProbe(emptyConstraints(), { askStart: true })).toBeNull();
   });
 });
@@ -156,7 +154,7 @@ describe("reading a start point from the chat (rules)", () => {
 
   it("asks once the essentials are in, and only when the plan can use it", () => {
     const before = { ...essentials, dietaryConfirmed: false };
-    expect(ruleTurn("no restrictions", before).update.pending).toBe("tradeoff_budget_travel");
+    expect(ruleTurn("no restrictions", before).update.pending).toBe("concession");
     const turn = ruleTurn("no restrictions", before, { askStart: true });
     expect(turn.update.pending).toBe("start_point");
     expect(turn.update.probesAsked).toEqual(["start_point"]);
@@ -175,7 +173,7 @@ describe("reading a start point from the chat (rules)", () => {
     });
     const turn = ruleTurn("from downtown Palo Alto", asked, { askStart: true });
     expect(turn.update.startText).toBe("downtown Palo Alto");
-    expect(turn.update.pending).toBe("tradeoff_budget_travel");
+    expect(turn.update.pending).toBe("concession");
   });
 
   it("lets the person skip", () => {
@@ -184,7 +182,7 @@ describe("reading a start point from the chat (rules)", () => {
       expect(answerPending(text, "start_point", asked.weights), text).toEqual({ pending: null });
     const turn = ruleTurn("skip", asked, { askStart: true });
     expect(turn.update.startText).toBeUndefined();
-    expect(turn.update.pending).toBe("tradeoff_budget_travel");
+    expect(turn.update.pending).toBe("concession");
   });
 
   it("does not read another constraint as a place", () => {
