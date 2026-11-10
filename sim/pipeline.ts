@@ -1,4 +1,4 @@
-import { makeAgent, type Agent } from "../src/lib/agent";
+import { makeAgent, maskGroup, type Agent } from "../src/lib/agent";
 import type { Constraints } from "../src/lib/constraints";
 import { negotiate, type NegotiateOptions, type NegotiationResult } from "../src/lib/negotiate";
 import { compile, type Preferences } from "../src/lib/preferences";
@@ -92,10 +92,9 @@ export function synthCase(
 /** Agents for a case; `wrap` lets a caller observe what each agent answers. */
 export function agentsFor(c: SimCase, wrap?: (agent: Agent, member: number) => Agent): Agent[] {
   const lookup = (id: string) => c.restaurants.find((r) => r.id === id);
-  return c.prefs.map((p, i) => {
-    const a = makeAgent(p, lookup);
-    return wrap ? wrap(a, i) : a;
-  });
+  // Masked as a group, exactly as the server does: the mediator never holds an agent that can state a bucket.
+  const agents = maskGroup(c.prefs.map((p) => makeAgent(p, lookup)));
+  return wrap ? agents.map(wrap) : agents;
 }
 
 /** Wrap an agent so every dimension name it hands the mediator is counted. */
@@ -107,7 +106,7 @@ export function countingAgent(agent: Agent, counter: { dims: number; calls: numb
       if (j.dim) counter.dims++;
       return j;
     },
-    bucket: (p, level) => agent.bucket(p, level),
+    compare: (finalists, level) => agent.compare(finalists, level),
   };
 }
 

@@ -1,5 +1,6 @@
 import type { Agent } from "./agent";
-import type { Bucket, Dim, Judgement, Proposal } from "./evaluate";
+import type { Dim, Judgement, Proposal } from "./evaluate";
+import { logOf, sumMasked } from "./masked-sum";
 import {
   candidateKey,
   candidatePool,
@@ -22,7 +23,8 @@ import { RESTAURANTS, type Restaurant } from "./restaurants";
  *     mediator fills the round with fresh candidates chosen from tallies alone
  *     every agent answers accept / reluctant / reject (+ one dim)
  *     all accept → done; otherwise remember what was feasible
- *   pick among the best feasible candidates by Nash product of utility BUCKETS
+ *   pick among the best feasible candidates by Nash product of utility BUCKETS,
+ *     compared through a masked sum so no bucket reaches this module
  *
  * With `exploreRounds` > 0 the first unanimous round is not the end: the
  * mediator runs that many more rounds of fresh candidates, informed by every
@@ -53,10 +55,13 @@ export type NegotiateOptions = {
 export type Finalist = {
   proposal: Proposal;
   tally: Tally;
-  /** One bucket per person, sorted high to low so nothing maps back to a member. */
-  buckets: Bucket[];
-  nash: number;
-  min: number;
+  /**
+   * This finalist's Nash product (the product of everyone's 1..5 bucket)
+   * divided by the chosen finalist's: 1 for the pick, at most 1 for the rest.
+   * It is all the mediator learns from the bucket question: no bucket, no
+   * product, only how the finalists compare.
+   */
+  relative: number;
 };
 
 export type Reservation = { member: number; dim: Dim };
@@ -79,24 +84,48 @@ export type NegotiationResult = {
 
 type Tried = { proposal: Proposal; tally: Tally; judgements: Judgement[]; level: number };
 
-export const nashProduct = (buckets: number[]) => buckets.reduce((acc, b) => acc * b, 1);
+/** Two log-products closer than this are the same product: distinct products of 2s, 3s and 5s differ by far more. */
+const SAME = 1e-9;
 
-function finalistsFor(cands: Tried[], agents: Agent[], level: number, n: number): Finalist[] {
-  const ranked = [...cands].sort(
-    (a, b) =>
-      b.tally.accept - a.tally.accept ||
-      a.tally.reluctant - b.tally.reluctant ||
-      key(a.proposal).localeCompare(key(b.proposal)),
-  );
-  return ranked.slice(0, n).map((t) => {
-    const buckets = agents.map((a) => a.bucket(t.proposal, level)).sort((x, y) => y - x);
-    return { proposal: t.proposal, tally: t.tally, buckets, nash: nashProduct(buckets), min: Math.min(...buckets) };
-  });
-}
-
-/** Highest Nash product; ties go to the better-off worst person, then to more accepts. */
-function pick(finalists: Finalist[]): Finalist {
-  return [...finalists].sort((a, b) => b.nash - a.nash || b.min - a.min || b.tally.accept - a.tally.accept)[0];
+/**
+ * The final step: up to `n` candidates nobody rejects are compared on the
+ * group's Nash product, without the mediator seeing any bucket.
+ *
+ * Every assistant sends one masked message (agent.ts, masked-sum.ts). Summed
+ * over the group the masks cancel, leaving, for each finalist after the first,
+ * the exponents of 2, 3 and 5 in (its Nash product / the first's). That ratio
+ * is all the pick needs, and all the mediator gets: not the buckets, not their
+ * multiset, not even either product.
+ *
+ * The pick is the highest Nash product. On an exact tie the earlier candidate
+ * in the ranking below wins (more accepts, fewer reluctant, then by name).
+ */
+function finalistsFor(
+  cands: Tried[],
+  agents: Agent[],
+  level: number,
+  n: number,
+): { finalists: Finalist[]; chosen: Finalist } {
+  const ranked = [...cands]
+    .sort(
+      (a, b) =>
+        b.tally.accept - a.tally.accept ||
+        a.tally.reluctant - b.tally.reluctant ||
+        key(a.proposal).localeCompare(key(b.proposal)),
+    )
+    .slice(0, n);
+  const proposals = ranked.map((t) => t.proposal);
+  const sums = ranked.length > 1 ? sumMasked(agents.map((a) => a.compare(proposals, level))) : [];
+  // log(Nash product of finalist k / Nash product of finalist 0); 0 for the first by definition.
+  const logs = ranked.map((_, k) => (k === 0 ? 0 : logOf(sums.slice((k - 1) * 3, k * 3))));
+  let best = 0;
+  for (let k = 1; k < logs.length; k++) if (logs[k] > logs[best] + SAME) best = k;
+  const finalists = ranked.map((t, k) => ({
+    proposal: t.proposal,
+    tally: t.tally,
+    relative: Number(Math.exp(logs[k] - logs[best]).toFixed(6)),
+  }));
+  return { finalists, chosen: finalists[best] };
 }
 
 function reservationsFor(t: Tried): Reservation[] {
@@ -163,8 +192,8 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   const unanimous: Tried[] = [];
   let explored = 0;
   const agree = (): NegotiationResult => {
-    const finalists = finalistsFor(unanimous, agents, level, nFinalists);
-    return finish("agreed", pick(finalists), finalists);
+    const { finalists, chosen } = finalistsFor(unanimous, agents, level, nFinalists);
+    return finish("agreed", chosen, finalists);
   };
 
   for (let round = 1; round <= maxRounds; round++) {
@@ -223,8 +252,7 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   }
   if (feasible.length) {
     for (const f of feasible) tried.set(key(f.proposal), f);
-    const finalists = finalistsFor(feasible, agents, level, nFinalists);
-    const chosen = pick(finalists);
+    const { finalists, chosen } = finalistsFor(feasible, agents, level, nFinalists);
     return finish(chosen.tally.accept === agents.length ? "agreed" : "compromise", chosen, finalists);
   }
 

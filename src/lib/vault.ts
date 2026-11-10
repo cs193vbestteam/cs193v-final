@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "./db";
 import { decryptJson } from "./crypto";
-import { makeAgent, type Agent } from "./agent";
+import { makeAgent, maskGroup, type Agent, type PrivateAgent } from "./agent";
 import { poolForEvent } from "./pool";
 import { scenarioFor } from "./scenario";
 
@@ -25,14 +25,16 @@ export async function agentsForEvent(
   const { restaurants, scenario: scenarioId } = await poolForEvent(eventId);
   const scenario = scenarioFor(scenarioId);
   const lookup = (id: string) => restaurants.find((r) => r.id === id);
-  const agents: Agent[] = [];
+  const members: PrivateAgent[] = [];
   const userIds: string[] = [];
   let readyCount = 0;
   for (const row of rows) {
     const constraints = scenario.parseConstraints(decryptJson(String(row.constraints_enc)));
-    agents.push(makeAgent(scenario.compile(constraints), lookup, constraints.startPoint));
+    members.push(makeAgent(scenario.compile(constraints), lookup, constraints.startPoint));
     userIds.push(String(row.user_id));
     if (Number(row.ready) === 1) readyCount++;
   }
-  return { agents, userIds, readyCount };
+  // Masked as a group before leaving this module: what the mediator holds can answer
+  // accept / reluctant / reject and take part in a masked sum, and cannot state a bucket.
+  return { agents: maskGroup(members), userIds, readyCount };
 }

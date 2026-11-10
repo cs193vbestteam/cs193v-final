@@ -62,7 +62,7 @@ describe("sim harness", () => {
             seen.push(Boolean(j.dim));
             return j;
           },
-          bucket: inner.bucket,
+          compare: inner.compare,
         };
       });
       const result = await negotiate(agents, { restaurants: c.restaurants, ...DEFAULT_NEGOTIATE });
