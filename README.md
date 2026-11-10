@@ -6,6 +6,8 @@ Group plans without the group-chat drama. Everyone tells **their own private ass
 
 v1 covers one scenario: picking a restaurant and time for a weekend meal.
 
+For a plain-language overview of the parts, the services, what is stored and how private data is protected, see [TECHNICAL.md](TECHNICAL.md).
+
 ## How it works
 
 ```
