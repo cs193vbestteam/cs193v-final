@@ -53,3 +53,7 @@ npm run personas -- --people 5 --seed sim/seeds/friends.md
 ```
 
 `sim/personas.ts` has an LLM play a group of people who chat with the real private assistant, then runs the real negotiation and records how each persona reacts to the plan. It writes its report to `sim/out/` and uses an in-memory database, so local data is untouched. It needs an LLM key: `ANTHROPIC_API_KEY` by default, or `OPENROUTER_API_KEY`, or `LLM_API_KEY` with `LLM_BASE_URL`. `PERSONA_MODEL` (or `LLM_MODEL_NAME`) overrides the model. `--llm-assistant` also puts the assistant on the LLM path.
+
+## Real reviewers
+
+`sim/yelp/` runs the same comparison on restaurants, people and friend groups from the Yelp Open Dataset. See `sim/yelp/README.md`.
