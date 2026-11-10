@@ -39,7 +39,7 @@ afterEach(async () => {
 });
 
 const render = async (props: Partial<Parameters<typeof Reveal>[0]> = {}) => {
-  await act(async () => root.render(createElement(Reveal, { children: "hello", ...props })));
+  await act(async () => root.render(createElement(Reveal, { ...props }, "hello")));
   return container.firstElementChild as HTMLElement;
 };
 
