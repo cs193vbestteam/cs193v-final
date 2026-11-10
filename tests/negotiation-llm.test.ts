@@ -1,11 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeAgent, maskGroup } from "@/lib/agent";
-import { agentPrompt, guard, llmJudge } from "@/lib/agent-llm";
+import { agentPrompt, guard, llmJudge, maxTokensFor } from "@/lib/agent-llm";
 import { createUser } from "@/lib/auth";
 import { compile } from "@/lib/preferences";
 import { emptyConstraints, type Constraints } from "@/lib/constraints";
 import { db, resetDbForTests } from "@/lib/db";
-import { createEvent, joinEvent, runNegotiation, sendMessage, setReady } from "@/lib/events";
+import {
+  createEvent,
+  joinEvent,
+  LLM_NEGOTIATION_MS,
+  llmGate,
+  runNegotiation,
+  sendMessage,
+  setReady,
+} from "@/lib/events";
 import { llmExplainer, REVEALING } from "@/lib/mediator-llm";
 import { negotiate } from "@/lib/negotiate";
 import { LIMITS, rateKey } from "@/lib/ratelimit";
@@ -329,5 +337,111 @@ describe("a whole negotiation in LLM mode (runNegotiation)", () => {
     process.env.SETTLE_LLM_NEGOTIATION = "0";
     await runNegotiation(event.id, users[0].id);
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("a failed or partial model call never turns a rejection into agreement (review of #57)", () => {
+  /**
+   * Alice's agent is an LLM that rejects every option for her peanut allergy, which the code agent
+   * cannot see. `fail(n)` says whether call n returns 529; `keep` truncates each reply's verdicts.
+   */
+  function aliceWith(fail: (n: number) => boolean, keep = Infinity) {
+    let n = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        n++;
+        if (fail(n)) return new Response("overloaded", { status: 529 });
+        const { options } = JSON.parse(JSON.parse(String(init.body)).messages[0].content);
+        const verdicts = options
+          .slice(0, keep)
+          .map((o: { id: number }) => ({ id: o.id, verdict: "reject", dim: "diet" }));
+        return Response.json({ content: [{ type: "tool_use", input: { verdicts } }] });
+      }),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const prefs = compile(person({ avoidNotes: ["allergic to peanuts"] }));
+    const alice = makeAgent(prefs);
+    alice.judgeAll = llmJudge({
+      apiKey: "k",
+      about: ["Avoids: allergic to peanuts"],
+      prefs,
+      resolve: (p) => getRestaurant(p.restaurantId),
+      codeSeesAll: false,
+    });
+    const bob = makeAgent(compile(person({})));
+    return maskGroup([alice, bob]);
+  }
+
+  it("baseline: every call answered → no plan", async () => {
+    expect((await negotiate(aliceWith(() => false))).status).toBe("no_deal");
+  });
+
+  it("the last call (the final re-check) fails → still no plan", async () => {
+    expect((await negotiate(aliceWith((n) => n === 7))).status).toBe("no_deal");
+  });
+
+  it("every reply cut short after 12 verdicts → still no plan", async () => {
+    expect((await negotiate(aliceWith(() => false, 12))).status).toBe("no_deal");
+  });
+
+  it("one failed call mid-way does not make that round's options unanimous", async () => {
+    for (const bad of [1, 2, 3]) {
+      const r = await negotiate(aliceWith((n) => n === bad));
+      expect(r.status, `call ${bad} failed`).toBe("no_deal");
+    }
+  });
+
+  it("with the model down entirely, an option is never 'everyone's in' for someone whose notes code can't check", async () => {
+    const r = await negotiate(aliceWith(() => true));
+    expect(r.status).not.toBe("agreed");
+  });
+});
+
+describe("the negotiation's LLM time limit", () => {
+  it("stops starting LLM calls after the deadline, without counting them", async () => {
+    let t = 1_000;
+    const gate = llmGate("plan-1", 2_000, () => t);
+    expect(await gate()).toBe(true);
+    t = 2_000;
+    expect(await gate()).toBe(false);
+    const { rows } = await (
+      await db()
+    ).execute({ sql: "SELECT count FROM rate_limits WHERE key = ?", args: [rateKey.llm("plan-1")] });
+    expect(Number(rows[0].count)).toBe(1);
+  });
+
+  it("leaves room under the route's 60 s limit for one more 12 s proposer call and one agent call", () => {
+    expect(LLM_NEGOTIATION_MS + 2 * 12_000).toBeLessThan(60_000);
+  });
+});
+
+describe("replies cut off at the token limit", () => {
+  it("are treated as partial: nothing in them is trusted as a fresh 'accept'", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: RequestInit) => {
+        const { options } = JSON.parse(JSON.parse(String(init.body)).messages[0].content);
+        const verdicts = options.map((o: { id: number }) => ({ id: o.id, verdict: "accept" }));
+        return Response.json({ content: [{ type: "tool_use", input: { verdicts } }], stop_reason: "max_tokens" });
+      }),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const prefs = compile(person({ avoidNotes: ["allergic to peanuts"] }));
+    const ps = RESTAURANTS.slice(0, 3).map((r) => ({ restaurantId: r.id, slot: r.open[0] }));
+    const judge = llmJudge({
+      apiKey: "k",
+      about: [],
+      prefs,
+      resolve: (p) => getRestaurant(p.restaurantId),
+      codeSeesAll: false,
+    });
+    const out = await judge(ps, 0);
+    expect(out.some((j) => j.verdict === "accept")).toBe(false);
+  });
+
+  it("asks for enough tokens for the whole batch", () => {
+    expect(maxTokensFor(5)).toBeGreaterThanOrEqual(5 * 40);
+    expect(maxTokensFor(30)).toBeGreaterThanOrEqual(30 * 40);
   });
 });
