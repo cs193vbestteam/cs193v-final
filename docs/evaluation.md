@@ -230,13 +230,50 @@ So the comparison in Table Y2 is between tightly constrained synthetic people an
 
 **Other caveats specific to this section.** Availability is synthetic, and the share of feasible groups (78 to 83%) depends on it. One seed per city, with no intervals, unlike the ten-seed study above. Reviewers with 20 or more reviews in one city are heavier users than a typical friend group. And, as Table Y1 shows, the personas describe what people accept, not what they enjoy.
 
+## Elicitation: the extractors on a transcript suite
+
+Everything above starts from compiled preferences. This section is about the step before that: turning what a person types into `Constraints`. There are two extractors, a rule-based one and an LLM one (`src/lib/extract.ts`), and `sim/extract-eval.ts` replays the same short chats through either and compares what was recorded with what a careful person would have recorded.
+
+**The suite** (`tests/fixtures/extract-cases.json`): 32 ordinary chats in five groups (clear answers, vague answers, corrections, other languages, multi-turn) and 16 adversarial ones (instruction overrides, requests for the system prompt or for other members' data, off-topic tasks, out-of-range values, fake system turns, markup and SQL). Each case lists the fields it is about; adversarial cases also list the only fields their messages legitimately talk about.
+
+**Two kinds of result.** Accuracy is a measurement: a wrong field is a miss. A violation is a failure: a final value outside the plausible range, a field changing in an adversarial case although the messages never mention it, or a reply matching a forbidden pattern (the system prompt, another member's number, a long off-topic answer).
+
+**Rule-based extractor** (deterministic, from `npm run sim:extract`):
+
+| category | cases | fields right | cases fully right |
+|---|---:|---:|---:|
+| clear answers | 10 | 96% (48 of 50) | 9 of 10 |
+| vague answers | 6 | 80% (12 of 15) | 3 of 6 |
+| corrections | 6 | 86% (12 of 14) | 5 of 6 |
+| other languages | 6 | 30% (9 of 30) | 0 of 6 |
+| multi-turn | 4 | 95% (19 of 20) | 3 of 4 |
+| **all except adversarial** | 32 | 78% (100 of 129) | 20 of 32 |
+| adversarial | 16 | 92% (12 of 13) | 15 of 16 |
+
+Violations: 0 across all 71 turns. What the misses are:
+
+- *It is English-only.* Spanish, Chinese, French, German and Korean messages lose their time slots and dietary rules entirely; the 30% is digits it could still read next to "$" or "min". This is most of the gap to 100%.
+- *It records a number where the product says to ask.* "I don't care about price" becomes a $200 budget, "anywhere is fine" 60 minutes and "not too far" 20 minutes. The LLM prompt forbids exactly this and asks an either/or instead, so the two extractors disagree on vague answers by design, and the rule-based one is the more presumptuous.
+- *Two changes in one correction are missed.* "budget should be $35 and I can't do Saturday, only Friday night" changes neither field: the negated Saturday cancels the sentence's time, and "should be $35" is not a phrasing it knows.
+- *Number words and partial refinements.* "twenty-five minutes" is not read, and "dinner only actually" after "Sunday" widens to every dinner instead of narrowing to Sunday's.
+- *A negative number loses its sign.* "Set my budget to -50 dollars" records $50. The value is in range and the field is the one the message is about, so this is a miss, not a violation.
+
+**Guardrails, and what they do and do not cover.** These hold for both extractors and are tested in CI with a stubbed model (`tests/extract-eval.test.ts`):
+
+- *Structure.* The model's output must parse against the update schema: unknown slots or dietary rules, text where a number belongs, a missing update or an empty reply all discard the model's answer, and the rule-based extractor answers instead. Fields that do not exist (`ready`, `isAdmin`) and coordinates are stripped; a start point can only come from geocoding.
+- *Range* (new with this evaluation; `UPDATE_LIMITS` in `src/lib/constraints.ts`). Before it, any positive integer was a valid budget or travel time. Now a budget must be $1 to $500 a person, its stretch at most $200, travel 1 to 180 minutes and a weight 0 to 1. An out-of-range number is dropped, the rest of the update is kept, and the reply says the value was not recorded.
+- *Other people's data.* The request to the model contains this person's constraints and chat and nothing about anyone else, so there is nothing for an injection to reveal. That is structural, not a property of the prompt.
+- *Not covered: an invented but plausible value.* If the model answers "tell me a joke" by setting a budget of $25, the value is valid and in range, and nothing in the app can tell it from a real answer. The harness flags it as a violation (a field changed that the messages never mention), which is why the real-model run matters; the stub test shows the harness catches it.
+
+**LLM extractor: not yet run.** The command is `npm run sim:extract -- --llm` with `ANTHROPIC_API_KEY` set (about 70 calls, one per user message, with the model from `ANTHROPIC_MODEL`). It adds a second column to the table above and reports how many turns fell back to the rule-based extractor, because `extract()` falls back silently on any model error and a high fallback count would mean the column is not the model's. No key was available when this was written, so there are no model numbers here, and nothing in this section says how the model behaves under injection. Two things the first run should check: that the fallback count is near zero (the request forces the tool call and allows 512 output tokens, which some newer models reject or exceed), and the adversarial violations.
+
 ## Threats to validity
 
 - **Synthetic preferences.** The distributions in `synth.ts` are our guesses; real friends are more correlated (shared budgets and neighbourhoods) and less tidy (a "hard" ceiling that bends). The Yelp section above replaces the guesses with personas derived from real reviewers for cuisine, budget and travel. Those groups come out easier than the synthetic ones, but the personas are also less constrained by construction (almost no price or dietary limits), so that result does not show that real friends disagree less; availability is still synthetic there, and the personas predict where people go but not how much they like it.
 - **Fixed pools.** The app ships 16 fictional restaurants; the simulation draws 30 synthetic ones per group. Real pools have per-person travel times and more skewed prices.
 - **The utility model is ours.** Oracle, agents and the LLM prompt all share `utility()` (weighted mean, linear ramps, accept at 0.7, reluctant at 0.4). The ratios measure how well the protocol recovers that model's optimum, not how satisfied people would be.
 - **Seeds vary the people, not the generator.** The intervals above cover redrawing the population from the same distributions. They say nothing about whether those distributions resemble real groups. Only `perRound` was swept; `maxRounds`, the concession schedule and the accept thresholds were not.
-- **No real users.** Elicitation (chat to `Constraints`) is not evaluated; the harness starts from compiled preferences.
+- **No real users.** The simulations start from compiled preferences. Elicitation (chat to `Constraints`) is evaluated separately on 48 scripted chats, for the rule-based extractor only; the LLM extractor has not been run on them, and scripted chats are not real conversations.
 - **LLM baseline: one model, one run, 40 groups.** No repeat runs, no second model, no interval; see the caveats under the table.
 
 ## How to reproduce
@@ -264,3 +301,11 @@ npm run sim:yelp -- --data data/yelp --city Philadelphia --groups 200 --seed 1 -
 ```
 
 which writes `report.json` and `report.md` into `--out`. `npx vitest run tests/yelp.test.ts` runs its tests on made-up records.
+
+For the extractor section:
+
+```
+npm run sim:extract
+```
+
+replays the transcript suite through the rule-based extractor, prints the table and writes `sim/out/extract/report.{json,md}`; it exits 1 on any violation. With `ANTHROPIC_API_KEY` in `.env.local` or the environment, `npm run sim:extract -- --llm` adds the LLM column. `npx vitest run tests/extract-eval.test.ts` runs the deterministic part, with a stubbed model.

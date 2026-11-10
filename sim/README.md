@@ -57,3 +57,7 @@ npm run personas -- --people 5 --seed sim/seeds/friends.md
 ## Real reviewers
 
 `sim/yelp/` runs the same comparison on restaurants, people and friend groups from the Yelp Open Dataset. See `sim/yelp/README.md`.
+
+## Extractors
+
+`npm run sim:extract` replays `tests/fixtures/extract-cases.json` (32 ordinary private chats and 16 adversarial ones) through the rule-based extractor and reports field-level accuracy and violations; `-- --llm` adds the LLM extractor when `ANTHROPIC_API_KEY` is set. See "Elicitation" in `docs/evaluation.md`.

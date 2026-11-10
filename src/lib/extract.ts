@@ -6,6 +6,9 @@ import {
   type Constraints,
   type ConstraintsUpdate,
   ConstraintsUpdateSchema,
+  type LimitedField,
+  UPDATE_LIMITS,
+  withinLimits,
   PENDING,
   ASKED_PROBES,
   type ProbeContext,
@@ -143,6 +146,30 @@ async function extractWithLLM(
   return { reply: parsed.reply, update: parsed.update, source: "llm" };
 }
 
+const LIMIT_NOTES: Record<LimitedField, string> = {
+  budgetMax: `a budget has to be between $${UPDATE_LIMITS.budgetMax.min} and $${UPDATE_LIMITS.budgetMax.max} a person`,
+  budgetFlex: `the stretch on a budget can be at most $${UPDATE_LIMITS.budgetFlex.max}`,
+  maxTravelMin: `travel time has to be between ${UPDATE_LIMITS.maxTravelMin.min} and ${UPDATE_LIMITS.maxTravelMin.max} minutes`,
+  weights: "the trade-off answer was out of range",
+};
+
+/**
+ * The last check on any extractor's output, LLM or rules: numbers outside
+ * UPDATE_LIMITS are dropped and the reply says so, so the person is never
+ * told "noted" about a value that was not recorded.
+ */
+export function enforceLimits(result: ExtractResult): ExtractResult {
+  const { update, dropped } = withinLimits(result.update);
+  if (dropped.length === 0) return result;
+  const note = `(I couldn't use that: ${dropped.map((f) => LIMIT_NOTES[f]).join("; ")}.)`;
+  // The rule-based reply acknowledges before the limits run; don't say "noted" when nothing was.
+  const nothingKept = Object.keys(update).every((key) => key === "pending" || key === "probesAsked");
+  const reply = nothingKept
+    ? result.reply.replace(/^Got it, noted privately\./, "I didn't record that.")
+    : result.reply;
+  return { ...result, update, reply: `${reply} ${note}` };
+}
+
 export async function extract(
   history: ChatTurn[],
   current: Constraints,
@@ -154,11 +181,11 @@ export async function extract(
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (apiKey && allowLLM) {
     try {
-      return await extractWithLLM(history, current, apiKey, context);
+      return enforceLimits(await extractWithLLM(history, current, apiKey, context));
     } catch (err) {
       console.error("LLM extraction failed, falling back to rules:", (err as Error).message);
     }
   }
   const { update, reply } = ruleTurn(latest, current, context);
-  return { reply, update, source: "rules" };
+  return enforceLimits({ reply, update, source: "rules" });
 }
