@@ -11,15 +11,20 @@
   --color-surface: #fbf8f1;
   --color-ink: #16140f;
   --color-ink-2: #4b473d;
-  --color-ink-3: #8a8374;
+  --color-ink-3: #686255;
   --color-line: rgb(22 20 15 / 0.12);
   --color-line-strong: rgb(22 20 15 / 0.28);
+  /* Borders of inputs and outlined buttons: 3:1 against paper and surface (WCAG 1.4.11). */
+  --color-line-control: rgb(22 20 15 / 0.5);
   --color-seal: #c6451f;
   --color-seal-soft: #f6ddd2;
+  /* -ink steps: the same hue, dark enough for small text (4.5:1 on paper, surface and the -soft fills). */
+  --color-seal-ink: #ad3a17;
   --color-moss: #2f6a4c;
   --color-moss-soft: #dfeadf;
   --color-amber: #b8771c;
   --color-amber-soft: #f6e8cc;
+  --color-amber-ink: #8a5610;
 
   --font-serif: var(--font-instrument-serif), "Iowan Old Style", Georgia, serif;
   --font-sans: var(--font-instrument-sans), ui-sans-serif, system-ui, sans-serif;
@@ -157,7 +162,7 @@ body::before {
 .btn-ghost {
   background: transparent;
   color: var(--color-ink);
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--color-line-control);
 }
 .btn-ghost:hover:not(:disabled) {
   background: var(--color-surface);
@@ -194,7 +199,7 @@ summary:focus-visible {
   padding: 0.6rem 0.9rem;
   border-radius: 0.875rem;
   background: var(--color-surface);
-  border: 1px solid var(--color-line-strong);
+  border: 1px solid var(--color-line-control);
   color: var(--color-ink);
   font-size: 0.9375rem;
   outline: none;
@@ -245,12 +250,12 @@ summary:focus-visible {
   background: var(--color-moss-soft);
 }
 .pill-amber {
-  color: var(--color-amber);
+  color: var(--color-amber-ink);
   border-color: rgb(184 119 28 / 0.3);
   background: var(--color-amber-soft);
 }
 .pill-seal {
-  color: var(--color-seal);
+  color: var(--color-seal-ink);
   border-color: rgb(198 69 31 / 0.3);
   background: var(--color-seal-soft);
 }

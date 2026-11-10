@@ -40,7 +40,7 @@ export function NegotiateButton({
         </p>
       )}
       {error && (
-        <p role="alert" className="mt-2 text-sm text-seal">
+        <p role="alert" className="mt-2 text-sm text-seal-ink">
           {error}
         </p>
       )}

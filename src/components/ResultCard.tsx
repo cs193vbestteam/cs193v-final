@@ -33,8 +33,8 @@ export function ResultCard({ result }: { result: StoredResult }) {
     result.status === "agreed"
       ? { border: "border-moss/35", text: "text-moss", stamp: "border-moss text-moss" }
       : result.status === "compromise"
-        ? { border: "border-amber/40", text: "text-amber", stamp: "border-amber text-amber" }
-        : { border: "border-seal/35", text: "text-seal", stamp: "border-seal text-seal" };
+        ? { border: "border-amber/40", text: "text-amber-ink", stamp: "border-amber text-amber-ink" }
+        : { border: "border-seal/35", text: "text-seal-ink", stamp: "border-seal text-seal-ink" };
   const tried = result.rounds.reduce((n, round) => n + round.proposals.length, 0);
   const showPlan = r && result.proposal && result.status !== "no_deal";
   const names = result.memberNames ?? [];
@@ -105,7 +105,7 @@ export function ResultCard({ result }: { result: StoredResult }) {
             <li key={round.round}>
               <div className="flex items-baseline justify-between font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
                 <span>Round {round.round}</span>
-                {round.level > 0 && <span className="text-amber">concession step {round.level}</span>}
+                {round.level > 0 && <span className="text-amber-ink">concession step {round.level}</span>}
               </div>
               <ul className="mt-1.5 space-y-1.5">
                 {round.proposals.map((p) => {
@@ -118,7 +118,7 @@ export function ResultCard({ result }: { result: StoredResult }) {
                     >
                       <span className="truncate" title={why || undefined}>
                         {p.retried && (
-                          <span className="text-amber" title="asked again after a concession step">
+                          <span className="text-amber-ink" title="asked again after a concession step">
                             ↺{" "}
                           </span>
                         )}
