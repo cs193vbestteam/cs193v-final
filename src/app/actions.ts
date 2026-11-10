@@ -6,7 +6,17 @@ import { ZodError } from "zod";
 import { AuthError, authenticate, createUser } from "@/lib/auth";
 import { describeConstraints, missingFields, type MissingField } from "@/lib/constraints";
 import type { ChatTurn } from "@/lib/extract";
-import { AccessError, createEvent, joinEvent, runNegotiation, sendMessage, setReady } from "@/lib/events";
+import {
+  AccessError,
+  createEvent,
+  deleteAccount,
+  deletePlan,
+  joinEvent,
+  leavePlan,
+  runNegotiation,
+  sendMessage,
+  setReady,
+} from "@/lib/events";
 import { endSession, requireUser, startSession } from "@/lib/session";
 import { safeNext } from "@/lib/redirect";
 
@@ -110,4 +120,45 @@ export async function runNegotiationAction(eventId: string, inviteCode: string):
   }
   revalidatePath(`/e/${inviteCode}`);
   return {};
+}
+
+/** Creator only (checked in deletePlan). Removes the plan with everyone's chats and the result. */
+export async function deletePlanAction(eventId: string, inviteCode: string): Promise<{ error?: string }> {
+  const user = await requireUser(`/e/${inviteCode}`);
+  try {
+    await deletePlan(eventId, user.id);
+  } catch (err) {
+    return { error: friendly(err) };
+  }
+  revalidatePath("/");
+  redirect("/");
+}
+
+/** Removes the caller's own constraints and chat from a plan. */
+export async function leavePlanAction(eventId: string, inviteCode: string): Promise<{ error?: string }> {
+  const user = await requireUser(`/e/${inviteCode}`);
+  try {
+    await leavePlan(eventId, user.id);
+  } catch (err) {
+    return { error: friendly(err) };
+  }
+  revalidatePath("/");
+  redirect("/");
+}
+
+/** Deletes the caller's account and all their data. Asks for the password again first. */
+export async function deleteAccountAction(_: FormState, form: FormData): Promise<FormState> {
+  const user = await requireUser();
+  try {
+    await authenticate({ email: user.email, password: String(form.get("password") ?? "") });
+  } catch (err) {
+    return { error: err instanceof AuthError ? "That password isn't right" : friendly(err) };
+  }
+  try {
+    await deleteAccount(user.id);
+    await endSession();
+  } catch (err) {
+    return { error: friendly(err) };
+  }
+  redirect("/signup");
 }
