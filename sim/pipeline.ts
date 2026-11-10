@@ -26,7 +26,7 @@ export type SimOptions = {
   restaurants?: number;
   minSize?: number;
   maxSize?: number;
-  negotiate?: Pick<NegotiateOptions, "maxRounds" | "perRound" | "concessionFrom" | "finalists">;
+  negotiate?: Pick<NegotiateOptions, "maxRounds" | "perRound" | "concessionFrom" | "finalists" | "exploreRounds">;
   /** When set, the LLM baseline runs on groups 0..groups-1 (default 40). Off = fully deterministic report. */
   llm?: LlmRunOptions;
 };
@@ -74,6 +74,7 @@ export const DEFAULT_NEGOTIATE: Required<NonNullable<SimOptions["negotiate"]>> =
   perRound: 5,
   concessionFrom: 4,
   finalists: 3,
+  exploreRounds: 0,
 };
 
 /** Draw one scenario. Consumes the rng in a fixed order so a seed is a scenario. */

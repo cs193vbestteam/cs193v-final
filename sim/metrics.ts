@@ -42,6 +42,8 @@ export type GroupMetrics = {
   leakedPerPersonPerRound: number;
   /** Dimension names the agents actually returned, counted by wrapping them (undefined when not wrapped). */
   observedDims: number | undefined;
+  /** How many candidates were put to the bucket question at the end. */
+  finalists: number;
   /**
    * The "no privacy" LLM baseline (sim/llm-baseline.ts), only on groups the
    * run sent to the model. `error` is set when the call failed outright (the
@@ -133,6 +135,7 @@ export function metricsFor(
     leakedDims: result.leakedDims,
     leakedPerPersonPerRound: rounds > 0 && size > 0 ? result.leakedDims / (size * rounds) : 0,
     observedDims,
+    finalists: result.finalists.length,
   };
 }
 
@@ -176,6 +179,8 @@ export type Summary = {
   leakedDims: Stat;
   leakedPerPersonPerRound: Stat;
   observedDims: Stat;
+  /** Candidates that got the 1-5 bucket question from every member (the other thing the mediator hears). */
+  finalists: Stat;
   /** share of groups whose chosen plan is exactly the oracle's Nash optimum */
   protocolHitsOptimum: number | null;
   /** Present only when at least one group in this summary carries an LLM baseline outcome. */
@@ -246,6 +251,7 @@ export function summarize(label: string, ms: readonly GroupMetrics[]): Summary {
     leakedDims: stat(ms.map((m) => m.leakedDims)),
     leakedPerPersonPerRound: stat(ms.map((m) => m.leakedPerPersonPerRound)),
     observedDims: stat(defined(ms.map((m) => m.observedDims))),
+    finalists: stat(ms.map((m) => m.finalists)),
     protocolHitsOptimum: feasible ? hits / feasible : null,
     ...(withLlm.length ? { llm: summarizeLlm(withLlm) } : {}),
   };

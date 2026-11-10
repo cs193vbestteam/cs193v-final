@@ -73,6 +73,7 @@ Table 1 is one draw of 200 groups. The tables below repeat it over ten seeds and
 | Nash ratio, naive | 0.438 [0.412, 0.464] | 0.373 to 0.488 |
 | leaked dimension names per group | 34.25 [32.39, 36.12] | 29.50 to 38.78 |
 | leaked names per person per round | 2.14 [2.10, 2.17] | 2.06 to 2.22 |
+| finalists bucketed per group | 1.30 [1.26, 1.33] | 1.22 to 1.40 |
 | rounds run | 2.77 [2.69, 2.86] | 2.59 to 3.02 |
 
 **Candidates per round** (`perRound`), mean [95% interval] across the same seeds
@@ -92,6 +93,23 @@ Table 1 is one draw of 200 groups. The tables below repeat it over ten seeds and
 | 8 | +0.002 [-0.003, +0.008] | -0.4 pts [-2.7 pts, +1.9 pts] | +26.70 [+24.85, +28.54] |
 | 10 | +0.003 [-0.004, +0.010] | +1.1 pts [-1.0 pts, +3.3 pts] | +45.44 [+42.51, +48.36] |
 
+**After the first unanimous accept** (`exploreRounds`), mean [95% interval] across the same seeds; the shipped protocol stops at once
+
+| protocol | agreement rate, feasible groups | Nash ratio, protocol | max-min ratio, protocol | hits the optimum | leaked dimension names per group | finalists bucketed per group | rounds run |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| stop at the first agreement (shipped) | 98.8% [98.4%, 99.3%] | 0.944 [0.938, 0.951] | 0.969 [0.965, 0.973] | 55.2% [51.8%, 58.5%] | 34.25 [32.39, 36.12] | 1.30 [1.26, 1.33] | 2.77 [2.69, 2.86] |
+| one more round | 98.8% [98.4%, 99.3%] | 0.953 [0.947, 0.959] | 0.976 [0.972, 0.979] | 57.1% [53.7%, 60.5%] | 38.29 [36.47, 40.11] | 1.94 [1.89, 1.99] | 3.52 [3.45, 3.59] |
+| one more round, 6 finalists | 98.8% [98.4%, 99.3%] | 0.958 [0.953, 0.962] | 0.979 [0.977, 0.981] | 58.6% [55.7%, 61.5%] | 38.29 [36.47, 40.11] | 2.78 [2.70, 2.87] | 3.52 [3.45, 3.59] |
+| 3 per round, one more round, 6 finalists | 98.8% [98.3%, 99.3%] | 0.954 [0.947, 0.960] | 0.975 [0.971, 0.979] | 57.8% [54.5%, 61.2%] | 22.34 [21.32, 23.37] | 2.13 [2.05, 2.21] | 3.75 [3.69, 3.82] |
+
+**Difference from the shipped protocol**, paired by seed
+
+| protocol | Nash ratio, protocol | max-min ratio, protocol | hits the optimum | leaked dimension names per group | rounds run |
+|---|---:|---:|---:|---:|---:|
+| one more round | +0.009 [+0.003, +0.015] | +0.007 [+0.003, +0.010] | +1.9 pts [-0.8 pts, +4.6 pts] | +4.04 [+3.84, +4.23] | +0.74 [+0.73, +0.76] |
+| one more round, 6 finalists | +0.013 [+0.008, +0.019] | +0.010 [+0.007, +0.014] | +3.4 pts [+0.8 pts, +6.1 pts] | +4.04 [+3.84, +4.23] | +0.74 [+0.73, +0.76] |
+| 3 per round, one more round, 6 finalists | +0.009 [+0.006, +0.013] | +0.006 [+0.005, +0.008] | +2.6 pts [+0.8 pts, +4.5 pts] | -11.91 [-12.79, -11.04] | +0.98 [+0.94, +1.02] |
+
 <!-- generated:study:end -->
 <!-- prettier-ignore-end -->
 
@@ -101,9 +119,17 @@ Figure 2 (`docs/evaluation-sweep.svg`) plots the sweep: the Nash ratio (panel a)
 
 **Seed 1 was a slightly unlucky draw.** Table 1 and the Results section report seed 1 alone. Among the ten seeds it has the lowest Nash ratio (0.930 against a mean of 0.944) and the lowest max-min ratio (0.959 against 0.969), the second-lowest optimum rate (50% against 55%) and the second-highest leak (36.9 names against 34.3). So the single-seed numbers understate the protocol a little; the ten-seed means are the better headline. The intervals are narrow: redrawing the population moves the Nash ratio by about ±0.007 and the agreement rate on feasible groups by half a percentage point. The share of groups that end exactly on the optimum is the noisy one (48% to 62% across seeds), so read it as "about half".
 
-**More candidates per round cost privacy and buy almost nothing.** Going from 3 to 10 candidates per round roughly quadruples what the mediator hears (20 to 80 dimension names per group), while the Nash ratio moves from 0.939 to 0.948. Paired by seed, no setting differs from the shipped 5 on welfare or on the optimum rate by more than its own interval: every welfare interval in the difference table includes 0, the lower one for `perRound` 3 only just. The differences in leaked names, by contrast, are large and unambiguous. On this evidence `perRound` 3 gives the same plans for about 40% fewer leaked names than the shipped 5, at the price of a quarter of a round more on average (3.01 against 2.77 rounds). We have not changed the default in this report; issue #10 (one more round after the first unanimous accept) targets the optimum rate directly and should be measured against these numbers first.
+**More candidates per round cost privacy and buy almost nothing.** Going from 3 to 10 candidates per round roughly quadruples what the mediator hears (20 to 80 dimension names per group), while the Nash ratio moves from 0.939 to 0.948. Paired by seed, no setting differs from the shipped 5 on welfare or on the optimum rate by more than its own interval: every welfare interval in the difference table includes 0, the lower one for `perRound` 3 only just. The differences in leaked names, by contrast, are large and unambiguous. On this evidence `perRound` 3 gives the same plans for about 40% fewer leaked names than the shipped 5, at the price of a quarter of a round more on average (3.01 against 2.77 rounds). We have not changed the default in this report.
 
 This also corrects the Discussion below, which guessed that `perRound` was the knob that trades leak for optimality. It trades leak for very little.
+
+**One more round after the first agreement is a small, real gain.** `negotiate()` now takes `exploreRounds`: after the first unanimous round the mediator runs that many more rounds of fresh candidates, at the same concession level, and the plan is picked among every unanimous candidate seen. With one exploring round the Nash ratio rises from 0.944 to 0.953 and the worst-off member's ratio from 0.969 to 0.976; paired by seed both intervals exclude 0. The cost is about 4 more dimension names per group (+12%) and three quarters of a round. The optimum rate moves less than hoped: +1.9 points, with an interval that includes 0.
+
+**The finalist cap was holding it back.** An exploring round usually adds unanimous candidates, but only `finalists` of them (3 as shipped) get the 1 to 5 bucket question that tells them apart, and among fully accepted candidates the cut is arbitrary. With 6 finalists the same round gives a Nash ratio of 0.958 and an optimum rate of 58.6% (+3.4 points, interval excluding 0), for the same number of leaked names. The price is in the other thing the mediator hears: bucket answers for 2.8 candidates per group instead of 1.3.
+
+**Combined with fewer candidates per round, it is better on both axes.** Three candidates per round, one exploring round and 6 finalists give a Nash ratio of 0.954 against the shipped 0.944 (+0.009, interval excluding 0) while the mediator hears 22 dimension names per group instead of 34 (-35%). It costs one more round on average (3.75 against 2.77). This is the configuration the numbers favour. It is not the default yet: `exploreRounds` ships as 0, and changing the protocol's defaults is a decision for the team, not for an evaluation PR.
+
+Why the optimum rate stays under 60% in every variant: the final choice is made on 1 to 5 buckets, not on utilities, so candidates the oracle can tell apart often tie for the protocol. That coarseness is deliberate (a bucket leaks less than a number), and it bounds how often the exact optimum can be found no matter how many candidates are explored.
 
 ## LLM baseline
 
@@ -145,7 +171,7 @@ The budget spent: 36.9 dimension names per group on average (median 15, range 0�
 
 **Bug 2: `leakedDims` undercounted.** The final re-check calls `judge()` again on every tried candidate, and those answers carry dimension names too, but the counter skipped them. The `observedDims` column exposed the gap; `tests/sim.test.ts` now asserts per group that `leakedDims` equals the number of names the agents returned, in-round and in the re-check alike.
 
-**First acceptable, not best.** The protocol stops at the first round with a unanimous candidate and chooses only among that round's unanimous candidates. That is why 91% of agreements happen in rounds 1–2 while only 50% hit the optimum: round-1 agreements are optimal in 27 of 75 cases (36%), round-2 agreements in 39 of 60 (65%), because the second round has learned from the first. The knob that trades leak for optimality is how many candidates are asked before stopping, `perRound` in `NegotiateOptions`: each extra candidate costs up to one dimension name per person (2.15 per person per round at 5 candidates) and buys a larger set of unanimous candidates for the finalist step. The sweep in "Across seeds and candidates per round" has since tested this and does not support it: more candidates per round raise the leak a great deal and the optimum rate hardly at all.
+**First acceptable, not best.** The protocol stops at the first round with a unanimous candidate and chooses only among that round's unanimous candidates. That is why 91% of agreements happen in rounds 1–2 while only 50% hit the optimum: round-1 agreements are optimal in 27 of 75 cases (36%), round-2 agreements in 39 of 60 (65%), because the second round has learned from the first. That description is of the shipped default. The study above measures the two ways out that were proposed here: more candidates per round (`perRound`) does not help, while one more round after the first agreement (`exploreRounds`) does, modestly.
 
 ## Threats to validity
 
