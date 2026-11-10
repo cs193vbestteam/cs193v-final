@@ -29,6 +29,8 @@ npm test
 
 Every bug fix comes with a test that fails without the fix. Every feature has tests for its core logic. Tests live in `tests/` (Vitest + jsdom), and LLM and Google Places calls are stubbed so tests never need a key. Changes to negotiation or scoring should also be checked with `npm run sim`.
 
+End-to-end tests live in `e2e/` (Playwright). `npm run test:e2e` builds the app and drives a real browser through the whole flow with no API keys and an in-memory database. The first time, run `npx playwright install chromium`. Add to them when a change affects what a user can see or do across pages.
+
 ## Style guide
 
 - **TypeScript:** strict mode (`tsconfig.json`).

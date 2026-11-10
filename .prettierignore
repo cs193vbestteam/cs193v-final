@@ -8,3 +8,5 @@ next-env.d.ts
 # Prose and recorded API fixtures are kept as written.
 *.md
 tests/fixtures/
+playwright-report/
+test-results/
