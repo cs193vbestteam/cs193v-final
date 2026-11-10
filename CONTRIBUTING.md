@@ -13,7 +13,7 @@
 | Kind | Labels |
 |---|---|
 | Type | `bug`, `enhancement`, `feature`, `documentation`, `testing`, `chore`, `security`, `dependencies` |
-| Area | `area: assistant`, `area: coordination`, `area: frontend`, `area: backend`, `area: infra` |
+| Area | `area: assistant`, `area: coordination`, `area: evaluation`, `area: frontend`, `area: backend`, `area: database`, `area: infra` |
 | Priority | `priority: high` (this week / blocks someone), `priority: medium` (this milestone), `priority: low` (nice to have) |
 
 ## Before you push
