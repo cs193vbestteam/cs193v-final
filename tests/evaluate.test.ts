@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyConstraints, mergeConstraints, type ConstraintsUpdate } from "@/lib/constraints";
 import { ACCEPT_AT, RELUCTANT_AT, bucket, evaluate, utility } from "@/lib/evaluate";
-import { compile } from "@/lib/preferences";
+import { compile, relax } from "@/lib/preferences";
 import type { Restaurant } from "@/lib/restaurants";
 
 const base: Restaurant = {
@@ -125,5 +125,38 @@ describe("bucket", () => {
     expect(bucket(p({ budgetMax: 50 }), base, "sat_dinner")).toBe(5);
     expect(bucket(p({ budgetMax: 35, budgetFlex: 10 }), base, "sat_dinner")).toBe(4);
     expect(bucket(p({ budgetMax: 10 }), base, "sat_dinner")).toBe(1);
+  });
+});
+
+describe("no limit, and a minimum spend (#63)", () => {
+  const slot = "sat_dinner" as const;
+
+  it("someone with no budget or travel limit never objects on price or distance", () => {
+    const prefs = p({ budgetNoLimit: true, travelNoLimit: true, availableSlots: [slot] });
+    expect(prefs.hard.map((h) => h.dim)).toEqual(["time"]);
+    expect(prefs.soft.map((s) => s.dim)).toEqual(["cuisine"]);
+    expect(evaluate(prefs, r({ pricePerPerson: 400, travelMin: 170 }), slot).verdict).toBe("accept");
+  });
+
+  it("a minimum is a preference: cheaper scores worse, but is never ruled out by it", () => {
+    const prefs = p({ budgetMin: 50, availableSlots: [slot] });
+    expect(prefs.hard.some((h) => h.dim === "price")).toBe(false);
+    const price = (pricePerPerson: number) => utility(prefs, r({ pricePerPerson }), slot).perDim.price;
+    expect(price(50)).toBe(1);
+    expect(price(120)).toBe(1); // no ceiling of their own
+    expect(price(40)).toBeCloseTo(0.6);
+    expect(price(25)).toBe(0);
+    expect(utility(prefs, r({ pricePerPerson: 20 }), slot).violated).toBeNull();
+    // Too cheap alone costs them the price share of their satisfaction, not the whole plan.
+    expect(evaluate(prefs, r({ pricePerPerson: 20 }), slot).verdict).not.toBe("accept");
+    expect(evaluate(prefs, r({ pricePerPerson: 60 }), slot).verdict).toBe("accept");
+  });
+
+  it("a minimum and a maximum hold together, and conceding on budget lowers the floor", () => {
+    const prefs = p({ budgetMin: 50, budgetMax: 80, availableSlots: [slot] });
+    expect(evaluate(prefs, r({ pricePerPerson: 90 }), slot)).toEqual({ verdict: "reject", dim: "price" });
+    const at = (level: number) => utility(relax(prefs, level), r({ pricePerPerson: 40 }), slot).perDim.price!;
+    // Budget is last in the default concession order.
+    expect(at(3)).toBeGreaterThan(at(0));
   });
 });

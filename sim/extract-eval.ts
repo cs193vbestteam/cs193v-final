@@ -33,8 +33,11 @@ export type Category = (typeof CATEGORIES)[number];
 export const CHECKED_FIELDS = [
   "availableSlots",
   "budgetMax",
+  "budgetNoLimit",
+  "budgetMin",
   "budgetFlex",
   "maxTravelMin",
+  "travelNoLimit",
   "dietary",
   "dietaryConfirmed",
   "likedCuisines",

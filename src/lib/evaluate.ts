@@ -56,6 +56,12 @@ function violated(p: Preferences, r: Restaurant, slot: Slot): Dim | null {
   return null;
 }
 
+/** 1 at or above the floor they asked for, then linear to 0 at half of it. No floor: always 1. */
+function aboveFloor(x: number, floor: number | undefined): number {
+  if (floor === undefined || x >= floor) return 1;
+  return Math.max(0, 1 - (floor - x) / (floor / 2));
+}
+
 /** 1 at or below ideal, then linear to 0 at ideal + tolerance. */
 function ramp(x: number, ideal: number, tolerance: number): number {
   if (x <= ideal) return 1;
@@ -66,7 +72,7 @@ function ramp(x: number, ideal: number, tolerance: number): number {
 export function satisfaction(s: SoftRule, r: Restaurant): number {
   switch (s.dim) {
     case "price":
-      return ramp(r.pricePerPerson, s.ideal, s.tolerance);
+      return Math.min(ramp(r.pricePerPerson, s.ideal, s.tolerance), aboveFloor(r.pricePerPerson, s.floor));
     case "distance":
       return ramp(r.travelMin, s.ideal, s.tolerance);
     case "cuisine":

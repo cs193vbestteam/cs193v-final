@@ -53,10 +53,16 @@ export const DEFAULT_CONCESSION_ORDER: SoftDim[] = ["cuisine", "travel", "budget
  * Follow-up questions, as stored in probesAsked / pending. The two trade-off questions are no longer
  * asked (#48: people found them redundant) but stay in the enum so chats saved before that still parse.
  */
-export const PROBES = ["start_point", "tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"] as const;
+export const PROBES = [
+  "cuisine",
+  "start_point",
+  "tradeoff_budget_travel",
+  "tradeoff_cuisine_travel",
+  "concession",
+] as const;
 export type Probe = (typeof PROBES)[number];
 /** The follow-ups actually asked once the essentials are known, in order. */
-export const ASKED_PROBES: readonly Probe[] = ["start_point", "concession"];
+export const ASKED_PROBES: readonly Probe[] = ["cuisine", "start_point", "concession"];
 /** Questions that need the next answer read in context: a vague-answer follow-up, or a probe. */
 export const PENDING = ["vague_budget", "vague_distance", ...PROBES] as const;
 export type Pending = (typeof PENDING)[number];
@@ -81,6 +87,10 @@ export type ProbeContext = {
 export const ConstraintsSchema = z.object({
   /** Hard ceiling, in dollars per person. */
   budgetMax: z.number().int().positive().nullable(),
+  /** They said they don't mind what it costs. An answer, not a gap: budget is settled with no ceiling. */
+  budgetNoLimit: z.boolean().default(false),
+  /** "At least $50 a person": they would rather not go cheaper. A preference, never a hard rule. */
+  budgetMin: z.number().int().positive().nullable().default(null),
   /** How many dollars over budgetMax is "a stretch, but OK". */
   budgetFlex: z.number().int().min(0),
   /** null = not answered yet. */
@@ -96,6 +106,8 @@ export const ConstraintsSchema = z.object({
   dietaryConfirmed: z.boolean(),
   /** Max one-way travel time in minutes. */
   maxTravelMin: z.number().int().positive().nullable(),
+  /** They said they don't mind how far it is: distance is settled with no ceiling. */
+  travelNoLimit: z.boolean().default(false),
   /** Their own starting point; null = measure travel from the plan's location. */
   startPoint: StartPointSchema.nullable().default(null),
   likedCuisines: z.array(z.enum(CUISINES)),
@@ -114,6 +126,16 @@ export const ConstraintsSchema = z.object({
 export type Constraints = z.infer<typeof ConstraintsSchema>;
 
 export const ConstraintsUpdateSchema = ConstraintsSchema.partial().extend({
+  // An update says only what changed. The stored schema's defaults must not leak into it: a field
+  // the message never mentioned would otherwise arrive as "false" or "null" and wipe what was recorded.
+  budgetNoLimit: z.boolean().optional(),
+  budgetMin: z.number().int().positive().nullable().optional(),
+  travelNoLimit: z.boolean().optional(),
+  avoidNotes: z.array(z.string().trim().min(1).max(160)).max(10).optional(),
+  startPoint: StartPointSchema.nullable().optional(),
+  concessionOrder: z.array(z.enum(SOFT_DIMS)).nullable().optional(),
+  probesAsked: z.array(z.enum(PROBES)).optional(),
+  pending: z.enum(PENDING).nullable().optional(),
   weights: z
     .object({ budget: z.number().min(0), travel: z.number().min(0), cuisine: z.number().min(0) })
     .partial()
@@ -126,12 +148,15 @@ export type ConstraintsUpdate = z.infer<typeof ConstraintsUpdateSchema>;
 export function emptyConstraints(): Constraints {
   return {
     budgetMax: null,
+    budgetNoLimit: false,
+    budgetMin: null,
     budgetFlex: 0,
     availableSlots: null,
     dietary: [],
     avoidNotes: [],
     dietaryConfirmed: false,
     maxTravelMin: null,
+    travelNoLimit: false,
     startPoint: null,
     likedCuisines: [],
     dislikedCuisines: [],
@@ -147,12 +172,30 @@ const uniq = <T>(xs: T[]) => Array.from(new Set(xs));
 /** Apply an update from the extractor. Scalars overwrite; dietary needs accumulate. */
 export function mergeConstraints(base: Constraints, update: ConstraintsUpdate): Constraints {
   const next: Constraints = { ...base };
+  // "No limit" and a number are two answers to the same question: the later one replaces the earlier.
+  if (update.budgetNoLimit !== undefined) next.budgetNoLimit = update.budgetNoLimit;
+  if (update.budgetNoLimit === true) {
+    next.budgetMax = null;
+    next.budgetFlex = 0;
+  }
   if (update.budgetMax !== undefined) next.budgetMax = update.budgetMax;
+  if (typeof update.budgetMax === "number") next.budgetNoLimit = false;
   if (update.budgetFlex !== undefined) next.budgetFlex = update.budgetFlex;
+  if (update.budgetMin !== undefined) next.budgetMin = update.budgetMin;
+  // A floor above the ceiling cannot both hold; keep whichever this message stated.
+  if (next.budgetMin !== null && next.budgetMax !== null && next.budgetMin > next.budgetMax + next.budgetFlex) {
+    if (typeof update.budgetMin === "number") {
+      next.budgetMax = null;
+      next.budgetFlex = 0;
+    } else next.budgetMin = null;
+  }
   if (update.availableSlots !== undefined) {
     next.availableSlots = update.availableSlots === null ? null : uniq(update.availableSlots);
   }
+  if (update.travelNoLimit !== undefined) next.travelNoLimit = update.travelNoLimit;
+  if (update.travelNoLimit === true) next.maxTravelMin = null;
   if (update.maxTravelMin !== undefined) next.maxTravelMin = update.maxTravelMin;
+  if (typeof update.maxTravelMin === "number") next.travelNoLimit = false;
   if (update.startPoint !== undefined) next.startPoint = update.startPoint;
   // Unresolved text carries no coordinates, so it changes nothing; only an explicit null clears.
   if (update.startText === null) next.startPoint = null;
@@ -191,12 +234,13 @@ export function mergeConstraints(base: Constraints, update: ConstraintsUpdate): 
  */
 export const UPDATE_LIMITS = {
   budgetMax: { min: 1, max: 500 },
+  budgetMin: { min: 1, max: 500 },
   budgetFlex: { min: 0, max: 200 },
   maxTravelMin: { min: 1, max: 180 },
   weight: { min: 0, max: 1 },
 } as const;
 
-export type LimitedField = "budgetMax" | "budgetFlex" | "maxTravelMin" | "weights";
+export type LimitedField = "budgetMax" | "budgetMin" | "budgetFlex" | "maxTravelMin" | "weights";
 
 const outside = (x: number, { min, max }: { min: number; max: number }) => !Number.isFinite(x) || x < min || x > max;
 
@@ -207,7 +251,7 @@ const outside = (x: number, { min, max }: { min: number; max: number }) => !Numb
  */
 export function withinLimits(update: ConstraintsUpdate): { update: ConstraintsUpdate; dropped: LimitedField[] } {
   const dropped: LimitedField[] = [];
-  for (const field of ["budgetMax", "budgetFlex", "maxTravelMin"] as const) {
+  for (const field of ["budgetMax", "budgetMin", "budgetFlex", "maxTravelMin"] as const) {
     const value = update[field];
     if (typeof value === "number" && outside(value, UPDATE_LIMITS[field])) dropped.push(field);
   }
@@ -224,8 +268,9 @@ export type MissingField = "time" | "budget" | "distance" | "diet";
 export function missingFields(c: Constraints): MissingField[] {
   const missing: MissingField[] = [];
   if (!c.availableSlots || c.availableSlots.length === 0) missing.push("time");
-  if (c.budgetMax === null) missing.push("budget");
-  if (c.maxTravelMin === null) missing.push("distance");
+  // "I don't mind" and "at least $50" both answer the budget question; neither leaves a ceiling.
+  if (c.budgetMax === null && !c.budgetNoLimit && c.budgetMin === null) missing.push("budget");
+  if (c.maxTravelMin === null && !c.travelNoLimit) missing.push("distance");
   if (!c.dietaryConfirmed) missing.push("diet");
   return missing;
 }
@@ -238,7 +283,10 @@ export function describeConstraints(c: Constraints): string[] {
     lines.push(
       `Budget: up to $${c.budgetMax}/person${c.budgetFlex ? ` (can stretch to $${c.budgetMax + c.budgetFlex})` : ""}`,
     );
+  else if (c.budgetNoLimit || c.budgetMin !== null) lines.push("Budget: no limit");
+  if (c.budgetMin !== null) lines.push(`Would rather spend at least $${c.budgetMin}/person`);
   if (c.maxTravelMin !== null) lines.push(`Travel: up to ${c.maxTravelMin} min`);
+  else if (c.travelNoLimit) lines.push("Travel: any distance");
   if (c.startPoint) lines.push(`Coming from: ${c.startPoint.label}`);
   if (c.dietaryConfirmed) {
     const diet = c.dietary.length
@@ -250,6 +298,8 @@ export function describeConstraints(c: Constraints): string[] {
   }
   if (c.avoidNotes.length) lines.push(`Avoids: ${c.avoidNotes.join("; ")}`);
   if (c.likedCuisines.length) lines.push(`Would like: ${c.likedCuisines.join(", ")}`);
+  else if (!c.dislikedCuisines.length && c.probesAsked.includes("cuisine") && c.pending !== "cuisine")
+    lines.push("Cuisine: no preference");
   if (c.dislikedCuisines.length) lines.push(`Rather not: ${c.dislikedCuisines.join(", ")}`);
   if ((Object.keys(DEFAULT_WEIGHTS) as SoftDim[]).some((d) => c.weights[d] !== DEFAULT_WEIGHTS[d])) {
     const top = (Object.entries(c.weights) as [SoftDim, number][]).sort((a, b) => b[1] - a[1])[0][0];
@@ -264,7 +314,16 @@ export function describeConstraints(c: Constraints): string[] {
 /** The next optional question worth asking once the essentials are in. */
 export function nextProbe(c: Constraints, context: ProbeContext = {}): Probe | null {
   if (missingFields(c).length > 0) return null;
-  // Asking where someone is coming from is pointless when the plan can't use it, or when they already said.
-  const skipStart = !context.askStart || c.startPoint !== null;
-  return ASKED_PROBES.find((p) => !c.probesAsked.includes(p) && !(p === "start_point" && skipStart)) ?? null;
+  return remainingProbes(c, context)[0] ?? null;
+}
+
+/**
+ * The optional questions not yet asked, in order. Cuisine is skipped once they have named any, and
+ * the start point when the plan can't use it or they already said.
+ */
+export function remainingProbes(c: Constraints, context: ProbeContext = {}): Probe[] {
+  const skip = (p: Probe) =>
+    (p === "cuisine" && (c.likedCuisines.length > 0 || c.dislikedCuisines.length > 0)) ||
+    (p === "start_point" && (!context.askStart || c.startPoint !== null));
+  return ASKED_PROBES.filter((p) => !c.probesAsked.includes(p) && !skip(p));
 }

@@ -165,7 +165,7 @@ describe("the rule-based extractor on the suite", () => {
 
   it("holds its measured accuracy (a regression check, not a target)", async () => {
     const report = await runSuite("rules", cases, rulesExtractor);
-    // Measured: clear 94%, vague 80%, corrections 86%, multi-turn 95%, other languages 30%, overall 78%.
+    // Measured: clear 94%, vague 96%, corrections 100%, multi-turn 96%, other languages 30%, overall 84%.
     expect(report.byCategory.clear.accuracy!).toBeGreaterThanOrEqual(0.9);
     expect(report.byCategory.multi_turn.accuracy!).toBeGreaterThanOrEqual(0.9);
     expect(report.byCategory.correction.accuracy!).toBeGreaterThanOrEqual(0.8);
@@ -180,7 +180,7 @@ describe("the rule-based extractor on the suite", () => {
     const b = await runSuite("rules", cases, rulesExtractor);
     expect(a).toEqual(b);
     const md = toMarkdown([a]);
-    expect(md).toContain("| clear answers | 13 |");
+    expect(md).toContain("| clear answers | 14 |");
     expect(md).toContain("**all except adversarial**");
     expect(md).toContain("0 violations");
   });
@@ -246,6 +246,84 @@ describe("the LLM path with a stubbed model", () => {
     expect(limitViolations(r.final)).toEqual([]);
     expect(r.final).not.toHaveProperty("ready");
     expect(r.final).not.toHaveProperty("isAdmin");
+  });
+
+  describe("the rubric and the state block (#63)", () => {
+    const systemOf = (fetchMock: ReturnType<typeof stubModel>, call: number) =>
+      JSON.parse(String((fetchMock.mock.calls[call][1] as { body: string }).body)).system as string;
+
+    it("sends the same rubric every time, and a state block naming the question asked and what is left", async () => {
+      const fetchMock = stubModel((message) =>
+        message === "Friday"
+          ? { reply: "Friday dinner. What's your budget?", update: { availableSlots: ["fri_dinner"] } }
+          : { reply: "$40. How far?", update: { budgetMax: 40 } },
+      );
+      const first = { role: "assistant" as const, content: "Hi! When are you free?" };
+      const afterTime = (await extract([first, { role: "user", content: "Friday" }], emptyConstraints())).update;
+      const known = { ...emptyConstraints(), ...afterTime } as ReturnType<typeof emptyConstraints>;
+      await extract(
+        [
+          first,
+          { role: "user", content: "Friday" },
+          { role: "assistant", content: "Budget?" },
+          { role: "user", content: "40" },
+        ],
+        known,
+      );
+      const [one, two] = [systemOf(fetchMock, 0), systemOf(fetchMock, 1)];
+      const rubric = (system: string) => system.split("# STATE")[0];
+      expect(rubric(one)).toBe(rubric(two));
+      expect(rubric(one)).toMatch(
+        /# Goal[\s\S]*# What to learn[\s\S]*# "I don't mind" is an answer[\s\S]*# How to handle one message/,
+      );
+      expect(rubric(one)).toContain('"at least $50 a person"');
+      expect(rubric(one)).toContain("in the language the person is writing in");
+      expect(one).toContain("Question you asked last: time");
+      expect(one).toContain("Still to ask, in order: time, budget, distance, diet, cuisine, concession");
+      expect(two).toContain("Question you asked last: budget");
+      expect(two).toContain("Still to ask, in order: budget, distance, diet, cuisine, concession");
+    });
+
+    it("a bare number the model files under the wrong question is read by the rules instead", async () => {
+      // What the real model did: "20" in answer to the distance question, recorded as the budget.
+      stubModel(() => ({ reply: "I'll keep your budget at $20 per person.", update: { budgetMax: 20 } }));
+      const asked = { ...emptyConstraints(), availableSlots: ["fri_dinner" as const], budgetMax: 40 };
+      const history = [
+        { role: "user" as const, content: "Friday, $40" },
+        { role: "assistant" as const, content: "How many minutes one way are you willing to travel?" },
+        { role: "user" as const, content: "20" },
+      ];
+      const r = await extract(history, asked);
+      expect(r.source).toBe("rules");
+      expect(r.update).toEqual({ maxTravelMin: 20 });
+    });
+
+    it("a bare number the model files correctly is kept, and so is a full sentence about another field", async () => {
+      const asked = { ...emptyConstraints(), availableSlots: ["fri_dinner" as const], budgetMax: 40 };
+      const question = { role: "assistant" as const, content: "How many minutes one way?" };
+      const start = { role: "user" as const, content: "Friday, $40" };
+      stubModel(() => ({ reply: "20 minutes, noted.", update: { maxTravelMin: 20 } }));
+      expect((await extract([start, question, { role: "user", content: "20" }], asked)).source).toBe("llm");
+      stubModel(() => ({ reply: "Budget is now $30.", update: { budgetMax: 30 } }));
+      const r = await extract([start, question, { role: "user", content: "actually make my budget $30" }], asked);
+      expect(r.source).toBe("llm");
+      expect(r.update).toMatchObject({ budgetMax: 30 });
+    });
+
+    it('lets the model record "no limit" and a minimum spend', async () => {
+      stubModel(() => ({ reply: "No budget limit on your side.", update: { budgetNoLimit: true } }));
+      const r = await extract([{ role: "user", content: "I don't care about price" }], emptyConstraints());
+      expect(r.update).toMatchObject({ budgetNoLimit: true });
+      stubModel(() => ({ reply: "At least $50 a person.", update: { budgetMin: 50 } }));
+      expect((await extract([{ role: "user", content: "at least $50" }], emptyConstraints())).update).toMatchObject({
+        budgetMin: 50,
+      });
+      // The floor is range-checked like every other number.
+      stubModel(() => ({ reply: "At least $9000 a person.", update: { budgetMin: 9000 } }));
+      const big = await extract([{ role: "user", content: "at least $9000" }], emptyConstraints());
+      expect(big.update.budgetMin).toBeUndefined();
+      expect(big.reply).toMatch(/minimum spend has to be between/);
+    });
   });
 
   describe("regions and styles instead of cuisines (#62)", () => {
@@ -352,7 +430,7 @@ describe("the LLM path with a stubbed model", () => {
     await runCase(byId("adversarial-03"), llmExtractor);
     const body = String((fetchMock.mock.calls[0][1] as { body: string }).body);
     // The request carries this person's own constraints and chat, and nothing about anyone else.
-    expect(body).toContain("What you already know about this person");
+    expect(body).toContain("Recorded so far");
     expect(body).not.toMatch(/memberNames|constraints_enc|other members' (budget|constraints)":/);
     expect(JSON.parse(body).messages.every((m: { role: string }) => m.role === "user" || m.role === "assistant")).toBe(
       true,

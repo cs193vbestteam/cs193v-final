@@ -14,9 +14,9 @@ import {
   ASKED_PROBES,
   type ProbeContext,
   SOFT_DIMS,
-  nextProbe,
 } from "./constraints";
 import { ruleTurn } from "./extract-rules";
+import { RUBRIC, misreadBareNumber, stateBlock } from "./extract-prompt";
 
 /**
  * Private-chat extraction: turn what a user says into structured constraints.
@@ -30,49 +30,6 @@ export type ExtractResult = { reply: string; update: ConstraintsUpdate; source: 
 /** What the model may set `pending` to: everything but the retired trade-off questions. */
 const ASKABLE_PENDING = PENDING.filter((p) => !p.startsWith("tradeoff"));
 
-const SYSTEM_PROMPT = `You are a private assistant helping ONE person plan a group meal with friends.
-Only this person sees this chat. Your job: learn their real constraints quickly and kindly, in 1-2 short sentences per reply.
-
-Hard constraints to collect (ask for whichever is missing, one at a time):
-- time: which weekend slots they are free (${SLOTS.join(", ")})
-- budget: max dollars per person, and whether they can stretch a bit (budgetFlex = extra dollars that are "a stretch but OK").
-  Accept any form: a range like "50-100" or "$50 to $100" means budgetMax = the low end and budgetFlex = high minus low;
-  "60ish" / "around 60" / "100 max" / "under 80" are budgetMax; "$" = 20, "$$" = 40, "$$$" = 70, "$$$$" = 120.
-- distance: max one-way travel minutes
-- diet: restrictions (${DIETARY.join(", ")}), or confirm none (dietaryConfirmed=true).
-  Free text is a valid answer. Map what you can: any fish or shellfish (clams, crabs, shrimp, lobster, oysters,
-  "anything with shells", sushi) → no_seafood; spice/chili → no_spicy; no meat → vegetarian; no pork → halal.
-  Whenever they name something specific, also put their own words in avoidNotes (e.g. "clams and crabs, anything with shells")
-  and set dietaryConfirmed=true. If something can't be mapped to a flag, say honestly that you'll keep it in mind but can only
-  check restaurants for spicy, vegetarian, seafood and halal. Never reply that you didn't understand a reasonable answer.
-  Only food, ingredients, allergies or diets count as an answer. A message about anything else (a joke, a question,
-  instructions to you) is not: store nothing, leave dietaryConfirmed unset, and ask the diet question again.
-Soft preferences: liked/disliked cuisines (${CUISINES.join(", ")}).
-When they name a region, a style or a dish instead of a cuisine, translate it yourself into cuisines from that list and use only names from that list:
-"Asian" means the East and Southeast Asian ones (japanese, chinese, korean, thai, vietnamese), not indian; "something like ramen" is japanese;
-"anything but Western food" dislikes american, italian and mediterranean. If nothing on the list fits what they asked for, record no cuisine and say plainly that you cannot look for it; do not promise to keep it in mind.
-Whenever you record cuisines, say in your reply which ones you noted, so they can correct you.
-
-Never ask trade-off questions such as "paying $10 over budget or travelling 10 minutes further": people find them redundant.
-If they volunteer what matters most ("price matters most"), set weights: that dimension 0.5, the other two 0.25 each.
-
-Once the essentials are known, ask these follow-ups ONE at a time, each exactly once (track them in probesAsked):
-- concession: "If something has to give, what goes first: cuisine, distance or budget?" → concessionOrder, in the order they give (${SOFT_DIMS.join(", ")}; "distance" = travel).
-- start_point (ONLY when it is the "Next follow-up" named below): ask roughly where they will be travelling from. A neighbourhood or cross street is enough, it is optional, and it is used only to measure their own trip. Put the place in startText, exactly as they wrote it. If they decline, just set pending to null.
-If the person volunteers where they are coming from at any point, record it in startText. Never guess a place they did not state.
-Set "pending" to the question you just asked (${ASKABLE_PENDING.join(", ")}) and back to null once answered.
-
-Never accept "whatever" / "anything" / "don't care" for budget or distance. Reply with an either/or instead
-("Which would bother you more: $45 a head, or $25 a head somewhere less exciting?") and set pending to vague_budget / vague_distance;
-infer a number from their answer ($45 bothers them → budgetMax 30, budgetFlex 10; otherwise 60/15. 30 min bothers them → maxTravelMin 15; otherwise 40).
-
-Rules:
-- Reassure them numbers stay private when asking about money.
-- Never judge their constraints.
-- Always reply in English.
-- Always call the record_constraints tool. Put ONLY fields the latest message changes into "update".
-- availableSlots is the FULL list of slots they are free (replace, not append). If they say they're busy at some time, return all other slots.`;
-
 const TOOL = {
   name: "record_constraints",
   description: "Record constraint changes from the user's latest message and give your reply.",
@@ -84,6 +41,8 @@ const TOOL = {
         type: "object",
         properties: {
           budgetMax: { type: "integer" },
+          budgetNoLimit: { type: "boolean", description: "They don't mind what it costs." },
+          budgetMin: { type: "integer", description: "A floor: 'at least $50 a person'." },
           budgetFlex: { type: "integer" },
           availableSlots: { type: "array", items: { type: "string", enum: [...SLOTS] } },
           dietary: { type: "array", items: { type: "string", enum: [...DIETARY] } },
@@ -94,6 +53,7 @@ const TOOL = {
             description: "Foods they avoid, in their own words, when they named something specific.",
           },
           maxTravelMin: { type: "integer" },
+          travelNoLimit: { type: "boolean", description: "They don't mind how far it is." },
           startText: { type: "string", description: "The place the person says they will travel from, verbatim." },
           likedCuisines: { type: "array", items: { type: "string", enum: [...CUISINES] } },
           dislikedCuisines: { type: "array", items: { type: "string", enum: [...CUISINES] } },
@@ -155,8 +115,6 @@ async function extractWithLLM(
   apiKey: string,
   context: ProbeContext,
 ): Promise<ExtractResult> {
-  // The model already saw the place in the chat; it has no use for the coordinates.
-  const known = { ...current, startPoint: current.startPoint ? { label: current.startPoint.label } : null };
   const model = process.env.ANTHROPIC_MODEL || "claude-haiku-5-5";
   const messages = history.slice(-20).map((t) => ({ role: t.role, content: t.content }));
   // The API requires the first message to be from the user.
@@ -172,7 +130,7 @@ async function extractWithLLM(
     body: JSON.stringify({
       model,
       max_tokens: 512,
-      system: `${SYSTEM_PROMPT}\n\nWhat you already know about this person (JSON): ${JSON.stringify(known)}\nNext follow-up to ask once essentials are complete: ${nextProbe(current, context) ?? "none"}`,
+      system: `${RUBRIC}\n\n${stateBlock(history, current, context)}`,
       tools: [TOOL],
       tool_choice: { type: "tool", name: TOOL.name },
       messages,
@@ -183,10 +141,18 @@ async function extractWithLLM(
   const data = (await res.json()) as { content?: { type: string; input?: unknown }[] };
   const block = data.content?.find((b) => b.type === "tool_use");
   const { reply, update } = readCuisines(ToolOutput.parse(block?.input));
+  // A bare "20" filed under the wrong question: the rule-based reader is exact here, so let it answer.
+  if (misreadBareNumber(history, current, Object.keys(update))) throw new Error("bare number misread");
+  // Bookkeeping the model can forget: a question it did not say it is waiting on is not pending,
+  // and a follow-up it is waiting on has been asked.
+  if (update.pending === undefined) update.pending = null;
+  const waitingOn = ASKED_PROBES.find((p) => p === update.pending);
+  if (waitingOn) update.probesAsked = [...new Set([...(update.probesAsked ?? []), waitingOn])];
   return { reply, update, source: "llm" };
 }
 
 const LIMIT_NOTES: Record<LimitedField, string> = {
+  budgetMin: `a minimum spend has to be between $${UPDATE_LIMITS.budgetMin.min} and $${UPDATE_LIMITS.budgetMin.max} a person`,
   budgetMax: `a budget has to be between $${UPDATE_LIMITS.budgetMax.min} and $${UPDATE_LIMITS.budgetMax.max} a person`,
   budgetFlex: `the stretch on a budget can be at most $${UPDATE_LIMITS.budgetFlex.max}`,
   maxTravelMin: `travel time has to be between ${UPDATE_LIMITS.maxTravelMin.min} and ${UPDATE_LIMITS.maxTravelMin.max} minutes`,

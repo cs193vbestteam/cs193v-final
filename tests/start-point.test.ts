@@ -64,6 +64,8 @@ const essentials: Constraints = {
   budgetMax: 60,
   maxTravelMin: 10,
   dietaryConfirmed: true,
+  // The cuisine question comes before the start point; these tests begin after it.
+  probesAsked: ["cuisine"],
 };
 
 describe("geo", () => {
@@ -125,7 +127,9 @@ describe("start point in constraints", () => {
     expect(nextProbe(essentials)).toBe("concession");
     expect(nextProbe(essentials, { askStart: true })).toBe("start_point");
     expect(nextProbe({ ...essentials, startPoint: start }, { askStart: true })).toBe("concession");
-    expect(nextProbe({ ...essentials, probesAsked: ["start_point"] }, { askStart: true })).toBe("concession");
+    expect(nextProbe({ ...essentials, probesAsked: ["cuisine", "start_point"] }, { askStart: true })).toBe(
+      "concession",
+    );
     expect(nextProbe(emptyConstraints(), { askStart: true })).toBeNull();
   });
 });
@@ -158,11 +162,15 @@ describe("reading a start point from the chat (rules)", () => {
     const turn = ruleTurn("no restrictions", before, { askStart: true });
     expect(turn.update.pending).toBe("start_point");
     expect(turn.update.probesAsked).toEqual(["start_point"]);
+    // Without the cuisine question behind them, that one comes first.
+    expect(ruleTurn("no restrictions", { ...before, probesAsked: [] }, { askStart: true }).update.pending).toBe(
+      "cuisine",
+    );
     expect(turn.reply).toContain(PENDING_QUESTIONS.start_point);
   });
 
   it("takes the answer to the question as a place, then moves on", () => {
-    const asked: Constraints = { ...essentials, pending: "start_point", probesAsked: ["start_point"] };
+    const asked: Constraints = { ...essentials, pending: "start_point", probesAsked: ["cuisine", "start_point"] };
     expect(answerPending("Mountain View", "start_point", asked.weights)).toEqual({
       startText: "Mountain View",
       pending: null,
@@ -177,7 +185,7 @@ describe("reading a start point from the chat (rules)", () => {
   });
 
   it("lets the person skip", () => {
-    const asked: Constraints = { ...essentials, pending: "start_point", probesAsked: ["start_point"] };
+    const asked: Constraints = { ...essentials, pending: "start_point", probesAsked: ["cuisine", "start_point"] };
     for (const text of ["skip", "I'd rather not", "no"])
       expect(answerPending(text, "start_point", asked.weights), text).toEqual({ pending: null });
     const turn = ruleTurn("skip", asked, { askStart: true });
@@ -186,7 +194,7 @@ describe("reading a start point from the chat (rules)", () => {
   });
 
   it("does not read another constraint as a place", () => {
-    const asked: Constraints = { ...essentials, pending: "start_point", probesAsked: ["start_point"] };
+    const asked: Constraints = { ...essentials, pending: "start_point", probesAsked: ["cuisine", "start_point"] };
     expect(answerPending("actually my budget is $25", "start_point", asked.weights)).toBeNull();
     const turn = ruleTurn("actually my budget is $25", asked, { askStart: true });
     expect(turn.update.budgetMax).toBe(25);
@@ -334,7 +342,9 @@ describe("end to end with a real-places pool", () => {
       await sendMessage(event.id, u.id, prefs);
       await setReady(event.id, u.id, true);
     }
-    // With the essentials in, the assistant asks where they are coming from.
+    // With the essentials in, the assistant asks about cuisine, then where they are coming from.
+    await sendMessage(event.id, b.id, "no preference");
+    await setReady(event.id, b.id, true);
     const chat = await getMyMessages(event.id, b.id);
     expect(chat[chat.length - 1].content).toContain(PENDING_QUESTIONS.start_point);
 
@@ -362,6 +372,7 @@ describe("end to end with a real-places pool", () => {
     const a = await makeUser("Alice");
     const event = await createEvent(a.id, "Saturday dinner", "Stanford, CA");
     await sendMessage(event.id, a.id, "Saturday dinner only, under $60, max 10 minutes away, no restrictions");
+    await sendMessage(event.id, a.id, "no preference"); // the cuisine question
     const { messages, constraints } = await sendMessage(event.id, a.id, "Zzyzx Qwerty");
     expect(constraints.startPoint).toBeNull();
     expect(messages[messages.length - 1].content).toContain(startNotFound("Zzyzx Qwerty"));

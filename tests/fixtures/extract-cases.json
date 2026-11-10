@@ -161,6 +161,20 @@
         "dislikedCuisines": ["american", "italian", "mediterranean"]
       }
     },
+    {
+      "id": "clear-14",
+      "category": "clear",
+      "note": "A minimum spend is allowed: it is a floor, it answers the budget question, and no ceiling is invented.",
+      "turns": ["Saturday dinner, somewhere nice: at least $50 per person. 30 minutes max, no restrictions."],
+      "expected": {
+        "availableSlots": ["sat_dinner"],
+        "budgetMin": 50,
+        "budgetMax": null,
+        "maxTravelMin": 30,
+        "dietary": [],
+        "dietaryConfirmed": true
+      }
+    },
 
     {
       "id": "vague-01",
@@ -178,29 +192,50 @@
     {
       "id": "vague-03",
       "category": "vague",
-      "note": "The product rule is never to accept \"don't care\" for budget: ask an either/or instead of recording a number.",
+      "note": "\"I don't care about price\" is an answer: no budget limit, and no number is invented.",
       "turns": ["Saturday dinner", "I don't care about price"],
-      "expected": { "availableSlots": ["sat_dinner"], "budgetMax": null }
+      "expected": { "availableSlots": ["sat_dinner"], "budgetMax": null, "budgetNoLimit": true }
     },
     {
       "id": "vague-04",
       "category": "vague",
-      "note": "The either/or follow-up: being bothered by $45 a head means a budget of about $30.",
-      "turns": ["Saturday dinner, 20 minutes, no restrictions", "whatever", "the $45 one would bother me"],
+      "note": "Unsure is not indifferent. The either/or follow-up: being bothered by $45 a head means a budget of about $30.",
+      "turns": ["Saturday dinner, 20 minutes, no restrictions", "not sure, it depends", "the $45 one would bother me"],
       "expected": { "availableSlots": ["sat_dinner"], "maxTravelMin": 20, "budgetMax": 30 }
     },
     {
       "id": "vague-05",
       "category": "vague",
-      "note": "\"Anywhere\" is not a travel limit; the assistant should ask the either/or.",
+      "note": "\"Anywhere\" is an answer: no travel limit, and no number is invented.",
       "turns": ["Sunday lunch, under $30, no restrictions", "anywhere is fine"],
-      "expected": { "availableSlots": ["sun_lunch"], "budgetMax": 30, "maxTravelMin": null }
+      "expected": { "availableSlots": ["sun_lunch"], "budgetMax": 30, "maxTravelMin": null, "travelNoLimit": true }
     },
     {
       "id": "vague-06",
       "category": "vague",
+      "note": "\"Not too far\" is vague, not indifferent: nothing is recorded and the assistant asks.",
       "turns": ["not too expensive, not too far, sometime Saturday"],
-      "expected": { "availableSlots": ["sat_lunch", "sat_dinner"], "budgetMax": null, "maxTravelMin": null }
+      "expected": {
+        "availableSlots": ["sat_lunch", "sat_dinner"],
+        "budgetMax": null,
+        "budgetNoLimit": false,
+        "maxTravelMin": null,
+        "travelNoLimit": false
+      }
+    },
+    {
+      "id": "vague-07",
+      "category": "vague",
+      "note": "Not minding the cuisine is an answer: nothing is recorded and nothing already recorded changes.",
+      "turns": ["Sunday lunch, $30, 15 minutes, no restrictions", "I don't mind, I'm flexible"],
+      "expected": {
+        "availableSlots": ["sun_lunch"],
+        "budgetMax": 30,
+        "budgetFlex": 0,
+        "maxTravelMin": 15,
+        "likedCuisines": [],
+        "dislikedCuisines": []
+      }
     },
 
     {
@@ -374,6 +409,19 @@
         "budgetMax": 30,
         "maxTravelMin": 10,
         "dietary": ["vegetarian"],
+        "dietaryConfirmed": true
+      }
+    },
+    {
+      "id": "multi-turn-05",
+      "category": "multi_turn",
+      "note": "Issue #63: bare answers, each to the question just asked. The 20 is minutes, not a budget.",
+      "turns": ["Friday", "40", "20", "nothing"],
+      "expected": {
+        "availableSlots": ["fri_dinner"],
+        "budgetMax": 40,
+        "maxTravelMin": 20,
+        "dietary": [],
         "dietaryConfirmed": true
       }
     },
