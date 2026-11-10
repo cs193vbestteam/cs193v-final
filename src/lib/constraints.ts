@@ -166,6 +166,42 @@ export function mergeConstraints(base: Constraints, update: ConstraintsUpdate): 
   return ConstraintsSchema.parse(next);
 }
 
+/**
+ * The range each number an extractor records must fall in. The schema above
+ * only says "a positive integer"; these say what is plausible for a meal, so a
+ * typo, a hallucination or a deliberate "$1,000,000" cannot become someone's
+ * constraint. Weights are relative importances and are normalised later, so
+ * anything outside 0..1 is noise.
+ */
+export const UPDATE_LIMITS = {
+  budgetMax: { min: 1, max: 500 },
+  budgetFlex: { min: 0, max: 200 },
+  maxTravelMin: { min: 1, max: 180 },
+  weight: { min: 0, max: 1 },
+} as const;
+
+export type LimitedField = "budgetMax" | "budgetFlex" | "maxTravelMin" | "weights";
+
+const outside = (x: number, { min, max }: { min: number; max: number }) => !Number.isFinite(x) || x < min || x > max;
+
+/**
+ * Drop the out-of-range numbers from an extractor's update and say which were
+ * dropped. Everything else in the update is kept, so one bad number does not
+ * cost the person the rest of what they said.
+ */
+export function withinLimits(update: ConstraintsUpdate): { update: ConstraintsUpdate; dropped: LimitedField[] } {
+  const dropped: LimitedField[] = [];
+  for (const field of ["budgetMax", "budgetFlex", "maxTravelMin"] as const) {
+    const value = update[field];
+    if (typeof value === "number" && outside(value, UPDATE_LIMITS[field])) dropped.push(field);
+  }
+  const weights = Object.values(update.weights ?? {});
+  if (weights.some((w) => typeof w === "number" && outside(w, UPDATE_LIMITS.weight))) dropped.push("weights");
+  if (dropped.length === 0) return { update, dropped };
+  const kept = Object.fromEntries(Object.entries(update).filter(([key]) => !dropped.includes(key as LimitedField)));
+  return { update: kept as ConstraintsUpdate, dropped };
+}
+
 export type MissingField = "time" | "budget" | "distance" | "diet";
 
 /** Hard constraints we must have before the user counts as "ready". */
