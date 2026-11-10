@@ -8,6 +8,7 @@ import { configuredSelector } from "./mediator-llm";
 import { negotiate, type NegotiationResult } from "./negotiate";
 import { resolvePool } from "./places";
 import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./pool";
+import { canLocate, resolveStart } from "./start-point";
 import { agentsForEvent } from "./vault";
 
 /**
@@ -216,7 +217,10 @@ export async function sendMessage(
   await addMessage(eventId, userId, "user", content);
 
   const history = await getMyMessages(eventId, userId);
-  const { reply, update } = await extract(history, current);
+  // A start point is only asked for, and only resolved, when this plan's pool has coordinates.
+  const { restaurants } = await poolForEvent(eventId);
+  const extracted = await extract(history, current, { askStart: canLocate(restaurants) });
+  const { reply, update } = await resolveStart(extracted.update, extracted.reply, restaurants);
 
   let next = current;
   try {

@@ -51,7 +51,8 @@ export function ResultCard({ result }: { result: StoredResult }) {
           <div className="mt-2">
             <div className="font-serif text-[1.75rem] leading-tight">{r.name}</div>
             <div className="mt-1 text-sm text-ink-2">
-              {SLOT_LABELS[result.proposal!.slot]} · ~${r.pricePerPerson}/person · {r.travelMin} min away · {r.cuisine}
+              {SLOT_LABELS[result.proposal!.slot]} · ~${r.pricePerPerson}/person
+              {r.travelMin !== undefined ? ` · ${r.travelMin} min away` : ""} · {r.cuisine}
             </div>
           </div>
         ) : (

@@ -1,4 +1,5 @@
 import type { Cuisine, Slot } from "./constraints";
+import type { LatLng } from "./geo";
 
 /**
  * Hard-coded, fictional restaurant data: the seed pool, used when a plan has no
@@ -10,8 +11,10 @@ export type Restaurant = {
   cuisine: Cuisine;
   /** Typical spend per person, in dollars. */
   pricePerPerson: number;
-  /** One-way travel time from campus, in minutes. */
+  /** One-way travel time from the plan's location (campus, for the seed), in minutes. */
   travelMin: number;
+  /** Where the place is. Public. Present for Places results, absent for the seed. */
+  location?: LatLng;
   /** Most of the menu is spicy. */
   spicy: boolean;
   vegetarianFriendly: boolean;

@@ -49,6 +49,16 @@ describe("the mediator cannot reach anyone's preferences", () => {
     }
   });
 
+  it("only the vault and the agent handle a person's start point; the mediator never sees it", () => {
+    for (const f of ["negotiate", "mediator", "mediator-llm", "evaluate", "preferences", "pool"]) {
+      const src = readFileSync(path.join(SRC, `${f}.ts`), "utf8");
+      expect(src, `${f}.ts`).not.toMatch(/startPoint|startText|start-point/);
+    }
+    // The agent takes the point as an argument and closes over it; it never reads it from anywhere.
+    expect(reachable("agent").has("start-point")).toBe(false);
+    expect(readFileSync(path.join(SRC, "vault.ts"), "utf8")).toMatch(/makeAgent\([^;]*constraints\.startPoint\)/);
+  });
+
   it("runNegotiation itself decrypts nothing; it only asks the vault for agents", () => {
     const src = readFileSync(path.join(SRC, "events.ts"), "utf8");
     const start = src.indexOf("export async function runNegotiation");

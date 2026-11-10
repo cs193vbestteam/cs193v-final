@@ -8,6 +8,7 @@ import {
   ConstraintsUpdateSchema,
   PENDING,
   PROBES,
+  type ProbeContext,
   SOFT_DIMS,
   nextProbe,
 } from "./constraints";
@@ -36,6 +37,8 @@ Once the essentials are known, ask these follow-ups ONE at a time, each exactly 
 - tradeoff_budget_travel: "Which is worse: paying $10 over budget, or travelling 10 minutes further?" → nudge weights (+0.15 to what they protect, -0.1 to the other; keep each within 0.1..0.7).
 - tradeoff_cuisine_travel: same shape for cuisine vs travel.
 - concession: "If something has to give, what goes first: cuisine, distance or budget?" → concessionOrder, in the order they give (${SOFT_DIMS.join(", ")}; "distance" = travel).
+- start_point (ONLY when it is the "Next follow-up" named below): ask roughly where they will be travelling from. A neighbourhood or cross street is enough, it is optional, and it is used only to measure their own trip. Put the place in startText, exactly as they wrote it. If they decline, just set pending to null.
+If the person volunteers where they are coming from at any point, record it in startText. Never guess a place they did not state.
 Set "pending" to the question you just asked (${PENDING.join(", ")}) and back to null once answered.
 
 Never accept "whatever" / "anything" / "don't care" for budget or distance. Reply with an either/or instead
@@ -65,6 +68,7 @@ const TOOL = {
           dietary: { type: "array", items: { type: "string", enum: [...DIETARY] } },
           dietaryConfirmed: { type: "boolean" },
           maxTravelMin: { type: "integer" },
+          startText: { type: "string", description: "The place the person says they will travel from, verbatim." },
           likedCuisines: { type: "array", items: { type: "string", enum: [...CUISINES] } },
           dislikedCuisines: { type: "array", items: { type: "string", enum: [...CUISINES] } },
           weights: {
@@ -81,9 +85,17 @@ const TOOL = {
   },
 } as const;
 
-const ToolOutput = z.object({ reply: z.string().min(1), update: ConstraintsUpdateSchema });
+// The model may name a place (startText) but never supply coordinates: those only come from geocoding.
+const ToolOutput = z.object({ reply: z.string().min(1), update: ConstraintsUpdateSchema.omit({ startPoint: true }) });
 
-async function extractWithLLM(history: ChatTurn[], current: Constraints, apiKey: string): Promise<ExtractResult> {
+async function extractWithLLM(
+  history: ChatTurn[],
+  current: Constraints,
+  apiKey: string,
+  context: ProbeContext,
+): Promise<ExtractResult> {
+  // The model already saw the place in the chat; it has no use for the coordinates.
+  const known = { ...current, startPoint: current.startPoint ? { label: current.startPoint.label } : null };
   const model = process.env.ANTHROPIC_MODEL || "claude-haiku-5-5";
   const messages = history.slice(-20).map((t) => ({ role: t.role, content: t.content }));
   // The API requires the first message to be from the user.
@@ -99,7 +111,7 @@ async function extractWithLLM(history: ChatTurn[], current: Constraints, apiKey:
     body: JSON.stringify({
       model,
       max_tokens: 512,
-      system: `${SYSTEM_PROMPT}\n\nWhat you already know about this person (JSON): ${JSON.stringify(current)}\nNext follow-up to ask once essentials are complete: ${nextProbe(current) ?? "none"}`,
+      system: `${SYSTEM_PROMPT}\n\nWhat you already know about this person (JSON): ${JSON.stringify(known)}\nNext follow-up to ask once essentials are complete: ${nextProbe(current, context) ?? "none"}`,
       tools: [TOOL],
       tool_choice: { type: "tool", name: TOOL.name },
       messages,
@@ -113,16 +125,20 @@ async function extractWithLLM(history: ChatTurn[], current: Constraints, apiKey:
   return { reply: parsed.reply, update: parsed.update, source: "llm" };
 }
 
-export async function extract(history: ChatTurn[], current: Constraints): Promise<ExtractResult> {
+export async function extract(
+  history: ChatTurn[],
+  current: Constraints,
+  context: ProbeContext = {},
+): Promise<ExtractResult> {
   const latest = [...history].reverse().find((t) => t.role === "user")?.content ?? "";
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (apiKey) {
     try {
-      return await extractWithLLM(history, current, apiKey);
+      return await extractWithLLM(history, current, apiKey, context);
     } catch (err) {
       console.error("LLM extraction failed, falling back to rules:", (err as Error).message);
     }
   }
-  const { update, reply } = ruleTurn(latest, current);
+  const { update, reply } = ruleTurn(latest, current, context);
   return { reply, update, source: "rules" };
 }

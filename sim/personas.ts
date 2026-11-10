@@ -343,7 +343,7 @@ async function main() {
   const reactions = [] as { name: string; rating: number; comment: string; trueBucket: number; trueVerdict: string }[];
   if (result?.proposal) {
     const r = result.places[result.proposal.restaurantId] ?? T.getRestaurant(result.proposal.restaurantId);
-    const line = `${T.SLOT_LABELS[result.proposal.slot]} · ${r?.name} · ~$${r?.pricePerPerson}/person · ${r?.travelMin} min away · ${r?.cuisine}`;
+    const line = `${T.SLOT_LABELS[result.proposal.slot]} · ${r?.name} · ~$${r?.pricePerPerson}/person${r?.travelMin !== undefined ? ` · ${r.travelMin} min away` : ""} · ${r?.cuisine}`;
     for (const c of chats) {
       const sys = personaSystem(c.persona, T);
       const out = await chat(
@@ -448,7 +448,7 @@ async function main() {
     );
     if (result.proposal && r)
       md.push(
-        `Plan: **${r.name}**, ${T.SLOT_LABELS[result.proposal.slot]}, ~$${r.pricePerPerson}/person, ${r.travelMin} min, ${r.cuisine}.`,
+        `Plan: **${r.name}**, ${T.SLOT_LABELS[result.proposal.slot]}, ~$${r.pricePerPerson}/person, ${r.travelMin !== undefined ? `${r.travelMin} min, ` : ""}${r.cuisine}.`,
         ``,
       );
     if (result.reservations.length)

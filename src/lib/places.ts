@@ -1,5 +1,8 @@
 import { CUISINES, SLOTS, type Cuisine, type Slot } from "./constraints";
+import { travelMinutes, type LatLng } from "./geo";
 import type { Restaurant } from "./restaurants";
+
+export { KM_PER_MIN, haversineKm, type LatLng } from "./geo";
 
 /**
  * Candidate pool from Google Places (API "New"). Public information only:
@@ -17,8 +20,6 @@ import type { Restaurant } from "./restaurants";
  * covers least, merged and de-duplicated by place id. The number of calls per
  * plan is capped (MAX_NEARBY_CALLS) because every call is billed.
  */
-
-export type LatLng = { lat: number; lng: number };
 
 /** The subset of a Places "New" result we read. Kept small so fixtures stay honest. */
 export type PlaceResult = {
@@ -85,9 +86,6 @@ export const CUISINE_QUERY_TYPES: Record<Cuisine, readonly string[]> = {
   ],
 };
 
-/** City travel: roughly 25 km/h door to door, never under 3 minutes. */
-export const KM_PER_MIN = 25 / 60;
-
 const CUISINE_TYPES: [RegExp, Cuisine][] = [
   [/japanese|sushi|ramen/, "japanese"],
   [/chinese|dim_sum|cantonese|sichuan|hot_pot/, "chinese"],
@@ -105,15 +103,6 @@ export function inferCuisine(types: readonly string[], name = ""): Cuisine | nul
   const hay = [...types, name.toLowerCase().replace(/\s+/g, "_")];
   for (const t of hay) for (const [re, c] of CUISINE_TYPES) if (re.test(t)) return c;
   return null;
-}
-
-export function haversineKm(a: LatLng, b: LatLng): number {
-  const R = 6371;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
 }
 
 /** Google days: 0 = Sunday … 6 = Saturday. Our slots probe lunch at 12:30 and dinner at 19:30. */
@@ -152,15 +141,15 @@ export function toRestaurant(p: PlaceResult, center: LatLng): Restaurant | null 
   const name = p.displayName?.text ?? "Unnamed place";
   const cuisine = inferCuisine(types, name);
   if (!cuisine) return null;
-  const km = haversineKm(center, { lat: p.location.latitude, lng: p.location.longitude });
-  const travelMin = Math.max(3, Math.round(km / KM_PER_MIN));
+  const location = { lat: p.location.latitude, lng: p.location.longitude };
   const joined = types.join(" ") + " " + name.toLowerCase();
   return {
     id: p.id,
     name,
     cuisine,
     pricePerPerson: PRICE_BY_LEVEL[p.priceLevel ?? ""] ?? DEFAULT_PRICE,
-    travelMin,
+    travelMin: travelMinutes(center, location),
+    location,
     spicy: /thai|indian|sichuan|hot_pot|korean|hot pot/.test(joined),
     vegetarianFriendly: p.servesVegetarianFood === true || /vegetarian|vegan/.test(joined),
     seafoodHeavy: /seafood|sushi|fish|oyster|crab/.test(joined),
@@ -202,10 +191,19 @@ async function postPlaces<T>(
 }
 
 /** Text → coordinates, via Text Search (one result). */
-export async function geocode(location: string, key: string, fetcher: Fetcher = fetch): Promise<LatLng | null> {
+export async function geocode(
+  location: string,
+  key: string,
+  fetcher: Fetcher = fetch,
+  near?: LatLng,
+): Promise<LatLng | null> {
+  // `near` only biases the search (a neighbourhood name exists in many cities); it does not restrict it.
+  const locationBias = near
+    ? { circle: { center: { latitude: near.lat, longitude: near.lng }, radius: 50_000 } }
+    : undefined;
   const data = await postPlaces<{ places?: { location?: { latitude: number; longitude: number } }[] }>(
     "places:searchText",
-    { textQuery: location, maxResultCount: 1 },
+    { textQuery: location, maxResultCount: 1, ...(locationBias ? { locationBias } : {}) },
     key,
     "places.location",
     fetcher,
