@@ -1,4 +1,4 @@
-import { CUISINES, SLOTS, type Cuisine, type Slot } from "./constraints";
+import { SLOTS, type Cuisine, type Slot } from "./constraints";
 import type { Restaurant } from "./restaurants";
 
 /**

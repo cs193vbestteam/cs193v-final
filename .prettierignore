@@ -1,0 +1,10 @@
+.next/
+out/
+coverage/
+sim/out/
+node_modules/
+package-lock.json
+next-env.d.ts
+# Prose and recorded API fixtures are kept as written.
+*.md
+tests/fixtures/
