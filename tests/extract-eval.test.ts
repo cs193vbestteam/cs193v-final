@@ -165,7 +165,7 @@ describe("the rule-based extractor on the suite", () => {
 
   it("holds its measured accuracy (a regression check, not a target)", async () => {
     const report = await runSuite("rules", cases, rulesExtractor);
-    // Measured: clear 96%, vague 80%, corrections 86%, multi-turn 95%, other languages 30%, overall 78%.
+    // Measured: clear 94%, vague 80%, corrections 86%, multi-turn 95%, other languages 30%, overall 78%.
     expect(report.byCategory.clear.accuracy!).toBeGreaterThanOrEqual(0.9);
     expect(report.byCategory.multi_turn.accuracy!).toBeGreaterThanOrEqual(0.9);
     expect(report.byCategory.correction.accuracy!).toBeGreaterThanOrEqual(0.8);
@@ -180,7 +180,7 @@ describe("the rule-based extractor on the suite", () => {
     const b = await runSuite("rules", cases, rulesExtractor);
     expect(a).toEqual(b);
     const md = toMarkdown([a]);
-    expect(md).toContain("| clear answers | 10 |");
+    expect(md).toContain("| clear answers | 13 |");
     expect(md).toContain("**all except adversarial**");
     expect(md).toContain("0 violations");
   });
@@ -246,6 +246,66 @@ describe("the LLM path with a stubbed model", () => {
     expect(limitViolations(r.final)).toEqual([]);
     expect(r.final).not.toHaveProperty("ready");
     expect(r.final).not.toHaveProperty("isAdmin");
+  });
+
+  describe("regions and styles instead of cuisines (#62)", () => {
+    it("tells the model to translate them itself, and what Asian means", async () => {
+      const fetchMock = stubModel(() => ({ reply: "Noted.", update: {} }));
+      await runCase(byId("clear-11"), llmExtractor);
+      const system = JSON.parse(String((fetchMock.mock.calls[0][1] as { body: string }).body)).system as string;
+      expect(system).toContain("translate it yourself into cuisines from that list");
+      expect(system).toMatch(
+        /"Asian" means the East and Southeast Asian ones \(japanese, chinese, korean, thai, vietnamese\), not indian/,
+      );
+      expect(system).toContain("say in your reply which ones you noted");
+    });
+
+    it("keeps everything else the model read when it names a cuisine we do not have", async () => {
+      // What the real model did in testing: "asian" as a cuisine. The whole reply used to be discarded.
+      stubModel(() => ({
+        reply: "Friday dinner, $35, 20 minutes, Asian food: noted.",
+        update: {
+          availableSlots: ["fri_dinner"],
+          budgetMax: 35,
+          maxTravelMin: 20,
+          dietaryConfirmed: true,
+          likedCuisines: ["asian"],
+        },
+      }));
+      const r = await runCase(byId("clear-11"), llmExtractor);
+      expect(r.sources).toEqual(["llm"]); // not a fallback to the rules
+      expect(r.final).toMatchObject({ availableSlots: ["fri_dinner"], budgetMax: 35, maxTravelMin: 20 });
+      expect(r.final.likedCuisines).toEqual([]);
+      expect(r.replies[0]).toMatch(
+        /^Friday dinner, \$35, 20 minutes, Asian food: noted\. \(I couldn't match "asian" to a cuisine/,
+      );
+      expect(r.replies[0]).toContain("japanese, chinese, korean");
+    });
+
+    it("keeps the cuisines it knows next to one it does not, whatever the capitalisation", async () => {
+      stubModel(() => ({
+        reply: "Noted.",
+        update: { likedCuisines: ["Thai", "fusion", "thai", " Korean "], dislikedCuisines: ["Ethiopian"] },
+      }));
+      const r = await runCase({ ...byId("clear-11"), expected: {} }, llmExtractor);
+      expect(r.sources).toEqual(["llm"]);
+      expect(r.final.likedCuisines).toEqual(["thai", "korean"]);
+      expect(r.final.dislikedCuisines).toEqual([]);
+      expect(r.replies[0]).toContain(`"fusion" or "ethiopian"`);
+    });
+
+    it("adds nothing to the reply when every cuisine is one we have", async () => {
+      stubModel(() => ({
+        reply: "Noted: Japanese, Chinese, Korean, Thai or Vietnamese.",
+        update: { likedCuisines: ["japanese", "chinese", "korean", "thai", "vietnamese"] },
+      }));
+      const r = await runCase(
+        { ...byId("clear-11"), expected: { likedCuisines: byId("clear-11").expected.likedCuisines } },
+        llmExtractor,
+      );
+      expect(r.allCorrect).toBe(true);
+      expect(r.replies[0]).toBe("Noted: Japanese, Chinese, Korean, Thai or Vietnamese.");
+    });
   });
 
   it("falls back to the rules, and reports it, when the model's output is unusable", async () => {
