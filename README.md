@@ -1,14 +1,85 @@
 # Settle
 
-**Live site:** https://miniproject-europium.vercel.app
-
 Group plans without the group-chat drama. Everyone tells **their own private assistant** their real constraints (budget, when they're free, what they won't eat, how far they'll travel). The assistants then negotiate a plan without leaking anyone's numbers. The group only sees the final answer: *"Sat dinner · Olive Tree Mezze · ~$27/person · everyone's in."*
 
-v1 covers one scenario: picking a restaurant and time for a weekend meal.
+It covers one kind of plan: picking a restaurant and a time for a weekend meal.
 
-For a plain-language overview of the parts, the services, what is stored and how private data is protected, see [TECHNICAL.md](TECHNICAL.md).
+For how the system is put together, what it stores and how private data is protected, see [TECHNICAL.md](TECHNICAL.md).
+
+## See it live
+
+**The version in this repository is not deployed yet.** Until it is, the way to see it is to run it yourself, which takes a few commands and needs no accounts or keys (next section).
+
+An earlier version of the app is online at https://miniproject-europium.vercel.app. It has the same idea and flow but an older design, and it lacks most of what is described here.
+
+## Run your own copy
+
+You need [Node.js](https://nodejs.org) 22 or newer. Nothing else: no database to install and no API keys.
+
+```bash
+git clone https://github.com/cs193vbestteam/cs193v-final.git
+cd cs193v-final
+npm install
+cp .env.example .env.local
+npm run gen-key
+```
+
+`npm run gen-key` prints a random key. Open `.env.local` and paste it after `ENCRYPTION_KEY=`. Then:
+
+```bash
+npm run dev
+```
+
+and open http://localhost:3000.
+
+**Try the whole flow on your own:**
+
+1. Sign up in a normal browser window, start a plan, and copy the invite link.
+2. Open the link in a private (incognito) window, sign up as a second person, and join.
+3. In each window, tell the assistant something like `Saturday dinner, under $40, 20 minutes, no restrictions`, then press "I'm done".
+4. Press "Find a plan" in either window.
+
+Out of the box the app stores its data in a local folder (`.pglite/`), reads the chat with a rule-based extractor, and offers 16 built-in fictional restaurants. The two optional keys below switch on the real services.
+
+### Optional: Claude and real restaurants
+
+Add either of these to `.env.local` and restart `npm run dev`.
+
+| Variable | What it switches on | Where to get it |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | Claude reads the private chat instead of the rule-based extractor. | [console.anthropic.com](https://console.anthropic.com) |
+| `GOOGLE_PLACES_API_KEY` | A plan created with a location gets up to 60 real restaurants nearby. | Google Cloud Console: enable **Places API (New)**, create an API key, and restrict it to that API. |
+
+Both are paid services billed to whoever owns the key. Set a quota or budget alert on the Google key: each new plan with a location makes up to 7 calls. With an Anthropic key, `SETTLE_LLM_MEDIATOR=1` also lets Claude re-rank the mediator's shortlist; it is off by default.
+
+### Put your own copy online
+
+1. **Database.** Create a free Postgres database at [Neon](https://neon.tech) and copy its connection string (it starts with `postgresql://`).
+2. **Hosting.** Import this repository into [Vercel](https://vercel.com) as a new project. On our team one person does the deploys.
+3. **Environment variables.** In the Vercel project's settings, add:
+   - `ENCRYPTION_KEY`: the output of `npm run gen-key`. Use a new one, not the one from your laptop.
+   - `DATABASE_URL`: the Neon connection string.
+   - `ANTHROPIC_API_KEY` and `GOOGLE_PLACES_API_KEY`, if you want Claude and real restaurants.
+4. **Deploy.** The tables are created automatically on the first request. Sign up on the deployed site to check it.
+
+Never change `ENCRYPTION_KEY` once there is real data: everything encrypted with the old key becomes unreadable. Never commit `.env.local` or any real key; `CONTRIBUTING.md` says what to do if one leaks.
+
+Any Postgres and any Node host work the same way; Neon and Vercel are what we chose.
+
+## Tests
+
+```bash
+npm test          # unit tests (Vitest)
+npm run typecheck
+npm run lint
+npm run test:e2e  # two people go from sign-up to a plan in a real browser (Playwright)
+```
+
+The browser tests need a one-time `npx playwright install chromium`. CI runs all of these, a production build and a secret scan on every pull request (`.github/workflows/`).
 
 ## How it works
+
+[TECHNICAL.md](TECHNICAL.md) is the plain-language overview. This section is the module-by-module reference.
 
 ```
  private chat (per person)          server                         group view
@@ -24,7 +95,7 @@ For a plain-language overview of the parts, the services, what is stored and how
                              → adapt from verdicts → repeat      + anonymous round counts
 ```
 
-- **Elicitation** (`src/lib/extract.ts`, `extract-rules.ts`): turns the private chat into a typed `Constraints` object (`src/lib/constraints.ts`). Refuses "whatever" with an either/or, then asks two trade-offs (weights) and a concession-order question. Uses Claude via tool use if `ANTHROPIC_API_KEY` is set, otherwise a tested rule-based path. Whatever either one records must be in a plausible range (`UPDATE_LIMITS`: a budget of $1 to $500, travel of 1 to 180 minutes); out-of-range numbers are dropped and the reply says so. `npm run sim:extract` scores both on a transcript suite that includes prompt injection (`docs/evaluation.md`).
+- **Elicitation** (`src/lib/extract.ts`, `extract-rules.ts`): turns the private chat into a typed `Constraints` object (`src/lib/constraints.ts`). Refuses "whatever" with an either/or, then asks one question about what to give up first; weights move only when the person volunteers a priority ("price matters most"). Uses Claude via tool use if `ANTHROPIC_API_KEY` is set, otherwise a tested rule-based path. Whatever either one records must be in a plausible range (`UPDATE_LIMITS`: a budget of $1 to $500, travel of 1 to 180 minutes); out-of-range numbers are dropped and the reply says so. `npm run sim:extract` scores both on a transcript suite that includes prompt injection (`docs/evaluation.md`).
 - **Preferences** (`src/lib/preferences.ts`): compiles constraints into the negotiation contract: `hard` rules (violate one → reject), weighted `soft` rules (0..1 satisfaction, weighted mean = utility) and a `concession_order`.
 - **Evaluation** (`src/lib/evaluate.ts`): deterministic, no LLM. utility ≥ 0.7 → accept, ≥ 0.4 → reluctant, else reject; hard violation → reject. Returns only the verdict plus at most one dimension name. `bucket()` gives a 1–5 utility bucket for the final fairness step.
 - **Mediator + protocol** (`src/lib/mediator.ts`, `negotiate.ts`): the mediator sees only the public candidate pool and anonymised tallies. 5 proposals per round, up to 6 rounds; from round 4 every assistant concedes one more step of its own order (soft tolerances ×1.5, hard never moves) and the nearest earlier misses are asked again. Final choice among the best feasible options by Nash product of everyone's 1 to 5 bucket, compared through a pairwise-masked sum so the mediator never receives a bucket (`masked-sum.ts`). An optional LLM may re-rank the shortlist, never widen it. `exploreRounds` (off by default) keeps going for more rounds after the first unanimous accept and picks among every unanimous candidate seen; `docs/evaluation.md` measures what that buys and costs.
@@ -36,33 +107,6 @@ For a plain-language overview of the parts, the services, what is stored and how
 - **Privacy:** private chat messages, constraints and emails are encrypted at rest (AES-256-GCM). Emails are looked up through an HMAC blind index. Passwords use bcrypt (salted, cost 12). Session cookies are random tokens, and only their SHA-256 hashes are stored.
 - **Small groups** (`forGroupSize` in `src/lib/events.ts`): with two people every "anonymous" count would be the other person's answer, so a plan with fewer than three members stores and shows only the outcome and the number of rounds. See "Privacy budget" in `docs/evaluation.md` for what still shows at each size.
 - **Abuse limits** (`src/lib/ratelimit.ts`): fixed-window counters in the database, so they hold across serverless instances. 30 chat messages per person per 10 minutes; 300 LLM calls per plan per day, after which replies come from the rule-based extractor; 10 sign-in attempts per email and 50 per IP per 15 minutes; 10 new accounts per IP per hour. Emails and IPs are stored only as HMACs.
-
-## Run locally
-
-```bash
-npm install
-cp .env.example .env.local
-npm run gen-key            # paste the output into ENCRYPTION_KEY in .env.local
-npm run dev                # http://localhost:3000
-```
-
-To try the full flow alone, sign up in a normal window and an incognito window, create a plan in one, and open the invite link in the other.
-
-## Tests
-
-```bash
-npm test          # vitest: crypto, extraction, evaluation, negotiation, auth, data access + privacy
-npm run test:e2e  # Playwright: two users go from signup to a plan in a real browser
-npm run typecheck
-```
-
-CI runs both on every PR (`.github/workflows/ci.yml`).
-
-## Deploy
-
-- **Database:** any Postgres (Neon, Supabase, Vercel Postgres...). Set `DATABASE_URL=postgresql://...`. The tables are created automatically on the first request. Locally, no database server is needed: without a Postgres URL the app uses [PGlite](https://pglite.dev) (Postgres in WebAssembly) and stores data in `./.pglite`.
-- **Host:** Vercel (one person deploys; see the course note about commit authors) or another Node host. Set `ENCRYPTION_KEY`, the database variables and, optionally, `ANTHROPIC_API_KEY` (LLM elicitation), `GOOGLE_PLACES_API_KEY` (real restaurants near the plan's location) and `SETTLE_LLM_MEDIATOR=1` (LLM re-ranking of the mediator's shortlist).
-- ⚠️ Never change `ENCRYPTION_KEY` after launch, or existing data can no longer be decrypted.
 
 ## Project layout
 
@@ -94,7 +138,5 @@ tests/                 vitest suites
 
 ## Ideas for next steps
 
-- Per-person travel times (each member's own start point) instead of one centre per plan
 - Run each assistant on its owner's device, with keys agreed between devices, so the masked final pick also holds against the server
-- Keep exploring one round after the first unanimous accept; the harness shows ~50% exact-optimum today
-- More scenarios: trips, roommate chores, splitting rent
+- More kinds of plan: trips, roommate chores, splitting rent
