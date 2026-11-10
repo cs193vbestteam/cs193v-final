@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="430" viewBox="0 0 960 430" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#1f2430">
+<rect width="960" height="430" fill="#fafbfc"/>
+<text x="24" y="30" font-size="17" font-weight="600">Settle: what more candidates per round buy, and cost</text>
+<text x="24" y="50" fill="#6b7280">Mean over 10 seeds of 200 groups; bars are 95% intervals. Each point is one perRound; 5 is what ships.</text>
+<rect x="24" y="70" width="430" height="330" fill="#ffffff" stroke="#e5e7eb"/>
+<text x="36" y="89" font-weight="600">(a) Nash ratio (1.0 = the oracle's plan)</text>
+<text x="36" y="105" fill="#6b7280" font-size="11">The vertical axis is zoomed in and does not start at 0.</text>
+<line x1="82" y1="314.39" x2="432" y2="314.39" stroke="#e5e7eb"/>
+<text x="76" y="318.39" text-anchor="end" fill="#6b7280" font-size="11">0.930</text>
+<line x1="82" y1="246.27" x2="432" y2="246.27" stroke="#e5e7eb"/>
+<text x="76" y="250.27" text-anchor="end" fill="#6b7280" font-size="11">0.940</text>
+<line x1="82" y1="178.14" x2="432" y2="178.14" stroke="#e5e7eb"/>
+<text x="76" y="182.14" text-anchor="end" fill="#6b7280" font-size="11">0.950</text>
+<text x="119.07" y="370" text-anchor="middle" fill="#6b7280" font-size="11">20</text>
+<text x="205.66" y="370" text-anchor="middle" fill="#6b7280" font-size="11">40</text>
+<text x="292.26" y="370" text-anchor="middle" fill="#6b7280" font-size="11">60</text>
+<text x="378.85" y="370" text-anchor="middle" fill="#6b7280" font-size="11">80</text>
+<line x1="82" y1="354" x2="432" y2="354" stroke="#6b7280"/>
+<text x="257.00" y="388" text-anchor="middle" fill="#6b7280" font-size="11">leaked dimension names per group (privacy cost)</text>
+<polyline fill="none" stroke="#2f6fed" stroke-width="2" stroke-opacity="0.45" points="120.35,255.04 180.79,217.37 296.37,201.17 377.51,194.76"/>
+<line x1="120.35" y1="314.00" x2="120.35" y2="196.08" stroke="#2f6fed" stroke-width="1.5"/>
+<line x1="115.87" y1="255.04" x2="124.82" y2="255.04" stroke="#2f6fed" stroke-width="1.5"/>
+<circle cx="120.35" cy="255.04" r="5" fill="#ffffff" stroke="#2f6fed" stroke-width="2"><title>perRound 3: 0.939, 20.3 leaked names</title></circle>
+<text x="129.35" y="270.04" font-size="11" fill="#1f2430">3</text>
+<line x1="180.79" y1="262.57" x2="180.79" y2="172.16" stroke="#2f6fed" stroke-width="1.5"/>
+<line x1="172.72" y1="217.37" x2="188.86" y2="217.37" stroke="#2f6fed" stroke-width="1.5"/>
+<circle cx="180.79" cy="217.37" r="5" fill="#2f6fed" stroke="#2f6fed" stroke-width="2"><title>perRound 5: 0.944, 34.3 leaked names</title></circle>
+<text x="189.79" y="232.37" font-size="11" fill="#1f2430">5 (shipped)</text>
+<line x1="296.37" y1="232.25" x2="296.37" y2="170.08" stroke="#2f6fed" stroke-width="1.5"/>
+<line x1="280.39" y1="201.17" x2="312.36" y2="201.17" stroke="#2f6fed" stroke-width="1.5"/>
+<circle cx="296.37" cy="201.17" r="5" fill="#ffffff" stroke="#2f6fed" stroke-width="2"><title>perRound 8: 0.947, 61.0 leaked names</title></circle>
+<text x="305.37" y="216.17" font-size="11" fill="#1f2430">8</text>
+<line x1="377.51" y1="235.51" x2="377.51" y2="154.00" stroke="#2f6fed" stroke-width="1.5"/>
+<line x1="356.90" y1="194.76" x2="398.13" y2="194.76" stroke="#2f6fed" stroke-width="1.5"/>
+<circle cx="377.51" cy="194.76" r="5" fill="#ffffff" stroke="#2f6fed" stroke-width="2"><title>perRound 10: 0.948, 79.7 leaked names</title></circle>
+<text x="386.51" y="209.76" font-size="11" fill="#1f2430">10</text>
+<rect x="506" y="70" width="430" height="330" fill="#ffffff" stroke="#e5e7eb"/>
+<text x="518" y="89" font-weight="600">(b) Share of feasible groups that end on the optimum</text>
+<text x="518" y="105" fill="#6b7280" font-size="11">The vertical axis is zoomed in and does not start at 0.</text>
+<line x1="564" y1="316.09" x2="914" y2="316.09" stroke="#e5e7eb"/>
+<text x="558" y="320.09" text-anchor="end" fill="#6b7280" font-size="11">50%</text>
+<line x1="564" y1="234.70" x2="914" y2="234.70" stroke="#e5e7eb"/>
+<text x="558" y="238.70" text-anchor="end" fill="#6b7280" font-size="11">55%</text>
+<line x1="564" y1="153.31" x2="914" y2="153.31" stroke="#e5e7eb"/>
+<text x="558" y="157.31" text-anchor="end" fill="#6b7280" font-size="11">60%</text>
+<text x="601.07" y="370" text-anchor="middle" fill="#6b7280" font-size="11">20</text>
+<text x="687.66" y="370" text-anchor="middle" fill="#6b7280" font-size="11">40</text>
+<text x="774.26" y="370" text-anchor="middle" fill="#6b7280" font-size="11">60</text>
+<text x="860.85" y="370" text-anchor="middle" fill="#6b7280" font-size="11">80</text>
+<line x1="564" y1="354" x2="914" y2="354" stroke="#6b7280"/>
+<text x="739.00" y="388" text-anchor="middle" fill="#6b7280" font-size="11">leaked dimension names per group (privacy cost)</text>
+<polyline fill="none" stroke="#2f6fed" stroke-width="2" stroke-opacity="0.45" points="602.35,247.32 662.79,231.60 778.37,238.31 859.51,213.25"/>
+<line x1="602.35" y1="314.00" x2="602.35" y2="180.63" stroke="#2f6fed" stroke-width="1.5"/>
+<line x1="597.87" y1="247.32" x2="606.82" y2="247.32" stroke="#2f6fed" stroke-width="1.5"/>
+<circle cx="602.35" cy="247.32" r="5" fill="#ffffff" stroke="#2f6fed" stroke-width="2"><title>perRound 3: 54%, 20.3 leaked names</title></circle>
+<text x="611.35" y="262.32" font-size="11" fill="#1f2430">3</text>
+<line x1="662.79" y1="286.18" x2="662.79" y2="177.03" stroke="#2f6fed" stroke-width="1.5"/>
+<line x1="654.72" y1="231.60" x2="670.86" y2="231.60" stroke="#2f6fed" stroke-width="1.5"/>
+<circle cx="662.79" cy="231.60" r="5" fill="#2f6fed" stroke="#2f6fed" stroke-width="2"><title>perRound 5: 55%, 34.3 leaked names</title></circle>
+<text x="671.79" y="246.60" font-size="11" fill="#1f2430">5 (shipped)</text>
+<line x1="778.37" y1="292.20" x2="778.37" y2="184.42" stroke="#2f6fed" stroke-width="1.5"/>
+<line x1="762.39" y1="238.31" x2="794.36" y2="238.31" stroke="#2f6fed" stroke-width="1.5"/>
+<circle cx="778.37" cy="238.31" r="5" fill="#ffffff" stroke="#2f6fed" stroke-width="2"><title>perRound 8: 55%, 61.0 leaked names</title></circle>
+<text x="787.37" y="253.31" font-size="11" fill="#1f2430">8</text>
+<line x1="859.51" y1="272.50" x2="859.51" y2="154.00" stroke="#2f6fed" stroke-width="1.5"/>
+<line x1="838.90" y1="213.25" x2="880.13" y2="213.25" stroke="#2f6fed" stroke-width="1.5"/>
+<circle cx="859.51" cy="213.25" r="5" fill="#ffffff" stroke="#2f6fed" stroke-width="2"><title>perRound 10: 56%, 79.7 leaked names</title></circle>
+<text x="868.51" y="228.25" font-size="11" fill="#1f2430">10</text>
+</svg>

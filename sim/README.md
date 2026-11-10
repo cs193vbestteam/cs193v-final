@@ -15,6 +15,14 @@ Per group (`sim/metrics.ts`): status, rounds run, `nashRatio` = Nash of the chos
 
 Everything is driven by a seeded PRNG (`sim/rng.ts`), so `--seed` fully determines the scenarios and the report.
 
+## The study: seeds, intervals and the perRound sweep
+
+```
+npm run sim:study
+```
+
+`sim/study.ts` runs the same configuration over ten seeds and reports, per metric, the mean across seeds with a 95% Student-t interval, then repeats that for `perRound` 3, 5, 8 and 10 and compares each to the shipped 5, paired by seed. `sim/study-run.ts` is the CLI: it also runs the single-seed report below, writes `sim/out/study.{json,md}` and `docs/evaluation-sweep.svg`, and rewrites the generated tables in `docs/evaluation.md`. `--seeds 1,2,3`, `--groups N` and `--per-round 3,5` change the design; `--check` writes nothing and exits 1 if the document is stale; `--llm-baseline [--llm-groups N]` adds the LLM baseline (it reads `ANTHROPIC_API_KEY` from `.env.local` or the environment). Tests: `npx vitest run tests/study.test.ts`.
+
 ## How to run
 
 ```
