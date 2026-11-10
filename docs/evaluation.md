@@ -150,6 +150,25 @@ This also corrects the Discussion below, which guessed that `perRound` was the k
 
 Why the optimum rate stays under 60% in every variant: the final choice is made on 1 to 5 buckets, not on utilities, so candidates the oracle can tell apart often tie for the protocol. That coarseness is deliberate (a bucket leaks less than a number), and it bounds how often the exact optimum can be found no matter how many candidates are explored.
 
+## Ending with a shortlist
+
+The app no longer ends with one plan. `negotiate()` takes `shortlist`, and the app asks for 6: after the first agreement the mediator keeps proposing fresh candidates, at the same concession level, until six different restaurants are options nobody rejects, or rounds or candidates run out. The list is ranked for the group with the same masked comparison as the final pick, fully accepted options above ones that are a stretch for someone, and the first entry is the plan. The tables above are for the protocol's default (`shortlist` 1), which is what they have always measured; the shipped setting costs more, as measured here.
+
+Five seeds of 200 synthetic groups (`shortlist` 1 against 6, everything else as shipped):
+
+| | one plan | shortlist of 6 |
+|---|---:|---:|
+| rounds run | 1.47 | 3.31 |
+| leaked dimension names per group | 21.5 | 37.8 |
+| groups with a plan | 778 of 1000 | 778 of 1000 |
+| of those, list has all 6 | n/a | 402 (52%) |
+| of those, list has 3 to 5 | n/a | 229 (29%) |
+| of those, list has 1 or 2 | n/a | 147 (19%) |
+
+Whether a group gets a plan does not change. The price of offering a choice is about two more rounds and three quarters more dimension names heard by the mediator, which puts both back near where they were before issue #64. About half the groups that have a plan get a full list of six; one in five has only one or two workable places to offer, and the list says so by being short. In a group of two the list is shown as places only, with no counts and no mark for which options are a stretch, because either would be the other person's answer. It still tells each of the two that the other does not reject those places, which the single plan did for one place only.
+
+This was measured with a one-off script over the same generator as the study, not by `npm run sim:study`; adding the shortlist as a study variant is left to do.
+
 ## LLM baseline
 
 <!-- prettier-ignore-start -->

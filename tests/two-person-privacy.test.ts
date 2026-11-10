@@ -13,6 +13,7 @@ import {
   runNegotiation,
   sendMessage,
   setReady,
+  SHORTLIST,
   type StoredResult,
 } from "@/lib/events";
 
@@ -84,8 +85,13 @@ describe("a two-person plan shows the outcome only", () => {
       leakedDims: 0,
       concessionLevel: 0,
     });
-    // The one place that may be named is the chosen one.
-    expect(Object.keys(result.places)).toEqual([result.proposal!.restaurantId]);
+    // The places that may be named are the shortlist's, the chosen one first: as places only, with
+    // no counts and no word on who fully accepts which.
+    const listed = result.options!.map((o) => o.proposal.restaurantId);
+    expect(listed[0]).toBe(result.proposal!.restaurantId);
+    expect(listed.length).toBeLessThanOrEqual(SHORTLIST);
+    expect(Object.keys(result.places).sort()).toEqual([...listed].sort());
+    for (const o of result.options!) expect(Object.keys(o)).toEqual(["proposal"]);
 
     // The row itself, and what each member reads back, carry nothing more.
     const row = await storedRow(event.id);
@@ -198,6 +204,14 @@ describe("plans of three or more are unchanged", () => {
 
     const html = card(result);
     expect(html).toContain("How they decided");
+    // The shortlist: the plan on top, the other options under it, each a place nobody rejected.
+    expect(result.options![0].proposal).toEqual(result.proposal);
+    expect(result.options!.length).toBeGreaterThan(1);
+    expect(html).toMatch(/Best fit above · \d more that works? for the group/);
+    for (const o of result.options!) {
+      expect(html).toContain(result.places[o.proposal.restaurantId].name);
+      expect(typeof o.everyoneIn).toBe("boolean");
+    }
     expect(html).toContain("Round 1");
     expect(html).toMatch(/1× reject · price/);
     expect(html).not.toContain("stays hidden");

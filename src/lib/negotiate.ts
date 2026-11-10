@@ -49,6 +49,13 @@ export type NegotiateOptions = {
    * Exploring rounds count towards `maxRounds` and never raise the concession level.
    */
   exploreRounds?: number;
+  /**
+   * How many options to end with (default 1: one plan). Above 1 the result is a shortlist: after the
+   * first agreement the mediator keeps proposing fresh candidates, at the same concession level, until
+   * this many different restaurants are options nobody rejects, or rounds or candidates run out.
+   * `finalists` then holds them, best for the group first, and the plan is the first of them.
+   */
+  shortlist?: number;
   selector?: Selector;
   /**
    * Writes one sentence for the group about the plan the code picked, e.g. an LLM
@@ -115,7 +122,10 @@ function finalistsFor(
   agents: Agent[],
   level: number,
   n: number,
+  /** A shortlist for the group to choose from: one entry per restaurant, fully accepted ones first. */
+  asShortlist = false,
 ): { finalists: Finalist[]; chosen: Finalist } {
+  const places = new Set<string>();
   const ranked = [...cands]
     .sort(
       (a, b) =>
@@ -123,19 +133,37 @@ function finalistsFor(
         a.tally.reluctant - b.tally.reluctant ||
         key(a.proposal).localeCompare(key(b.proposal)),
     )
+    // The same restaurant at two times is one option: its better-received time, which sorts first.
+    .filter((t) => !asShortlist || (!places.has(t.proposal.restaurantId) && places.add(t.proposal.restaurantId)))
     .slice(0, n);
   const proposals = ranked.map((t) => t.proposal);
   const sums = ranked.length > 1 ? sumMasked(agents.map((a) => a.compare(proposals, level))) : [];
   // log(Nash product of finalist k / Nash product of finalist 0); 0 for the first by definition.
   const logs = ranked.map((_, k) => (k === 0 ? 0 : logOf(sums.slice((k - 1) * 3, k * 3))));
-  let best = 0;
-  for (let k = 1; k < logs.length; k++) if (logs[k] > logs[best] + SAME) best = k;
+  // In a shortlist an option everyone accepts always ranks above one somebody is only reluctant about.
+  const full = (k: number) => ranked[k].tally.accept === agents.length;
+  const eligible = (k: number) => !asShortlist || !ranked.some((_, j) => full(j)) || full(k);
+  let best = ranked.findIndex((_, k) => eligible(k));
+  for (let k = best + 1; k < logs.length; k++) if (eligible(k) && logs[k] > logs[best] + SAME) best = k;
   const finalists = ranked.map((t, k) => ({
     proposal: t.proposal,
     tally: t.tally,
     relative: Number(Math.exp(logs[k] - logs[best]).toFixed(6)),
   }));
-  return { finalists, chosen: finalists[best] };
+  const chosen = finalists[best];
+  if (!asShortlist) return { finalists, chosen };
+  // Best for the group first: the pick, then fully accepted options, then by how they compare.
+  const order = finalists
+    .map((f, k) => ({ f, k }))
+    .sort(
+      (a, b) =>
+        Number(b.k === best) - Number(a.k === best) ||
+        Number(full(b.k)) - Number(full(a.k)) ||
+        b.f.relative - a.f.relative ||
+        a.k - b.k,
+    )
+    .map((x) => x.f);
+  return { finalists: order, chosen };
 }
 
 /** The code's pick, plus the explainer's sentence about it when there is one. The sentence never changes the pick. */
@@ -178,7 +206,9 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   const maxRounds = opts.maxRounds ?? 6;
   const perRound = opts.perRound ?? 5;
   const concessionFrom = opts.concessionFrom ?? 4;
-  const nFinalists = opts.finalists ?? 3;
+  const want = Math.max(1, Math.floor(opts.shortlist ?? 1));
+  const asShortlist = want > 1;
+  const nFinalists = asShortlist ? want : (opts.finalists ?? 3);
   const exploreRounds = Math.max(0, Math.floor(opts.exploreRounds ?? 0));
 
   const empty: NegotiationResult = {
@@ -265,9 +295,14 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   /** Every unanimously accepted candidate so far. Non-empty means the group has agreed and is exploring. */
   const unanimous: Tried[] = [];
   let explored = 0;
+  /** Everything tried so far that nobody rejects. */
+  const workable = () => [...tried.values()].filter((t) => t.tally.reject === 0);
+  const placesFound = () => new Set(workable().map((t) => t.proposal.restaurantId)).size;
   const agree = async (): Promise<NegotiationResult> => {
     const { finalists, chosen, explanation } = await finalPick(
-      finalistsFor(unanimous, agents, level, nFinalists),
+      // A shortlist also offers what nobody rejected; a concession only loosens, so an earlier
+      // "nobody rejects" still holds at this level.
+      finalistsFor(asShortlist ? workable() : unanimous, agents, level, nFinalists, asShortlist),
       opts.explainer,
     );
     return finish("agreed", chosen, finalists, [], explanation);
@@ -314,7 +349,8 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
     rounds.push(log);
 
     if (unanimous.length) {
-      if (explored >= exploreRounds) return await agree();
+      // A shortlist keeps looking, at the same level, until it has enough different places.
+      if (explored >= exploreRounds && placesFound() >= want) return await agree();
       explored++;
     }
   }
@@ -339,7 +375,7 @@ export async function negotiate(agents: Agent[], opts: NegotiateOptions = {}): P
   if (feasible.length) {
     for (const f of feasible) tried.set(key(f.proposal), f);
     const { finalists, chosen, explanation } = await finalPick(
-      finalistsFor(feasible, agents, level, nFinalists),
+      finalistsFor(feasible, agents, level, nFinalists, asShortlist),
       opts.explainer,
     );
     return finish(chosen.tally.accept === agents.length ? "agreed" : "compromise", chosen, finalists, [], explanation);

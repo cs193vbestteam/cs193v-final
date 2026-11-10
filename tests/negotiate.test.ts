@@ -7,6 +7,7 @@ import { compile } from "@/lib/preferences";
 import { RESTAURANTS, getRestaurant } from "@/lib/restaurants";
 import { agentsFor, countingAgent, synthCase, type SimCase } from "../sim/pipeline";
 import { makeRng } from "../sim/rng";
+import { key } from "@/lib/mediator";
 
 const c = (o: ConstraintsUpdate) => mergeConstraints(emptyConstraints(), { dietaryConfirmed: true, ...o });
 const agentFor = (cons: Constraints): PrivateAgent => makeAgent(compile(cons));
@@ -380,5 +381,76 @@ describe("times first, and no pointless re-asks (#64)", () => {
         }
     }
     expect(reasked).toBeGreaterThan(0);
+  });
+});
+
+describe("ending with a shortlist instead of one plan", () => {
+  const cases = (() => {
+    const rng = makeRng(6);
+    return Array.from({ length: 60 }, (_, i) => synthCase(rng, i, { restaurants: 30, minSize: 3, maxSize: 6 }));
+  })();
+  const run = (sim: SimCase, opts: NegotiateOptions = {}) =>
+    negotiate(agentsFor(sim), { restaurants: sim.restaurants, ...opts });
+
+  it("is off by default: one plan, as before", async () => {
+    for (const sim of cases.slice(0, 15)) expect(await run(sim, { shortlist: 1 })).toEqual(await run(sim));
+  });
+
+  it("lists up to six different places nobody rejects, the plan first", async () => {
+    let full = 0;
+    for (const sim of cases) {
+      const one = await run(sim);
+      const six = await run(sim, { shortlist: 6 });
+      // Whether a plan exists does not depend on how many options are wanted.
+      expect(six.status === "no_deal").toBe(one.status === "no_deal");
+      if (six.status === "no_deal") {
+        expect(six.finalists).toEqual([]);
+        continue;
+      }
+      expect(six.finalists.length).toBeGreaterThanOrEqual(1);
+      expect(six.finalists.length).toBeLessThanOrEqual(6);
+      expect(six.finalists[0].proposal).toEqual(six.proposal);
+      expect(new Set(six.finalists.map((f) => f.proposal.restaurantId)).size).toBe(six.finalists.length);
+      for (const f of six.finalists) expect(f.tally.reject).toBe(0);
+      // Everything on the list was really proposed, and it found at least as many as stopping early.
+      const proposed = new Set(six.rounds.flatMap((r) => r.proposals.map((p) => key(p.proposal))));
+      for (const f of six.finalists) expect(proposed.has(key(f.proposal))).toBe(true);
+      if (six.finalists.length === 6) full++;
+    }
+    expect(full).toBeGreaterThan(10);
+  });
+
+  it("puts options everyone accepts above ones that are a stretch for someone", async () => {
+    let mixed = 0;
+    for (const sim of cases) {
+      const six = await run(sim, { shortlist: 6 });
+      const everyoneIn = six.finalists.map((f) => f.tally.accept === sim.prefs.length);
+      if (everyoneIn.includes(true) && everyoneIn.includes(false)) mixed++;
+      // Once a "stretch" option appears, no fully accepted one follows it.
+      expect(everyoneIn.slice(everyoneIn.indexOf(false)).includes(true) && everyoneIn.includes(false)).toBe(false);
+      if (everyoneIn.includes(true)) expect(six.status).toBe("agreed");
+    }
+    expect(mixed).toBeGreaterThan(0);
+  });
+
+  it("keeps looking after the first agreement, at the same concession level, and stops when it has six", async () => {
+    let longer = 0;
+    for (const sim of cases) {
+      const one = await run(sim);
+      const six = await run(sim, { shortlist: 6 });
+      if (one.status !== "agreed") continue;
+      expect(six.rounds.length).toBeGreaterThanOrEqual(one.rounds.length);
+      expect(six.concessionLevel).toBe(one.concessionLevel);
+      if (six.rounds.length > one.rounds.length) longer++;
+      const found = (upTo: number) =>
+        new Set(
+          six.rounds
+            .slice(0, upTo)
+            .flatMap((r) => r.proposals.filter((p) => p.tally.reject === 0).map((p) => p.proposal.restaurantId)),
+        ).size;
+      // It did not run a round it had no need for.
+      if (six.rounds.length > one.rounds.length) expect(found(six.rounds.length - 1)).toBeLessThan(6);
+    }
+    expect(longer).toBeGreaterThan(5);
   });
 });
