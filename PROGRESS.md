@@ -21,7 +21,7 @@ Where Settle stands, how that compares with our plan, what is in the way, and wh
 - _Protocol against a planner that reads everything:_ over ten seeds of 200 synthetic groups, it agrees in 98.8% of the groups where a plan exists and keeps 94% of the best possible group welfare. A "most votes in round one" baseline keeps 44%.
 - _Claude as a planner with no privacy,_ on 40 groups: a valid plan in 45% of the solvable ones, against 100% for the protocol.
 - _Personas from real reviewers:_ built from the Yelp Open Dataset in three cities.
-- _The extractors on 51 scripted chats,_ 16 of them adversarial: on ordinary chats the rules get 78% of fields right and Claude 95% (one run); neither committed a violation.
+- _The extractors on 54 scripted chats,_ 16 of them adversarial: on ordinary chats the rules get 84% of fields right and Claude 96%; neither committed a violation.
 
 **What we learned.**
 

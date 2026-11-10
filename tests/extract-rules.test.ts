@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { emptyConstraints, mergeConstraints, missingFields } from "@/lib/constraints";
+import { describeConstraints, emptyConstraints, mergeConstraints, missingFields } from "@/lib/constraints";
 import {
+  PENDING_QUESTIONS,
   extractBudget,
   extractCuisines,
   extractDietary,
@@ -64,9 +65,13 @@ describe("extractDistance", () => {
     ["15 min drive tops", 15],
     ["not too far", 20],
     ["walking distance", 10],
-    ["don't care about distance", 60],
   ])("%s -> %d", (text, expected) => {
     expect(extractDistance(text)).toBe(expected);
+  });
+  it("not minding the distance is no limit, not an invented number", () => {
+    expect(extractDistance("don't care about distance")).toBeUndefined();
+    expect(extractRules("don't care about distance")).toEqual({ travelNoLimit: true });
+    expect(extractRules("anywhere is fine")).toEqual({ travelNoLimit: true });
   });
   it("undefined when absent", () => expect(extractDistance("sushi")).toBeUndefined());
 });
@@ -202,9 +207,49 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
   };
   const start = (o: Parameters<typeof mergeConstraints>[1] = {}) => mergeConstraints(emptyConstraints(), o);
 
-  it("turns a vague budget into an either/or and reads the answer", () => {
+  it('takes "I don\'t mind" as the answer: no limit, and the next question', () => {
     const c0 = start({ availableSlots: ["sat_dinner"] });
     const t1 = ruleTurn("whatever, I don't really care", c0);
+    expect(t1.update).toEqual({ budgetNoLimit: true });
+    expect(t1.reply).toMatch(/no budget limit/);
+    expect(t1.reply).toMatch(/How far/);
+    const c1 = mergeConstraints(c0, t1.update);
+    expect(missingFields(c1)).toEqual(["distance", "diet"]);
+    const t2 = ruleTurn("I'm flexible", c1);
+    expect(t2.update).toEqual({ travelNoLimit: true });
+    const c2 = mergeConstraints(c1, t2.update);
+    expect(missingFields(c2)).toEqual(["diet"]);
+    expect(describeConstraints(c2)).toEqual(expect.arrayContaining(["Budget: no limit", "Travel: any distance"]));
+    // A number given later replaces "no limit".
+    const c3 = mergeConstraints(c2, { budgetMax: 40 });
+    expect(c3.budgetNoLimit).toBe(false);
+    expect(mergeConstraints(c3, { budgetNoLimit: true }).budgetMax).toBeNull();
+  });
+
+  it('reads "at least $50 a person" as a floor that answers the budget question', () => {
+    expect(extractBudget("at least $50 per person")).toEqual({ budgetMin: 50 });
+    expect(extractBudget("$50 or more")).toEqual({ budgetMin: 50 });
+    expect(extractBudget("at least $50, no more than $90")).toEqual({ budgetMin: 50, budgetMax: 90 });
+    expect(extractBudget("at least 20 minutes away")).toEqual({});
+    const c = mergeConstraints(start({ availableSlots: ["sat_dinner"] }), { budgetMin: 50 });
+    expect(missingFields(c)).toEqual(["distance", "diet"]);
+    expect(describeConstraints(c)).toEqual(
+      expect.arrayContaining(["Budget: no limit", "Would rather spend at least $50/person"]),
+    );
+    // A floor above an earlier ceiling replaces it; a ceiling below an earlier floor replaces that.
+    expect(mergeConstraints(start({ budgetMax: 30 }), { budgetMin: 50 })).toMatchObject({
+      budgetMax: null,
+      budgetMin: 50,
+    });
+    expect(mergeConstraints(start({ budgetMin: 50 }), { budgetMax: 30 })).toMatchObject({
+      budgetMax: 30,
+      budgetMin: null,
+    });
+  });
+
+  it("turns an unsure budget into an either/or and reads the answer", () => {
+    const c0 = start({ availableSlots: ["sat_dinner"] });
+    const t1 = ruleTurn("not sure, it depends", c0);
     expect(t1.update).toEqual({ pending: "vague_budget" });
     expect(t1.reply).toMatch(/\$45 a head.*\$25 a head/);
     const c1 = mergeConstraints(c0, t1.update);
@@ -214,9 +259,9 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
     expect(t2.reply).toMatch(/How far/);
   });
 
-  it("a vague distance answer gets the distance either/or", () => {
+  it("an unsure distance answer gets the distance either/or", () => {
     const c0 = start({ availableSlots: ["sat_dinner"], budgetMax: 40 });
-    const t1 = ruleTurn("don't really care honestly", c0);
+    const t1 = ruleTurn("not sure honestly", c0);
     expect(t1.update).toEqual({ pending: "vague_distance" });
     const t2 = ruleTurn("the so-so place nearby would be worse", mergeConstraints(c0, t1.update));
     expect(t2.update).toMatchObject({ maxTravelMin: 40, pending: null });
@@ -228,18 +273,27 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
     expect(t.update).toMatchObject({ budgetMax: 35, pending: null });
   });
 
-  it("asks only the concession question once the essentials are in: no trade-off questions (#48)", () => {
+  it("asks cuisine, then the concession question, once the essentials are in: no trade-off questions (#48)", () => {
     let c = start(essentials);
-    const t1 = ruleTurn("nothing", start({ ...essentials, dietaryConfirmed: false }));
-    expect(t1.update).toMatchObject({ dietaryConfirmed: true, pending: "concession", probesAsked: ["concession"] });
+    const t0 = ruleTurn("nothing", start({ ...essentials, dietaryConfirmed: false }));
+    expect(t0.update).toMatchObject({ dietaryConfirmed: true, pending: "cuisine", probesAsked: ["cuisine"] });
+    expect(t0.reply).toContain(PENDING_QUESTIONS.cuisine);
+    c = mergeConstraints(c, t0.update);
+
+    // "I don't mind" is an answer: nothing recorded, never asked again.
+    const t1 = ruleTurn("I don't mind", c);
+    expect(t1.update).toMatchObject({ pending: "concession", probesAsked: ["concession"] });
+    expect(t1.update.likedCuisines).toBeUndefined();
+    expect(t1.reply).toMatch(/no cuisine preference/);
     expect(t1.reply).not.toMatch(/Which is worse|paying \$10 over|lukewarm/);
     c = mergeConstraints(c, t1.update);
+    expect(describeConstraints(c)).toContain("Cuisine: no preference");
 
     const t2 = ruleTurn("I'd give up the cuisine first, then distance, budget last", c);
     expect(t2.update).toMatchObject({ concessionOrder: ["cuisine", "travel", "budget"], pending: null });
     expect(t2.reply).toMatch(/That's everything I need/);
     c = mergeConstraints(c, t2.update);
-    expect(c.probesAsked).toEqual(["concession"]);
+    expect(c.probesAsked).toEqual(["cuisine", "concession"]);
     expect(c.weights).toEqual(emptyConstraints().weights); // defaults, untouched
 
     const t3 = ruleTurn("also I love thai", c);
@@ -251,7 +305,18 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
     const c = start({ ...essentials, pending: "tradeoff_budget_travel", probesAsked: ["tradeoff_budget_travel"] });
     const t = ruleTurn("paying more is worse", c);
     expect(t.update.weights).toMatchObject({ budget: 0.5, travel: 0.2 });
-    expect(t.update.pending).toBe("concession"); // not the other trade-off
+    expect(t.update.pending).toBe("cuisine"); // not the other trade-off
+  });
+
+  it("a cuisine answer is recorded, and one we don't have is said plainly", () => {
+    const asked = start({ ...essentials, pending: "cuisine", probesAsked: ["cuisine"] });
+    const named = ruleTurn("thai or japanese, not mexican", asked);
+    expect(named.update).toMatchObject({ likedCuisines: ["japanese", "thai"], dislikedCuisines: ["mexican"] });
+    expect(named.update.pending).toBe("concession");
+    const unknown = ruleTurn("Ethiopian", asked);
+    expect(unknown.update.likedCuisines).toBeUndefined();
+    expect(unknown.reply).toMatch(/I can only look for japanese/);
+    expect(unknown.update.pending).toBe("concession");
   });
 
   it("an off-topic message while a probe is pending is still understood, and the probe is repeated", () => {
@@ -284,7 +349,7 @@ describe("answering an either/or by echoing an option", () => {
     return mergeConstraints(emptyConstraints(), {
       ...essentials,
       pending,
-      probesAsked: upTo >= 0 ? [...PROBE_ORDER.slice(0, upTo + 1)] : [],
+      probesAsked: ["cuisine", ...(upTo >= 0 ? PROBE_ORDER.slice(0, upTo + 1) : [])],
     });
   };
 

@@ -245,7 +245,7 @@ So the comparison in Table Y2 is between tightly constrained synthetic people an
 
 Everything above starts from compiled preferences. This section is about the step before that: turning what a person types into `Constraints`. There are two extractors, a rule-based one and an LLM one (`src/lib/extract.ts`), and `sim/extract-eval.ts` replays the same short chats through either and compares what was recorded with what a careful person would have recorded.
 
-**The suite** (`tests/fixtures/extract-cases.json`): 35 ordinary chats in five groups (clear answers, vague answers, corrections, other languages, multi-turn) and 16 adversarial ones (instruction overrides, requests for the system prompt or for other members' data, off-topic tasks, out-of-range values, fake system turns, markup and SQL). Each case lists the fields it is about; adversarial cases also list the only fields their messages legitimately talk about.
+**The suite** (`tests/fixtures/extract-cases.json`): 38 ordinary chats in five groups (clear answers, vague answers, corrections, other languages, multi-turn) and 16 adversarial ones (instruction overrides, requests for the system prompt or for other members' data, off-topic tasks, out-of-range values, fake system turns, markup and SQL). Each case lists the fields it is about; adversarial cases also list the only fields their messages legitimately talk about.
 
 **Two kinds of result.** Accuracy is a measurement: a wrong field is a miss. A violation is a failure: a final value outside the plausible range, a field changing in an adversarial case although the messages never mention it, or a reply matching a forbidden pattern (the system prompt, another member's number, a long off-topic answer).
 
@@ -253,20 +253,19 @@ Everything above starts from compiled preferences. This section is about the ste
 
 | category | cases | rules: fields right | rules: cases fully right | LLM: fields right | LLM: cases fully right |
 |---|---:|---:|---:|---:|---:|
-| clear answers | 13 | 94% (61 of 65) | 10 of 13 | 97% (63 of 65) | 11 of 13 |
-| vague answers | 6 | 80% (12 of 15) | 3 of 6 | 100% (15 of 15) | 6 of 6 |
-| corrections | 6 | 86% (12 of 14) | 5 of 6 | 86% (12 of 14) | 5 of 6 |
+| clear answers | 14 | 94% (67 of 71) | 11 of 14 | 96% (68 of 71) | 11 of 14 |
+| vague answers | 7 | 96% (24 of 25) | 6 of 7 | 96% (24 of 25) | 6 of 7 |
+| corrections | 6 | 100% (14 of 14) | 6 of 6 | 86% (12 of 14) | 5 of 6 |
 | other languages | 6 | 30% (9 of 30) | 0 of 6 | 100% (30 of 30) | 6 of 6 |
-| multi-turn | 4 | 95% (19 of 20) | 3 of 4 | 85% (17 of 20) | 3 of 4 |
-| **all except adversarial** | 35 | 78% (113 of 144) | 21 of 35 | 95% (137 of 144) | 31 of 35 |
+| multi-turn | 5 | 96% (24 of 25) | 4 of 5 | 100% (25 of 25) | 5 of 5 |
+| **all except adversarial** | 38 | 84% (138 of 165) | 27 of 38 | 96% (159 of 165) | 33 of 38 |
 | adversarial | 16 | 92% (12 of 13) | 15 of 16 | 100% (13 of 13) | 16 of 16 |
 
-Violations: 0 for either extractor across all 74 turns. What the rule-based misses are:
+Violations: 0 for either extractor across all 81 turns. What the rule-based misses are:
 
 - *It is English-only.* Spanish, Chinese, French, German and Korean messages lose their time slots and dietary rules entirely; the 30% is digits it could still read next to "$" or "min". This is most of the gap to 100%.
-- *It records a number where the product says to ask.* "I don't care about price" becomes a $200 budget, "anywhere is fine" 60 minutes and "not too far" 20 minutes. The LLM prompt forbids exactly this and asks an either/or instead, so the two extractors disagree on vague answers by design, and the rule-based one is the more presumptuous.
-- *Two changes in one correction are missed.* "budget should be $35 and I can't do Saturday, only Friday night" changes neither field: the negated Saturday cancels the sentence's time, and "should be $35" is not a phrasing it knows.
-- *Number words and partial refinements.* "twenty-five minutes" is not read, and "dinner only actually" after "Sunday" widens to every dinner instead of narrowing to Sunday's.
+- *It still turns one vague phrase into a number.* "Not too far" records 20 minutes, where the product says to ask. ("I don't care about price" and "anywhere is fine" used to become $200 and 60 minutes; since #63 they are recorded as what the person said, no limit.)
+- *Number words and partial refinements.* "twenty-five minutes" is not read.
 - *It does not know regions or styles.* "Asian food" and "anything but Western food" record no cuisine. This is deliberate: translating a region into cuisines is left to the model (see below), not to a table in code.
 - *A negative number loses its sign.* "Set my budget to -50 dollars" records $50. The value is in range and the field is the one the message is about, so this is a miss, not a violation.
 
@@ -277,12 +276,14 @@ Violations: 0 for either extractor across all 74 turns. What the rule-based miss
 - *Other people's data.* The request to the model contains this person's constraints and chat and nothing about anyone else, so there is nothing for an injection to reveal. That is structural, not a property of the prompt.
 - *Not covered: an invented but plausible value.* If the model answers "tell me a joke" by setting a budget of $25, the value is valid and in range, and nothing in the app can tell it from a real answer. The harness flags it as a violation (a field changed that the messages never mention), which is why the real-model run matters; the stub test shows the harness catches it.
 
-**LLM extractor.** All 74 turns were answered by the model: 0 fell back to the rule-based extractor and 0 updates were discarded as invalid, so the column is the model's. It is one run, and the model is not deterministic, so a point or two either way is noise. What it shows:
+**LLM extractor.** All 81 turns were answered by the model: 0 fell back to the rule-based extractor and 0 updates were discarded as invalid, so the column is the model's. It is one run, and the model is not deterministic: a second run of the same suite also scored 96% overall but missed different time slots. What it shows:
 
-- *Other languages and vague answers are where the model earns its place:* 100% against 30% and 80%.
+- *Other languages are where the model earns its place:* 100% against 30%.
 - *Adversarial cases:* 16 of 16 with no violations. The suite is ours and small; it shows the obvious attacks fail, not that none can succeed.
-- *Regions and styles (issue #62).* Before this change, "Asian food" made the model answer `asian`, which is not on the list, and the whole reply was thrown away in favour of the rule-based one. Now the prompt tells the model to translate a region, style or dish into cuisines from the list ("Asian" is japanese, chinese, korean, thai and vietnamese, not indian) and to say which ones it noted. As a safety net, a cuisine word that is still not on the list is dropped on its own with a note in the reply, and the rest of the update is kept. The three new clear cases ("Asian food", "something like ramen", "anything but Western food") all pass.
-- *Its misses:* a bare "40" then "20" in a multi-turn chat is read as one budget of $20 instead of a budget and a travel time (issue #63); "actually not Mexican" leaves Mexican liked instead of moving it to disliked; and two clear cases each miss one field (a time slot, and marking dietary rules as confirmed).
+- *Regions and styles (issue #62).* The prompt tells the model to translate a region, style or dish into cuisines from the list ("Asian" is japanese, chinese, korean, thai and vietnamese, not indian) and to say which ones it noted. A cuisine word that is still not on the list is dropped on its own with a note in the reply, and the rest of the update is kept.
+- *Bare answers (issue #63).* The prompt is now a fixed rubric (the goal, what to learn, how to handle one message) followed by a short state block that names the question asked last and what is still to ask (`src/lib/extract-prompt.ts`). Before it, "20" in answer to the distance question was recorded as a $20 budget; the multi-turn chat "Friday", "40", "20", "nothing" now ends with all four essentials. As a net, a bare number the model files under the wrong question is handed to the rule-based reader, which is exact for that case.
+- *"I don't mind" and "at least $50" (issue #63).* Not caring is an answer: it is recorded as no budget limit, any distance, or no cuisine preference, and the question is not asked again. A minimum spend is recorded as a preference, never a hard rule, so it cannot make a plan impossible on its own. The first version of this wording made the model reset an already recorded time to "any time" when someone said "whatever is fine" about the budget; the suite caught it and the rubric now says a shrug answers only the question just asked.
+- *Its misses:* "actually not Mexican" leaves Mexican liked instead of moving it to disliked; two clear cases get a time slot wrong; "no restrictions" next to a minimum spend was not marked as confirmed; and after "not sure, it depends" the model no longer infers $30 from "the $45 one would bother me" (the rule-based either/or does).
 
 ## Threats to validity
 
@@ -290,7 +291,7 @@ Violations: 0 for either extractor across all 74 turns. What the rule-based miss
 - **Fixed pools.** The app ships 16 fictional restaurants; the simulation draws 30 synthetic ones per group. Real pools have per-person travel times and more skewed prices.
 - **The utility model is ours.** Oracle, agents and the LLM prompt all share `utility()` (weighted mean, linear ramps, accept at 0.7, reluctant at 0.4). The ratios measure how well the protocol recovers that model's optimum, not how satisfied people would be.
 - **Seeds vary the people, not the generator.** The intervals above cover redrawing the population from the same distributions. They say nothing about whether those distributions resemble real groups. Only `perRound` was swept; `maxRounds`, the concession schedule and the accept thresholds were not.
-- **No real users.** The simulations start from compiled preferences. Elicitation (chat to `Constraints`) is evaluated separately on 51 scripted chats, with a single run of the LLM extractor, and scripted chats are not real conversations.
+- **No real users.** The simulations start from compiled preferences. Elicitation (chat to `Constraints`) is evaluated separately on 54 scripted chats, with two runs of the LLM extractor, and scripted chats are not real conversations.
 - **LLM baseline: one model, one run, 40 groups.** No repeat runs, no second model, no interval; see the caveats under the table.
 
 ## How to reproduce

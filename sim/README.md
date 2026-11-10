@@ -60,4 +60,4 @@ npm run personas -- --people 5 --seed sim/seeds/friends.md
 
 ## Extractors
 
-`npm run sim:extract` replays `tests/fixtures/extract-cases.json` (35 ordinary private chats and 16 adversarial ones) through the rule-based extractor and reports field-level accuracy and violations; `-- --llm` adds the LLM extractor when `ANTHROPIC_API_KEY` is set. See "Elicitation" in `docs/evaluation.md`.
+`npm run sim:extract` replays `tests/fixtures/extract-cases.json` (38 ordinary private chats and 16 adversarial ones) through the rule-based extractor and reports field-level accuracy and violations; `-- --llm` adds the LLM extractor when `ANTHROPIC_API_KEY` is set. See "Elicitation" in `docs/evaluation.md`.

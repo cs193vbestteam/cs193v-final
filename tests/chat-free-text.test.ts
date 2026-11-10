@@ -173,9 +173,12 @@ describe("B. budgets in any numeric form", () => {
 describe("C. no trade-off questions", () => {
   const essentials: Constraints = { ...askingDiet, dietaryConfirmed: true };
 
-  it("goes from the essentials straight to the concession question", () => {
-    expect(nextProbe(essentials)).toBe("concession");
-    expect(nextProbe({ ...essentials, probesAsked: ["concession"] })).toBeNull();
+  it("goes from the essentials to the cuisine question, then the concession question", () => {
+    expect(nextProbe(essentials)).toBe("cuisine");
+    // Someone who already named a cuisine is not asked for one.
+    expect(nextProbe({ ...essentials, likedCuisines: ["thai"] })).toBe("concession");
+    expect(nextProbe({ ...essentials, probesAsked: ["cuisine"] })).toBe("concession");
+    expect(nextProbe({ ...essentials, probesAsked: ["cuisine", "concession"] })).toBeNull();
     expect(missingFields(essentials)).toEqual([]); // ready without any trade-off answers
   });
 
@@ -241,9 +244,9 @@ describe("LLM path", () => {
     expect(props.pending.enum).not.toContain("tradeoff_cuisine_travel");
   });
 
-  it("asks the model for the concession question next, never a trade-off", async () => {
+  it("tells the model which follow-ups are left, never a trade-off", async () => {
     const fetchMock = fakeAnthropic({ reply: "Noted.", update: {} });
     await extract([{ role: "user", content: "nothing" }], { ...askingDiet, dietaryConfirmed: true });
-    expect(requestBody(fetchMock).system).toMatch(/Next follow-up to ask once essentials are complete: concession/);
+    expect(requestBody(fetchMock).system).toMatch(/Still to ask, in order: cuisine, concession/);
   });
 });

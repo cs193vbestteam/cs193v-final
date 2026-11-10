@@ -130,7 +130,29 @@ function budgetRange(a: number, b: number): { budgetMax: number; budgetFlex: num
   return { budgetMax: lo, budgetFlex: hi - lo };
 }
 
-export function extractBudget(text: string): { budgetMax?: number; budgetFlex?: number } {
+/** "At least $50", "$50 or more": a floor, not a ceiling. Only read next to money words, so "at least 20 minutes" is not one. */
+const FLOOR_BEFORE =
+  /\b(?:at least|minimum(?: spend)?(?: of)?|no less than|not less than|nothing (?:under|below|cheaper than))\s*\$?\s*(\d{1,4})(?!\d|\s*(?:min|hour))/i;
+const FLOOR_AFTER = /\$?\s*(\d{1,4})\s*(?:dollars|bucks|usd)?\s*(?:\+|or more|or above|and up|minimum)/i;
+/** They don't mind what it costs: an answer in itself, recorded as no limit. */
+const BUDGET_ANY =
+  /\b(money('s| is)? no (object|issue)|don'?t (really )?(care|mind) about (the )?(price|money|budget|cost))\b/i;
+/** They don't mind how far it is. */
+export const DISTANCE_ANY =
+  /\b(don'?t (really )?(care|mind) (about )?(the )?(distance|how far)|anywhere|far is fine|any distance)\b/i;
+
+type BudgetRead = { budgetMax?: number; budgetFlex?: number; budgetMin?: number; budgetNoLimit?: boolean };
+
+export function extractBudget(full: string): BudgetRead {
+  const floor = MONEY_CONTEXT.test(full) ? (full.match(FLOOR_BEFORE) ?? full.match(FLOOR_AFTER)) : null;
+  // The floor's number must not be read again as a ceiling.
+  const text = floor ? full.replace(floor[0], " ") : full;
+  const read = extractCeiling(text);
+  if (floor && parseInt(floor[1], 10) > 0) read.budgetMin = parseInt(floor[1], 10);
+  return read;
+}
+
+function extractCeiling(text: string): BudgetRead {
   const range = MONEY_CONTEXT.test(text) ? text.match(RANGE) : null;
   if (range && parseInt(range[1], 10) > 0 && parseInt(range[2], 10) > 0) {
     return budgetRange(parseInt(range[1], 10), parseInt(range[2], 10));
@@ -154,23 +176,20 @@ export function extractBudget(text: string): { budgetMax?: number; budgetFlex?: 
       break;
     }
   }
-  const out: { budgetMax?: number; budgetFlex?: number } = {};
+  const out: BudgetRead = {};
   if (budgetMax !== undefined && budgetMax > 0) out.budgetMax = budgetMax;
   if (/\b(stretch|flexible|a bit more|little more|can go over)\b/i.test(text)) {
     out.budgetFlex = Math.max(5, Math.round((out.budgetMax ?? 30) * 0.2));
   } else if (/\b(strict|hard limit|firm|tight)\b/i.test(text)) {
     out.budgetFlex = 0;
   }
-  if (/\b(money('s| is)? no (object|issue)|don'?t care about (price|money|budget))\b/i.test(text)) {
-    out.budgetMax = 200;
-  }
+  if (out.budgetMax === undefined && BUDGET_ANY.test(text)) out.budgetNoLimit = true;
   return out;
 }
 
 export function extractDistance(text: string): number | undefined {
   const m = text.match(/(\d{1,3})\s*(?:min|mins|minutes)/i);
   if (m) return parseInt(m[1], 10);
-  if (/\b(don'?t care (about )?(distance|how far)|anywhere|far is fine)\b/i.test(text)) return 60;
   if (/\b(walking distance|walkable|very close|on campus)\b/i.test(text)) return 10;
   if (/\b(not too far|nearby|close by|close)\b/i.test(text)) return 20;
   return undefined;
@@ -382,6 +401,7 @@ export function extractRules(text: string, pending?: MissingField): ConstraintsU
   Object.assign(update, extractBudget(text));
   const dist = extractDistance(text);
   if (dist !== undefined) update.maxTravelMin = dist;
+  else if (DISTANCE_ANY.test(text)) update.travelNoLimit = true;
   Object.assign(update, extractDietary(text));
   Object.assign(update, extractCuisines(text));
   Object.assign(update, extractPriority(text));
@@ -419,10 +439,17 @@ export const OPENING_MESSAGE =
    a priority ("price matters most"). The trade-off questions are no longer asked
    (#48) but are still understood if a chat saved before that is waiting on one. */
 
-const VAGUE =
-  /\b(whatever|anything|any|don'?t (really )?(care|mind)|no (real )?(limit|preference)|idk|dunno|not sure|up to you|flexible|depends|easy|随便|都行|无所谓)\b/i;
+/** "I don't mind" is an answer: the question is settled with no limit or no preference. */
+const INDIFFERENT =
+  /\b(whatever|anything|any|anytime|whenever|don'?t (really )?(care|mind)|no (real )?(limit|preference)|up to you|flexible|easy)\b|随便|都行|无所谓/i;
+/** "Not sure" is not: they have a limit and can't name it, so an either/or helps them find it. */
+const VAGUE = /\b(idk|dunno|not sure|depends|no idea|hard to say)\b/i;
+
+/** Only a short answer counts, so a longer message that happens to contain "whatever" does not. */
+const isShrug = (text: string) => text.trim().split(/\s+/).length <= 6 && INDIFFERENT.test(text);
 
 export const PENDING_QUESTIONS: Record<Pending, string> = {
+  cuisine: 'Any cuisines you\'re in the mood for, or would rather avoid? "No preference" is a fine answer.',
   start_point:
     'One optional thing: roughly where will you be coming from? A neighbourhood or cross street is enough. Only I use it, to measure your own trip, and it is never shown to the group. Say "skip" to measure from the plan\'s location instead.',
   vague_budget:
@@ -440,7 +467,7 @@ const SECOND = /\b(second|latter|b|2|two|the second one)\b/i;
 const NEITHER = /\b(neither|both fine|either|same|no difference|don'?t care)\b/i;
 
 /** The two options each either/or offers, so an answer that echoes one (typos included) is understood. */
-const OPTIONS: Record<Exclude<Pending, "concession" | "start_point">, [string, string]> = {
+const OPTIONS: Record<Exclude<Pending, "concession" | "start_point" | "cuisine">, [string, string]> = {
   vague_budget: ["paying about $45 a head", "$25 a head somewhere less exciting"],
   vague_distance: ["30 minutes of travel", "a so-so place 5 minutes away"],
   tradeoff_budget_travel: ["paying $10 over your budget", "travelling 10 minutes further than you'd like"],
@@ -553,9 +580,21 @@ export function answerPending(
     if (a && !b) return "a";
     if (b && !a) return "b";
     // Keywords were ambiguous or absent (typos, paraphrase): compare against the two options as offered.
-    return pending === "concession" || pending === "start_point" ? null : pickByEcho(text, OPTIONS[pending]);
+    return pending === "concession" || pending === "start_point" || pending === "cuisine"
+      ? null
+      : pickByEcho(text, OPTIONS[pending]);
   };
   switch (pending) {
+    case "cuisine": {
+      const named = extractCuisines(text);
+      if (Object.keys(named).length) return { ...named, pending: null };
+      // "I don't mind" is an answer: nothing to record, and the question is not asked twice.
+      if (isShrug(text) || SKIP_START.test(t)) return { pending: null };
+      // A message that states another constraint is not about cuisine: read it normally and ask again.
+      if (Object.keys(extractRules(text)).length) return null;
+      // A cuisine we don't have: the reply says so, and the question is still answered.
+      return { pending: null };
+    }
     case "start_point": {
       if (SKIP_START.test(t)) return { pending: null };
       // A message that states another constraint is not a place: read it normally and ask again.
@@ -634,7 +673,18 @@ export function ruleTurn(text: string, current: Constraints, context: ProbeConte
     update = extractRules(text, missing[0]);
     const gotNumeric = (f: MissingField) =>
       f === "budget" ? update!.budgetMax !== undefined : update!.maxTravelMin !== undefined;
-    if (
+    // "I don't mind" settles the question being asked. Only a short answer counts, so a longer message
+    // that happens to contain "whatever" does not; diet has its own reader for "nothing".
+    // "I'm flexible" on its own is a shrug, not a stretch on a budget.
+    const nothingElse = Object.keys(update).every((k) => k === "budgetFlex");
+    if (nothingElse && missing.length && missing[0] !== "diet" && isShrug(text)) {
+      update = {
+        time: { availableSlots: [...SLOTS] },
+        budget: { budgetNoLimit: true },
+        distance: { travelNoLimit: true },
+      }[missing[0]];
+      if (current.pending?.startsWith("vague_")) update = { ...update, pending: null };
+    } else if (
       Object.keys(update).length === 0 &&
       (missing[0] === "budget" || missing[0] === "distance") &&
       VAGUE.test(text)
@@ -652,13 +702,23 @@ export function ruleTurn(text: string, current: Constraints, context: ProbeConte
 
   const after = mergeConstraints(current, update);
   const gotSomething = Object.keys(update).some((k) => k !== "pending" && k !== "probesAsked");
-  const ack = answeredProbe
-    ? "Noted."
-    : update.avoidNotes?.length
-      ? avoidAck(update)
-      : gotSomething
-        ? "Got it, noted privately."
-        : "Sorry, I didn't catch anything specific there.";
+  const cuisineAnswered = answeredProbe && current.pending === "cuisine";
+  const ack =
+    cuisineAnswered && !update.likedCuisines && !update.dislikedCuisines
+      ? INDIFFERENT.test(text) || SKIP_START.test(text.toLowerCase())
+        ? "OK, no cuisine preference."
+        : `I can only look for ${CUISINES.join(", ")}, so I've left cuisine open.`
+      : answeredProbe
+        ? "Noted."
+        : update.budgetNoLimit
+          ? "OK, no budget limit on your side."
+          : update.travelNoLimit
+            ? "OK, any distance works for you."
+            : update.avoidNotes?.length
+              ? avoidAck(update)
+              : gotSomething
+                ? "Got it, noted privately."
+                : "Sorry, I didn't catch anything specific there.";
 
   if (after.pending && after.pending.startsWith("vague_"))
     return { update, reply: `${PENDING_QUESTIONS[after.pending]}` };
@@ -673,6 +733,6 @@ export function ruleTurn(text: string, current: Constraints, context: ProbeConte
   }
   return {
     update,
-    reply: `${ack} That's everything I need. Anything else you care about, like cuisines you love or want to avoid? Otherwise hit "I'm done".`,
+    reply: `${ack} That's everything I need. Tell me anything else you care about, or hit "I'm done".`,
   };
 }

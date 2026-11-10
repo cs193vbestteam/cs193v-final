@@ -5,6 +5,7 @@ import {
   DIETARY,
   SLOTS,
   SOFT_DIMS,
+  UPDATE_LIMITS,
   type Constraints,
   type SoftDim,
 } from "./constraints";
@@ -30,11 +31,15 @@ export const HardRuleSchema = z.discriminatedUnion("dim", [
 export type HardRule = z.infer<typeof HardRuleSchema>;
 
 export const SoftRuleSchema = z.discriminatedUnion("dim", [
-  /** 1 at or below `ideal`, falling linearly to 0 at `ideal + tolerance`. */
+  /**
+   * 1 at or below `ideal`, falling linearly to 0 at `ideal + tolerance`. With a `floor` ("at least
+   * $50 a person") also 1 at or above it, falling to 0 at half of it: cheaper is worse, never ruled out.
+   */
   z.object({
     dim: z.literal("price"),
     ideal: z.number().positive(),
     tolerance: z.number().min(0),
+    floor: z.number().positive().optional(),
     weight: z.number().min(0),
   }),
   z.object({
@@ -82,9 +87,17 @@ export function compile(c: Constraints): Preferences {
 
   if (c.availableSlots && c.availableSlots.length) hard.push({ dim: "time", op: "in", val: c.availableSlots });
   if (c.dietary.length) hard.push({ dim: "diet", op: "requires", val: c.dietary });
-  if (c.budgetMax !== null) {
-    hard.push({ dim: "price", op: "<=", val: c.budgetMax + c.budgetFlex });
-    soft.push({ dim: "price", ideal: c.budgetMax, tolerance: c.budgetFlex, weight: c.weights.budget });
+  // "No limit" writes no price rule at all: this person's assistant never objects on price.
+  if (c.budgetMax !== null) hard.push({ dim: "price", op: "<=", val: c.budgetMax + c.budgetFlex });
+  if (c.budgetMax !== null || c.budgetMin !== null) {
+    soft.push({
+      dim: "price",
+      // No ceiling of their own: every price we could have recorded is at or below this.
+      ideal: c.budgetMax ?? UPDATE_LIMITS.budgetMax.max,
+      tolerance: c.budgetMax !== null ? c.budgetFlex : 0,
+      ...(c.budgetMin !== null ? { floor: c.budgetMin } : {}),
+      weight: c.weights.budget,
+    });
   }
   if (c.maxTravelMin !== null) {
     hard.push({ dim: "distance", op: "<=", val: c.maxTravelMin + TRAVEL_GRACE_MIN });
@@ -121,6 +134,8 @@ export function relax(p: Preferences, level: number): Preferences {
         return { ...s, avoidScore: Math.max(s.avoidScore, 1 - 1 / factor), weight: s.weight / factor };
       // A zero tolerance has nothing to multiply: open a small band instead.
       const tolerance = s.tolerance > 0 ? s.tolerance * factor : s.ideal * 0.1;
+      // Conceding on budget also means accepting somewhere cheaper than they hoped.
+      if (s.dim === "price" && s.floor !== undefined) return { ...s, tolerance, floor: s.floor / factor };
       return { ...s, tolerance };
     }),
   };
