@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "sim": "tsx sim/run.ts",
+    "sim:study": "node --env-file-if-exists=.env.local --import tsx sim/study-run.ts",
     "gen-key": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
     "personas": "node --require ./sim/shims/server-only.cjs --import tsx sim/personas.ts"
   },
