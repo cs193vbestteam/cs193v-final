@@ -31,6 +31,7 @@ v1 covers one scenario: picking a restaurant and time for a weekend meal.
 - **Per-person travel** (`src/lib/geo.ts`, `start-point.ts`, `agent.ts`): on a plan with real places, each assistant asks (optionally) where its person is coming from. The place is geocoded once, stored encrypted with their constraints, and handed by the vault to that person's agent only, which judges every candidate on their own trip. The mediator and the group result never see a start point or a per-person travel time; the result omits travel time for these plans. Without a start point, or on the seed pool, travel is measured from the plan's location.
 - **Evaluation harness** (`sim/`, `npm run sim`): 200 synthetic groups, brute-force no-privacy oracle, naive baseline, Nash / max-min ratios, leaked dimension names. See `sim/README.md` and `docs/evaluation.md`.
 - **Privacy:** private chat messages, constraints and emails are encrypted at rest (AES-256-GCM). Emails are looked up through an HMAC blind index. Passwords use bcrypt (salted, cost 12). Session cookies are random tokens, and only their SHA-256 hashes are stored.
+- **Abuse limits** (`src/lib/ratelimit.ts`): fixed-window counters in the database, so they hold across serverless instances. 30 chat messages per person per 10 minutes; 300 LLM calls per plan per day, after which replies come from the rule-based extractor; 10 sign-in attempts per email and 50 per IP per 15 minutes; 10 new accounts per IP per hour. Emails and IPs are stored only as HMACs.
 
 ## Run locally
 

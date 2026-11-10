@@ -129,10 +129,12 @@ export async function extract(
   history: ChatTurn[],
   current: Constraints,
   context: ProbeContext = {},
+  /** false when the plan has used up its LLM budget (#4): answer with the rule-based extractor. */
+  allowLLM = true,
 ): Promise<ExtractResult> {
   const latest = [...history].reverse().find((t) => t.role === "user")?.content ?? "";
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (apiKey) {
+  if (apiKey && allowLLM) {
     try {
       return await extractWithLLM(history, current, apiKey, context);
     } catch (err) {

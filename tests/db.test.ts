@@ -36,7 +36,14 @@ describe("schema (in-memory PGlite)", () => {
     const { rows } = await client.execute(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name",
     );
-    expect(rows.map((r) => r.table_name)).toEqual(["events", "members", "messages", "sessions", "users"]);
+    expect(rows.map((r) => r.table_name)).toEqual([
+      "events",
+      "members",
+      "messages",
+      "rate_limits",
+      "sessions",
+      "users",
+    ]);
     const u = await createUser({ email: "t@test.dev", displayName: "T", password: "password123" });
     const res = await client.execute({ sql: "SELECT created_at FROM users WHERE id = ?", args: [u.id] });
     expect(Number(res.rows[0].created_at)).toBeGreaterThan(1_700_000_000_000);
