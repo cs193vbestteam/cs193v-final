@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { PlanDangerZone } from "@/components/DangerActions";
 import { AutoRefresh, CopyInvite, NegotiateButton } from "@/components/GroupActions";
 import { PrivateChat } from "@/components/PrivateChat";
 import { ResultCard } from "@/components/ResultCard";
@@ -118,6 +119,14 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             </ul>
             <div className="mt-4">
               <CopyInvite url={`${origin}/e/${code}`} />
+            </div>
+            <div className="mt-4 border-t border-line pt-3.5">
+              <PlanDangerZone
+                eventId={event.id}
+                inviteCode={code}
+                isCreator={event.creatorId === user.id}
+                title={event.title}
+              />
             </div>
           </section>
 
