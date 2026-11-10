@@ -26,3 +26,6 @@ sim/out/
 # Playwright
 test-results/
 playwright-report/
+
+# Yelp Open Dataset (never commit; see sim/yelp/README.md)
+data/
