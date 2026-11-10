@@ -198,17 +198,33 @@ The personas capture where someone will go: their budget and travel limits admit
 
 **What carries over.** In every city the protocol reached unanimous agreement in every group where the oracle found a plan, and the `no_deal` groups are exactly the infeasible ones, as in the synthetic run. Mean Nash ratio is 0.91 to 0.96 against 0.93, and the worst-off member keeps 96 to 99% of what the oracle could give them.
 
-**What is different.** Real friends are easier to please, and it shows in three places.
+**What is different.** The Yelp groups are easier than the synthetic ones, and it shows in three places. The data cannot say how much of that is the people and how much is the way the personas are built; "Why the Yelp groups are easier" below gives the evidence for each.
 
 - *They agree at once.* 83 to 92% of agreements come in round 1, against 51% for synthetic groups. Fewer rounds means fewer answers, so the mediator sees about half as many dimension names (18 to 22 per group against 37).
-- *The naive baseline is no longer weak.* Taking the most-voted round-1 candidate keeps 76 to 85% of the oracle's Nash welfare here, against 46% on synthetic groups. On Philadelphia the protocol's advantage over naive is 0.08, not 0.48. The synthetic generator draws every member independently, which overstates how much friends disagree and therefore how much the protocol adds.
-- *It stops too early.* In Philadelphia only 21% of feasible groups end on the oracle's optimum, against 50% for synthetic groups, although the Nash ratio is the same. With an average of 31 feasible candidates out of 120, something acceptable to everyone usually turns up in the first five proposals, and the protocol takes it. This is the "first acceptable, not best" behaviour from the discussion above, and it bites harder on real groups. The `exploreRounds` option studied above targets exactly this; it was not run on the Yelp groups, and they are where it should matter most.
+- *The naive baseline is no longer weak.* Taking the most-voted round-1 candidate keeps 76 to 85% of the oracle's Nash welfare here, against 46% on synthetic groups. On Philadelphia the protocol's advantage over naive is 0.08, not 0.48. How much the protocol adds over naive therefore depends heavily on how constrained the group is, and the two rows disagree about that by a wide margin.
+- *It stops too early.* In Philadelphia only 21% of feasible groups end on the oracle's optimum, against 50% for synthetic groups, although the Nash ratio is the same. With an average of 31 feasible candidates out of 120, something acceptable to everyone usually turns up in the first five proposals, and the protocol takes it. This is the "first acceptable, not best" behaviour from the discussion above, and it bites harder on these groups. The `exploreRounds` option studied above targets exactly this; it was not run on the Yelp groups, and loosely constrained groups like these are where it should matter most.
 
-**Caveats specific to this section.** Availability is synthetic, and the share of feasible groups (78 to 83%) depends on it. Travel is measured from the middle of each group for everyone, not from each person's own start point. One seed per city, with no intervals, unlike the ten-seed study above. Reviewers with 20 or more reviews in one city are heavier users than a typical friend group. And, as Table Y1 shows, the personas describe what people accept, not what they enjoy.
+**Why the Yelp groups are easier: the personas are less constrained, by construction.** A Yelp persona is looser than a synthetic person on most of what can make an assistant say no, and that alone would produce more round-1 agreements, fewer leaked names and a stronger naive baseline. Measured on the 3557 Philadelphia personas against the same number of synthetic people (seed 1):
+
+| | Yelp personas | synthetic people |
+|---|---:|---:|
+| carry a dietary rule | 0.0% | 17.5% |
+| share of the city's open restaurants their hard price ceiling allows (mean) | 97.9% | n/a (prices are drawn from $12 to $70 against ceilings of $18 to $80) |
+| have at least one disliked cuisine | 16.1% | 65.4% |
+| travel limit (mean) | 10 min | 22 min |
+
+- *Price barely constrains anyone.* Yelp prices take four values ($15, $30, $55, $90), and 95.6% of Philadelphia's open restaurants are at $15 or $30. A persona's budget is the 75th percentile of what they already paid, plus a stretch up to the 95th, so nearly every persona accepts nearly every restaurant on price.
+- *Dietary rules never fire.* A persona is vegetarian or halal only when 60% or more of the places they reviewed are categorised that way. No Philadelphia persona meets that bar.
+- *Dislikes are rare.* People seldom return to a cuisine they dislike, so few personas carry one.
+- *Travel uses two frames.* The limit comes from each person's own centre, but every candidate is measured from the middle of the group. The limit is tighter than a synthetic person's, so travel is the one dimension where personas are not looser, and it is measured inconsistently.
+
+So the comparison in Table Y2 is between tightly constrained synthetic people and loosely constrained Yelp personas. Friends may well also agree more than independent strangers, but this data cannot separate that from the construction, and we do not claim it.
+
+**Other caveats specific to this section.** Availability is synthetic, and the share of feasible groups (78 to 83%) depends on it. One seed per city, with no intervals, unlike the ten-seed study above. Reviewers with 20 or more reviews in one city are heavier users than a typical friend group. And, as Table Y1 shows, the personas describe what people accept, not what they enjoy.
 
 ## Threats to validity
 
-- **Synthetic preferences.** The distributions in `synth.ts` are our guesses; real friends are more correlated (shared budgets and neighbourhoods) and less tidy (a "hard" ceiling that bends). The Yelp section above replaces the guesses with real reviewers for cuisine, budget and travel, and finds real groups easier than synthetic ones; availability is still synthetic there, and the personas predict where people go but not how much they like it.
+- **Synthetic preferences.** The distributions in `synth.ts` are our guesses; real friends are more correlated (shared budgets and neighbourhoods) and less tidy (a "hard" ceiling that bends). The Yelp section above replaces the guesses with personas derived from real reviewers for cuisine, budget and travel. Those groups come out easier than the synthetic ones, but the personas are also less constrained by construction (almost no price or dietary limits), so that result does not show that real friends disagree less; availability is still synthetic there, and the personas predict where people go but not how much they like it.
 - **Fixed pools.** The app ships 16 fictional restaurants; the simulation draws 30 synthetic ones per group. Real pools have per-person travel times and more skewed prices.
 - **The utility model is ours.** Oracle, agents and the LLM prompt all share `utility()` (weighted mean, linear ramps, accept at 0.7, reluctant at 0.4). The ratios measure how well the protocol recovers that model's optimum, not how satisfied people would be.
 - **Seeds vary the people, not the generator.** The intervals above cover redrawing the population from the same distributions. They say nothing about whether those distributions resemble real groups. Only `perRound` was swept; `maxRounds`, the concession schedule and the accept thresholds were not.
