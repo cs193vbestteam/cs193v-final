@@ -153,7 +153,7 @@ export function ResultCard({ result }: { result: StoredResult }) {
           {result.finalists?.length > 0 && (
             <div className="mt-4">
               <div className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
-                Final pick · Nash product of 1–5 buckets
+                Final pick · group score relative to the pick
               </div>
               <ul className="mt-1.5 space-y-1">
                 {result.finalists.map((f) => {
@@ -171,8 +171,9 @@ export function ResultCard({ result }: { result: StoredResult }) {
                         {place(f.proposal.restaurantId)?.name ?? "?"} · {SLOT_LABELS[f.proposal.slot]}
                       </span>
                       <span className="flex items-center gap-2 font-mono text-[0.6875rem] text-ink-3">
-                        <span aria-label={`buckets ${f.buckets.join(", ")}`}>{f.buckets.join(" · ")}</span>
-                        <span className="text-ink">= {f.nash}</span>
+                        <span className="text-ink" aria-label={`${Math.round(f.relative * 100)}% of the pick's score`}>
+                          {chosen ? "pick" : `×${f.relative.toFixed(2)}`}
+                        </span>
                       </span>
                     </li>
                   );
@@ -182,8 +183,9 @@ export function ResultCard({ result }: { result: StoredResult }) {
           )}
 
           <p className="mt-3 text-ink-3">
-            Only anonymous counts and dimension names are shown; buckets are sorted so they can&apos;t be traced back to
-            anyone.
+            Only anonymous counts and dimension names are shown. For the final pick each assistant scores the finalists
+            from 1 to 5 and sends the scores masked, so only how the finalists compare for the whole group can be read,
+            never anyone&apos;s score.
             {typeof result.leakedDims === "number" &&
               ` The mediator saw ${result.leakedDims} dimension name${result.leakedDims === 1 ? "" : "s"} in total, and no numbers.`}
           </p>

@@ -1,15 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { makeAgent, type Agent } from "@/lib/agent";
+import { makeAgent, maskGroup, type Agent, type PrivateAgent } from "@/lib/agent";
 import { type Constraints, type ConstraintsUpdate, emptyConstraints, mergeConstraints } from "@/lib/constraints";
-import { evaluate } from "@/lib/evaluate";
-import { nashProduct, negotiate, type NegotiateOptions } from "@/lib/negotiate";
+import { bucket, evaluate } from "@/lib/evaluate";
+import { negotiate, type NegotiateOptions } from "@/lib/negotiate";
 import { compile } from "@/lib/preferences";
 import { RESTAURANTS, getRestaurant } from "@/lib/restaurants";
 import { agentsFor, countingAgent, synthCase, type SimCase } from "../sim/pipeline";
 import { makeRng } from "../sim/rng";
 
 const c = (o: ConstraintsUpdate) => mergeConstraints(emptyConstraints(), { dietaryConfirmed: true, ...o });
-const agentFor = (cons: Constraints): Agent => makeAgent(compile(cons));
+const agentFor = (cons: Constraints): PrivateAgent => makeAgent(compile(cons));
+/** What the mediator is handed: the group's assistants, masked together. */
+const group = (people: Constraints[]): Agent[] => maskGroup(people.map(agentFor));
+/** The true Nash product of a proposal for a group: something only a test may compute. */
+const trueNash = (people: Constraints[], p: { restaurantId: string; slot: Parameters<typeof bucket>[2] }, level = 0) =>
+  people.reduce((acc, cons) => acc * bucket(compile(cons), getRestaurant(p.restaurantId)!, p.slot, level), 1);
 
 describe("negotiate", () => {
   it("returns no_deal with nobody", async () => {
@@ -24,7 +29,7 @@ describe("negotiate", () => {
       c({ dietary: ["no_spicy"], maxTravelMin: 15 }), // D
       c({ dislikedCuisines: ["american"] }), // E
     ];
-    const result = await negotiate(people.map(agentFor));
+    const result = await negotiate(group(people));
     expect(result.status).toBe("agreed");
     expect(result.tally?.accept).toBe(5);
     expect(result.reservations).toEqual([]);
@@ -37,14 +42,14 @@ describe("negotiate", () => {
 
   it("adapts across rounds instead of proposing the same things", async () => {
     const people = [c({ budgetMax: 16, availableSlots: ["sun_dinner"] }), c({ maxTravelMin: 6 })];
-    const result = await negotiate(people.map(agentFor), { maxRounds: 10 });
+    const result = await negotiate(group(people), { maxRounds: 10 });
     expect(result.status).toBe("agreed");
     const keys = result.rounds.flatMap((r) => r.proposals.map((p) => `${p.proposal.restaurantId}@${p.proposal.slot}`));
     expect(new Set(keys).size).toBe(keys.length);
   });
 
   it("first round is a diverse spread, not five variations of one idea", async () => {
-    const result = await negotiate([agentFor(c({ budgetMax: 1 }))], { maxRounds: 1 });
+    const result = await negotiate(group([c({ budgetMax: 1 })]), { maxRounds: 1 });
     const first = result.rounds[0].proposals.map((p) => getRestaurant(p.proposal.restaurantId)!);
     expect(first).toHaveLength(5);
     expect(new Set(first.map((r) => r.cuisine)).size).toBeGreaterThanOrEqual(4);
@@ -56,7 +61,7 @@ describe("negotiate", () => {
       c({ budgetMax: 15, maxTravelMin: 5 }),
       c({ budgetMax: 60, maxTravelMin: 60, dislikedCuisines: ["mexican"] }),
     ];
-    const result = await negotiate(people.map(agentFor), { concessionFrom: 99 });
+    const result = await negotiate(group(people), { concessionFrom: 99 });
     expect(result.status).toBe("compromise");
     expect(result.tally?.reject).toBe(0);
     expect(result.proposal?.restaurantId).toBe("taqueria-sol");
@@ -68,9 +73,9 @@ describe("negotiate", () => {
       c({ budgetMax: 15, maxTravelMin: 5 }),
       c({ budgetMax: 60, maxTravelMin: 60, dislikedCuisines: ["mexican"], concessionOrder: ["cuisine"] }),
     ];
-    const without = await negotiate(people.map(agentFor), { concessionFrom: 99 });
+    const without = await negotiate(group(people), { concessionFrom: 99 });
     expect(without.status).toBe("compromise");
-    const result = await negotiate(people.map(agentFor));
+    const result = await negotiate(group(people));
     expect(result.status).toBe("agreed");
     expect(result.concessionLevel).toBeGreaterThanOrEqual(1);
     expect(result.rounds.find((r) => r.round === 4)?.level).toBe(1);
@@ -92,7 +97,7 @@ describe("negotiate", () => {
         concessionOrder: ["budget", "travel", "cuisine"],
       }),
     ];
-    const result = await negotiate(people.map(agentFor));
+    const result = await negotiate(group(people));
     const r4 = result.rounds.find((r) => r.round === 4);
     expect(r4).toBeDefined();
     expect(r4!.proposals.filter((p) => p.retried).length).toBeLessThanOrEqual(3);
@@ -101,7 +106,7 @@ describe("negotiate", () => {
 
   it("reports no_deal with the conflicting dimensions for impossible constraints", async () => {
     const people = [c({ availableSlots: ["sat_lunch"] }), c({ availableSlots: ["sun_dinner"] })];
-    const result = await negotiate(people.map(agentFor), { maxRounds: 3 });
+    const result = await negotiate(group(people), { maxRounds: 3 });
     expect(result.status).toBe("no_deal");
     expect(result.proposal).toBeNull();
     expect(result.conflicts[0]).toBe("time");
@@ -109,7 +114,7 @@ describe("negotiate", () => {
 
   it("round logs contain only aggregate counts, never per-person data", async () => {
     const people = [c({ budgetMax: 20 }), c({ dietary: ["vegetarian"] })];
-    const result = await negotiate(people.map(agentFor));
+    const result = await negotiate(group(people));
     for (const round of result.rounds) {
       for (const p of round.proposals) {
         expect(Object.keys(p.tally).sort()).toEqual(["accept", "dims", "reject", "rejectDims", "reluctant"]);
@@ -119,25 +124,32 @@ describe("negotiate", () => {
     expect(JSON.stringify(result)).not.toMatch(/budget|utility|weight/);
   });
 
-  it("finalist buckets are sorted, so they cannot be mapped back to members", async () => {
+  it("finalists carry only how they compare with the pick, never a bucket or a product", async () => {
     const people = [c({ budgetMax: 60 }), c({ budgetMax: 22, budgetFlex: 10 }), c({ budgetMax: 60 })];
-    const result = await negotiate(people.map(agentFor));
+    const result = await negotiate(group(people));
     expect(result.finalists.length).toBeGreaterThan(0);
     for (const f of result.finalists) {
-      expect(f.buckets).toHaveLength(3);
-      expect([...f.buckets].sort((a, b) => b - a)).toEqual(f.buckets);
-      expect(f.nash).toBe(nashProduct(f.buckets));
+      expect(Object.keys(f).sort()).toEqual(["proposal", "relative", "tally"]);
+      expect(f.relative).toBeGreaterThan(0);
+      expect(f.relative).toBeLessThanOrEqual(1);
     }
+    const chosen = result.finalists.filter((f) => f.proposal === result.proposal);
+    expect(chosen).toHaveLength(1);
+    expect(chosen[0].relative).toBe(1);
+    expect(JSON.stringify(result)).not.toMatch(/bucket|nash/i);
   });
 
-  it("chooses the finalist with the highest Nash product", async () => {
+  it("chooses the finalist with the highest Nash product, and reports the true ratios", async () => {
     const people = [
       c({ budgetMax: 25, budgetFlex: 15 }),
       c({ budgetMax: 25, budgetFlex: 15, likedCuisines: ["vietnamese"] }),
     ];
-    const result = await negotiate(people.map(agentFor));
-    const best = Math.max(...result.finalists.map((f) => f.nash));
-    expect(result.finalists.find((f) => f.proposal.restaurantId === result.proposal!.restaurantId)!.nash).toBe(best);
+    const result = await negotiate(group(people));
+    // The test may read everyone's preferences; the mediator could not.
+    const truth = result.finalists.map((f) => trueNash(people, f.proposal, result.concessionLevel));
+    const best = Math.max(...truth);
+    expect(trueNash(people, result.proposal!, result.concessionLevel)).toBe(best);
+    result.finalists.forEach((f, k) => expect(f.relative).toBeCloseTo(truth[k] / best, 5));
   });
 
   it("only ever calls agents with valid proposals, and counts leaked dimension names", async () => {
@@ -147,7 +159,7 @@ describe("negotiate", () => {
         seen.push(p.restaurantId);
         return { verdict: "reject", dim: "price" };
       },
-      bucket: () => 1,
+      compare: () => [],
     };
     const result = await negotiate([spy], { maxRounds: 2 });
     const ids = new Set(RESTAURANTS.map((r) => r.id));
@@ -156,12 +168,12 @@ describe("negotiate", () => {
   });
 
   it("is deterministic", async () => {
-    const people = [c({ budgetMax: 25 }), c({ maxTravelMin: 10 })].map(agentFor);
+    const people = group([c({ budgetMax: 25 }), c({ maxTravelMin: 10 })]);
     expect(await negotiate(people)).toEqual(await negotiate(people));
   });
 
   it("lets a selector re-rank the shortlist but never widen it", async () => {
-    const people = [c({ budgetMax: 40 })].map(agentFor);
+    const people = group([c({ budgetMax: 40 })]);
     const rogue = { r: RESTAURANTS[0], slot: "sat_dinner" as const };
     const result = await negotiate(people, {
       maxRounds: 1,
@@ -234,13 +246,25 @@ describe("exploring after the first unanimous accept", () => {
       const base = await run(c, { finalists: 99 });
       const more = await run(c, { exploreRounds: 1, finalists: 99 });
       if (base.status !== "agreed" || !more.rounds.some((r) => r.exploring)) continue;
-      const chosen = (r: typeof base) => r.finalists.find((f) => f.proposal === r.proposal)!;
+      // The true Nash product of each run's choice, from the preferences only the harness holds.
+      const nashOf = (r: typeof base) =>
+        c.prefs.reduce(
+          (acc, prefs) =>
+            acc *
+            bucket(
+              prefs,
+              c.restaurants.find((x) => x.id === r.proposal!.restaurantId)!,
+              r.proposal!.slot,
+              r.concessionLevel,
+            ),
+          1,
+        );
       // The first agreement's unanimous candidates are still finalists, so the best can only go up.
       const keys = new Set(more.finalists.map((f) => `${f.proposal.restaurantId}@${f.proposal.slot}`));
       for (const f of base.finalists) expect(keys.has(`${f.proposal.restaurantId}@${f.proposal.slot}`)).toBe(true);
-      expect(chosen(more).nash).toBeGreaterThanOrEqual(chosen(base).nash);
+      expect(nashOf(more)).toBeGreaterThanOrEqual(nashOf(base));
       for (const f of more.finalists) expect(f.tally.accept).toBe(c.prefs.length);
-      if (chosen(more).nash > chosen(base).nash) improved++;
+      if (nashOf(more) > nashOf(base)) improved++;
     }
     expect(improved).toBeGreaterThan(0);
   });

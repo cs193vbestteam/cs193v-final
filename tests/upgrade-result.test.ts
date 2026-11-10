@@ -64,6 +64,25 @@ describe("upgradeResult", () => {
       decidedAt: 2,
     };
     // Shape only: what a group of this size may see is decided by forGroupSize, not here.
-    expect(upgradeResult(fresh)).toEqual({ ...fresh, detail: "full", roundCount: 1 });
+    // Except for one thing: finalists stored with their sorted buckets and Nash product keep only how they compare.
+    const { proposal, tally } = fresh.finalists[0];
+    const upgraded = upgradeResult(fresh);
+    expect(upgraded).toEqual({
+      ...fresh,
+      finalists: [{ proposal, tally, relative: 1 }],
+      detail: "full",
+      roundCount: 1,
+    });
+    expect(JSON.stringify(upgraded)).not.toMatch(/buckets|nash/);
+
+    // Several stored finalists: each keeps its Nash product as a share of the best one.
+    const two = upgradeResult({
+      ...fresh,
+      finalists: [
+        { ...fresh.finalists[0], nash: 12 },
+        { ...fresh.finalists[0], nash: 15 },
+      ],
+    });
+    expect(two.finalists.map((f) => f.relative)).toEqual([0.8, 1]);
   });
 });

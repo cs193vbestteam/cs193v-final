@@ -201,6 +201,12 @@ describe("plans of three or more are unchanged", () => {
     expect(html).toContain("Round 1");
     expect(html).toMatch(/1× reject · price/);
     expect(html).not.toContain("stays hidden");
+    // The finalists are shown by how they compare with the pick, never by anyone's score (#15).
+    expect(result.finalists.length).toBeGreaterThan(0);
+    expect(html).toContain("group score relative to the pick");
+    expect(html).toContain(">pick<");
+    expect(html).not.toMatch(/buckets \d/);
+    expect(JSON.stringify(result)).not.toMatch(/"buckets"|"nash"/);
   });
 });
 

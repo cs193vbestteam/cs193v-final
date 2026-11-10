@@ -360,6 +360,23 @@ export async function getResult(eventId: string, userId: string): Promise<Stored
 type LegacyTally = { yes: number; meh: number; no: number; reasons: Record<string, number> };
 const isLegacyTally = (t: unknown): t is LegacyTally => !!t && typeof t === "object" && "yes" in (t as object);
 
+type LegacyFinalist = { proposal: unknown; tally: unknown; relative?: number; nash?: number };
+
+/**
+ * Results stored before the masked final pick (#15) kept every finalist's
+ * sorted buckets and Nash product. Only how the finalists compare is passed
+ * on; the buckets are dropped here and never reach the page.
+ */
+function upgradeFinalists(raw: unknown): StoredResult["finalists"] {
+  const list = (Array.isArray(raw) ? raw : []) as LegacyFinalist[];
+  const best = Math.max(0, ...list.map((f) => f.nash ?? 0));
+  return list.map((f) => ({
+    proposal: f.proposal,
+    tally: f.tally,
+    relative: typeof f.relative === "number" ? f.relative : best > 0 ? Number(((f.nash ?? 0) / best).toFixed(6)) : 1,
+  })) as StoredResult["finalists"];
+}
+
 /** Results stored before the utility-based protocol used yes/meh/no tallies. Map them so old plans still render. */
 export function upgradeResult(raw: Record<string, unknown>): StoredResult {
   const fix = (t: unknown) =>
@@ -377,7 +394,7 @@ export function upgradeResult(raw: Record<string, unknown>): StoredResult {
     tally: fix(raw.tally),
     rounds,
     concessionLevel: (raw.concessionLevel as number) ?? 0,
-    finalists: (raw.finalists as StoredResult["finalists"]) ?? [],
+    finalists: upgradeFinalists(raw.finalists),
     reservations: (raw.reservations as StoredResult["reservations"]) ?? [],
     conflicts: (raw.conflicts as StoredResult["conflicts"]) ?? [],
     leakedDims: (raw.leakedDims as number) ?? 0,

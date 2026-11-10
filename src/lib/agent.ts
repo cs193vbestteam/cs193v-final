@@ -1,6 +1,7 @@
 import type { Slot } from "./constraints";
 import { bucket, evaluate, type Bucket, type Judgement, type Proposal } from "./evaluate";
 import { travelMinutes, type LatLng } from "./geo";
+import { exponentsOf, maskValues, pairKeys } from "./masked-sum";
 import type { Preferences } from "./preferences";
 import { getRestaurant, type Restaurant } from "./restaurants";
 
@@ -18,7 +19,24 @@ import { getRestaurant, type Restaurant } from "./restaurants";
 export type Agent = {
   /** verdict + at most one dimension name. `level` = concession steps requested so far. */
   judge: (p: Proposal, level: number) => Judgement;
-  /** 1..5 utility bucket, only asked for the final two or three candidates. */
+  /**
+   * This person's part of the final comparison, masked. For each finalist
+   * after the first it holds their 1..5 bucket for that finalist relative to
+   * their bucket for the first, as exponents of 2, 3 and 5, plus pairwise masks
+   * (masked-sum.ts). One person's message is random noise; only the sum over
+   * the whole group means anything, and that sum is how the group's Nash
+   * product for each finalist compares with the first's.
+   */
+  compare: (finalists: readonly Proposal[], level: number) => number[];
+};
+
+/**
+ * An assistant before masking: it can still state its own 1..5 bucket. This
+ * is what one person's side holds; it is never handed to the mediator, which
+ * only ever gets the `Agent`s that `maskGroup` returns.
+ */
+export type PrivateAgent = Pick<Agent, "judge"> & {
+  /** 1..5 utility bucket for one proposal. */
   bucket: (p: Proposal, level: number) => Bucket;
 };
 
@@ -26,7 +44,7 @@ export function makeAgent(
   prefs: Preferences,
   lookup: (id: string) => Restaurant | undefined = getRestaurant,
   start: LatLng | null = null,
-): Agent {
+): PrivateAgent {
   const fromStart = (r: Restaurant | undefined) =>
     r && start && r.location ? { ...r, travelMin: travelMinutes(start, r.location) } : r;
   const resolve = (p: Proposal): [Restaurant | undefined, Slot] => [fromStart(lookup(p.restaurantId)), p.slot];
@@ -40,4 +58,30 @@ export function makeAgent(
       return r ? bucket(prefs, r, slot, level) : 1;
     },
   };
+}
+
+const keyOf = (p: Proposal) => `${p.restaurantId}@${p.slot}`;
+
+/**
+ * Turn a group's assistants into the form the mediator may hold. The members
+ * share fresh pairwise keys, made here and kept in these closures; the
+ * mediator gets neither the keys nor any way to ask for a bucket.
+ *
+ * In a deployment where each assistant ran on its owner's device the keys
+ * would come from a key agreement between devices. Here every assistant runs
+ * in one server process, so this keeps individual buckets out of the
+ * mediator's code and out of everything it stores, not out of the server.
+ */
+export function maskGroup(members: readonly PrivateAgent[]): Agent[] {
+  const keys = pairKeys(members.length);
+  return members.map((member, i) => ({
+    judge: (p, level) => member.judge(p, level),
+    compare(finalists, level) {
+      if (finalists.length < 2) return [];
+      const [first, ...rest] = finalists;
+      const base = exponentsOf(member.bucket(first, level));
+      const values = rest.flatMap((p) => exponentsOf(member.bucket(p, level)).map((e, k) => e - base[k]));
+      return maskValues(i, keys, `${level}|${finalists.map(keyOf).join(",")}`, values);
+    },
+  }));
 }
