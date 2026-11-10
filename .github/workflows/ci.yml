@@ -24,8 +24,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
-      # TODO: add `npm run format:check` once the one-time `npm run format` PR lands
-      # (held back so it does not conflict with open PRs).
+      - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
       - name: Build (throwaway key, never a real secret)

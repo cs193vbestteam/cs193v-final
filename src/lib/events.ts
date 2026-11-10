@@ -375,7 +375,10 @@ export async function deletePlan(eventId: string, userId: string): Promise<void>
 export async function leavePlan(eventId: string, userId: string): Promise<void> {
   await requireMember(eventId, userId);
   const client = await db();
-  await client.execute({ sql: "UPDATE events SET result_json = NULL, decided_at = NULL WHERE id = ?", args: [eventId] });
+  await client.execute({
+    sql: "UPDATE events SET result_json = NULL, decided_at = NULL WHERE id = ?",
+    args: [eventId],
+  });
   if ((await creatorOf(eventId)) === userId) await handOverOrDeleteCreated(userId, eventId);
   await client.execute({ sql: "DELETE FROM messages WHERE event_id = ? AND user_id = ?", args: [eventId, userId] });
   await client.execute({ sql: "DELETE FROM members WHERE event_id = ? AND user_id = ?", args: [eventId, userId] });
