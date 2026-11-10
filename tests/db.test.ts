@@ -7,7 +7,9 @@ import { createEvent, getMyMessages, joinEvent, listMembers, sendMessage } from 
 
 describe("helpers", () => {
   it("translates ? placeholders to $n", () => {
-    expect(toPostgresPlaceholders("SELECT * FROM t WHERE a = ? AND b = ?")).toBe("SELECT * FROM t WHERE a = $1 AND b = $2");
+    expect(toPostgresPlaceholders("SELECT * FROM t WHERE a = ? AND b = ?")).toBe(
+      "SELECT * FROM t WHERE a = $1 AND b = $2",
+    );
     expect(toPostgresPlaceholders("SELECT 1")).toBe("SELECT 1");
   });
 
@@ -43,7 +45,10 @@ describe("schema (in-memory PGlite)", () => {
   it("enforces foreign keys", async () => {
     const client = await db();
     await expect(
-      client.execute({ sql: "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)", args: ["x", "nobody", 1] }),
+      client.execute({
+        sql: "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
+        args: ["x", "nobody", 1],
+      }),
     ).rejects.toThrow();
   });
 });
