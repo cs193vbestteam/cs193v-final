@@ -12,12 +12,12 @@
  *
  * Personas run on Claude via Anthropic's OpenAI-compatible endpoint (ANTHROPIC_API_KEY,
  * from the environment or .env.local); OPENROUTER_API_KEY or LLM_API_KEY + LLM_BASE_URL
- * override. Uses a throwaway SQLite file so local.db is untouched.
+ * override. Uses a throwaway in-memory database so local data is untouched.
  * --llm-assistant also puts the assistant under test on the LLM path (needs ANTHROPIC_API_KEY).
  *
  *   node --require ./sim/shims/server-only.cjs --import tsx sim/personas.ts [--people 5] [--seed sim/seeds/friends.md]
  */
-import { readFileSync, existsSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 // ── env: Settle's .env.local (encryption key) + an LLM key from the usual places ──
@@ -62,12 +62,9 @@ if (!LLM_KEY) {
   process.exit(1);
 }
 
-// Throwaway database for this run.
+// Throwaway database for this run: in-memory PGlite, so local data is untouched.
 mkdirSync(OUT_DIR, { recursive: true });
-const DB_FILE = path.join(OUT_DIR, "personas.db");
-for (const f of [DB_FILE, `${DB_FILE}-journal`, `${DB_FILE}-wal`, `${DB_FILE}-shm`]) if (existsSync(f)) rmSync(f);
-process.env.DATABASE_URL = `file:${DB_FILE}`;
-delete process.env.DATABASE_AUTH_TOKEN;
+process.env.DATABASE_URL = ":memory:";
 // The assistant under test runs on the rule-based path unless --llm-assistant is given.
 if (!args.includes("--llm-assistant")) delete process.env.ANTHROPIC_API_KEY;
 delete process.env.GOOGLE_PLACES_API_KEY;
