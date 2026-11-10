@@ -8,6 +8,7 @@ import {
   type MissingField,
   type Pending,
   type Probe,
+  type ProbeContext,
   type Slot,
   type SoftDim,
   mergeConstraints,
@@ -249,8 +250,29 @@ export function extractCuisines(text: string): { likedCuisines?: Cuisine[]; disl
   return out;
 }
 
+const START_PHRASE =
+  /\b(?:(?:coming|travell?ing|driving|biking|cycling|walking|leaving|starting|commuting)\s+(?:in\s+)?from|i(?:'ll| will)\s+(?:be\s+)?(?:start|leave|starting|leaving)\s+(?:from|at)|i\s+live\s+(?:in|at|near|on|by)|i(?:'m| am)\s+based\s+(?:in|at|near))\s+([^.,;!?\n]{2,120})/i;
+
+/** Tidy a place as typed: no lead-in words, no trailing clause. Undefined if nothing usable is left. */
+function cleanPlace(raw: string): string | undefined {
+  const place = raw
+    .split(/\s+(?:and|but|so|then|because)\s+/i)[0]
+    .replace(/^\s*(?:from|near|around|in|at)\s+/i, "")
+    .replace(/[\s.,;!?]+$/, "")
+    .trim();
+  return place.length >= 2 && place.length <= 120 ? place : undefined;
+}
+
+/** "I'm coming from Mountain View" → "Mountain View". Only explicit phrasings, so "20 minutes from campus" is not one. */
+export function extractStart(text: string): string | undefined {
+  const m = text.match(START_PHRASE);
+  return m ? cleanPlace(m[1]) : undefined;
+}
+
 export function extractRules(text: string, pending?: MissingField): ConstraintsUpdate {
   const update: ConstraintsUpdate = {};
+  const start = extractStart(text);
+  if (start) update.startText = start;
   const slots = extractTime(text);
   if (slots) update.availableSlots = slots;
   Object.assign(update, extractBudget(text));
@@ -294,6 +316,8 @@ const VAGUE =
   /\b(whatever|anything|any|don'?t (really )?(care|mind)|no (real )?(limit|preference)|idk|dunno|not sure|up to you|flexible|depends|easy|随便|都行|无所谓)\b/i;
 
 export const PENDING_QUESTIONS: Record<Pending, string> = {
+  start_point:
+    'One optional thing: roughly where will you be coming from? A neighbourhood or cross street is enough. Only I use it, to measure your own trip, and it is never shown to the group. Say "skip" to measure from the plan\'s location instead.',
   vague_budget:
     'Fair enough, but "whatever" is how groups end up somewhere nobody wanted. Which would bother you more: paying about $45 a head, or $25 a head somewhere less exciting?',
   vague_distance: "No problem. Which would bother you more: 30 minutes of travel, or a so-so place 5 minutes away?",
@@ -309,7 +333,7 @@ const SECOND = /\b(second|latter|b|2|two|the second one)\b/i;
 const NEITHER = /\b(neither|both fine|either|same|no difference|don'?t care)\b/i;
 
 /** The two options each either/or offers, so an answer that echoes one (typos included) is understood. */
-const OPTIONS: Record<Exclude<Pending, "concession">, [string, string]> = {
+const OPTIONS: Record<Exclude<Pending, "concession" | "start_point">, [string, string]> = {
   vague_budget: ["paying about $45 a head", "$25 a head somewhere less exciting"],
   vague_distance: ["30 minutes of travel", "a so-so place 5 minutes away"],
   tradeoff_budget_travel: ["paying $10 over your budget", "travelling 10 minutes further than you'd like"],
@@ -403,6 +427,11 @@ function bump(weights: Record<SoftDim, number>, up: SoftDim, down: SoftDim): Rec
   };
 }
 
+const SKIP_START =
+  /^\W*(skip|pass|no|nope|nah|none|rather not|i'?d rather not|prefer not( to( say)?)?|not saying|n\/?a)\W*$/i;
+/** Fields a place name can set by accident ("Koreatown", "Little Italy") without meaning it is not a place. */
+const START_COMPATIBLE = new Set(["startText", "likedCuisines", "dislikedCuisines"]);
+
 /** Read the answer to a pending question. Returns null if the message doesn't answer it. */
 export function answerPending(
   text: string,
@@ -417,9 +446,17 @@ export function answerPending(
     if (a && !b) return "a";
     if (b && !a) return "b";
     // Keywords were ambiguous or absent (typos, paraphrase): compare against the two options as offered.
-    return pending === "concession" ? null : pickByEcho(text, OPTIONS[pending]);
+    return pending === "concession" || pending === "start_point" ? null : pickByEcho(text, OPTIONS[pending]);
   };
   switch (pending) {
+    case "start_point": {
+      if (SKIP_START.test(t)) return { pending: null };
+      // A message that states another constraint is not a place: read it normally and ask again.
+      const other = Object.keys(extractRules(text)).filter((k) => !START_COMPATIBLE.has(k));
+      if (other.length) return null;
+      const place = extractStart(text) ?? cleanPlace(text);
+      return place ? { startText: place, pending: null } : null;
+    }
     case "vague_budget": {
       const ans = pick(/\b(45|pay(ing)?|expensive|pricey|money|cost)\b/, /\b(25|less exciting|boring|cheap|so-?so)\b/);
       if (ans === "a") return { budgetMax: 30, budgetFlex: 10, pending: null };
@@ -472,7 +509,7 @@ export function answerPending(
 export type RuleTurn = { update: ConstraintsUpdate; reply: string };
 
 /** One assistant turn on the rule-based path: read the message in context, decide what to ask next. */
-export function ruleTurn(text: string, current: Constraints): RuleTurn {
+export function ruleTurn(text: string, current: Constraints, context: ProbeContext = {}): RuleTurn {
   let update: ConstraintsUpdate | null = current.pending ? answerPending(text, current.pending, current.weights) : null;
   let answeredProbe = update !== null;
   if (!update) {
@@ -510,7 +547,7 @@ export function ruleTurn(text: string, current: Constraints): RuleTurn {
   if (missing.length) return { update, reply: `${ack} ${QUESTIONS[missing[0]]}` };
   if (after.pending) return { update, reply: `${ack} ${PENDING_QUESTIONS[after.pending]}` };
 
-  const probe: Probe | null = nextProbe(after);
+  const probe: Probe | null = nextProbe(after, context);
   if (probe) {
     update = { ...update, pending: probe, probesAsked: [probe] };
     return { update, reply: `${ack} ${PENDING_QUESTIONS[probe]}` };

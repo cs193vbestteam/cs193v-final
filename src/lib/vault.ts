@@ -30,7 +30,7 @@ export async function agentsForEvent(
   let readyCount = 0;
   for (const row of rows) {
     const constraints = ConstraintsSchema.parse(decryptJson(String(row.constraints_enc)));
-    agents.push(makeAgent(compile(constraints), lookup));
+    agents.push(makeAgent(compile(constraints), lookup, constraints.startPoint));
     userIds.push(String(row.user_id));
     if (Number(row.ready) === 1) readyCount++;
   }

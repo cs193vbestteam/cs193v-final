@@ -50,11 +50,28 @@ export const DEFAULT_WEIGHTS: Record<SoftDim, number> = { budget: 0.35, travel: 
 export const DEFAULT_CONCESSION_ORDER: SoftDim[] = ["cuisine", "travel", "budget"];
 
 /** Extra questions the assistant asks once the essentials are known. */
-export const PROBES = ["tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"] as const;
+export const PROBES = ["start_point", "tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"] as const;
 export type Probe = (typeof PROBES)[number];
 /** Questions that need the next answer read in context: a vague-answer follow-up, or a probe. */
 export const PENDING = ["vague_budget", "vague_distance", ...PROBES] as const;
 export type Pending = (typeof PENDING)[number];
+
+/**
+ * Where a person will be travelling from. `label` is what they typed; the
+ * coordinates come from geocoding it (start-point.ts), never from the model.
+ * Private like every other constraint: only their own assistant reads it.
+ */
+export const StartPointSchema = z.object({
+  label: z.string().min(1).max(120),
+  lat: z.number().min(-90).max(90),
+  lng: z.number().min(-180).max(180),
+});
+export type StartPoint = z.infer<typeof StartPointSchema>;
+
+/** What the plan can support, which decides which follow-ups are worth asking. */
+export type ProbeContext = {
+  /** The plan has candidate coordinates and a geocoder, so a start point can be used. */ askStart?: boolean;
+};
 
 export const ConstraintsSchema = z.object({
   /** Hard ceiling, in dollars per person. */
@@ -68,6 +85,8 @@ export const ConstraintsSchema = z.object({
   dietaryConfirmed: z.boolean(),
   /** Max one-way travel time in minutes. */
   maxTravelMin: z.number().int().positive().nullable(),
+  /** Their own starting point; null = measure travel from the plan's location. */
+  startPoint: StartPointSchema.nullable().default(null),
   likedCuisines: z.array(z.enum(CUISINES)),
   dislikedCuisines: z.array(z.enum(CUISINES)),
   /** Relative importance of each soft dimension (normalised at compile time). */
@@ -88,6 +107,8 @@ export const ConstraintsUpdateSchema = ConstraintsSchema.partial().extend({
     .object({ budget: z.number().min(0), travel: z.number().min(0), cuisine: z.number().min(0) })
     .partial()
     .optional(),
+  /** The place the person named as their start, still as text; null = forget it. Resolved by start-point.ts. */
+  startText: z.string().trim().min(2).max(120).nullable().optional(),
 });
 export type ConstraintsUpdate = z.infer<typeof ConstraintsUpdateSchema>;
 
@@ -99,6 +120,7 @@ export function emptyConstraints(): Constraints {
     dietary: [],
     dietaryConfirmed: false,
     maxTravelMin: null,
+    startPoint: null,
     likedCuisines: [],
     dislikedCuisines: [],
     weights: { ...DEFAULT_WEIGHTS },
@@ -119,6 +141,9 @@ export function mergeConstraints(base: Constraints, update: ConstraintsUpdate): 
     next.availableSlots = update.availableSlots === null ? null : uniq(update.availableSlots);
   }
   if (update.maxTravelMin !== undefined) next.maxTravelMin = update.maxTravelMin;
+  if (update.startPoint !== undefined) next.startPoint = update.startPoint;
+  // Unresolved text carries no coordinates, so it changes nothing; only an explicit null clears.
+  if (update.startText === null) next.startPoint = null;
   if (update.dietary !== undefined) {
     next.dietary = uniq([...base.dietary, ...update.dietary]);
     next.dietaryConfirmed = true;
@@ -162,6 +187,7 @@ export function describeConstraints(c: Constraints): string[] {
       `Budget: up to $${c.budgetMax}/person${c.budgetFlex ? ` (can stretch to $${c.budgetMax + c.budgetFlex})` : ""}`,
     );
   if (c.maxTravelMin !== null) lines.push(`Travel: up to ${c.maxTravelMin} min`);
+  if (c.startPoint) lines.push(`Coming from: ${c.startPoint.label}`);
   if (c.dietaryConfirmed)
     lines.push(`Diet: ${c.dietary.length ? c.dietary.map((d) => DIETARY_LABELS[d]).join(", ") : "no restrictions"}`);
   if (c.likedCuisines.length) lines.push(`Would like: ${c.likedCuisines.join(", ")}`);
@@ -177,7 +203,9 @@ export function describeConstraints(c: Constraints): string[] {
 }
 
 /** The next optional question worth asking once the essentials are in. */
-export function nextProbe(c: Constraints): Probe | null {
+export function nextProbe(c: Constraints, context: ProbeContext = {}): Probe | null {
   if (missingFields(c).length > 0) return null;
-  return PROBES.find((p) => !c.probesAsked.includes(p)) ?? null;
+  // Asking where someone is coming from is pointless when the plan can't use it, or when they already said.
+  const skipStart = !context.askStart || c.startPoint !== null;
+  return PROBES.find((p) => !c.probesAsked.includes(p) && !(p === "start_point" && skipStart)) ?? null;
 }

@@ -23,14 +23,25 @@ export async function poolForEvent(eventId: string): Promise<{ restaurants: Rest
   return { restaurants: RESTAURANTS, source: "seed" };
 }
 
-/** What the group UI needs to name a place; never anything about people. */
-export type PlaceSummary = Pick<Restaurant, "name" | "cuisine" | "pricePerPerson" | "travelMin">;
+/**
+ * What the group UI needs to name a place; never anything about people.
+ * `travelMin` is left out for pools with coordinates: there each person's
+ * assistant measures their own trip, so one number for the group would be
+ * wrong for most of them, and a per-person one must never be shown.
+ */
+export type PlaceSummary = Pick<Restaurant, "name" | "cuisine" | "pricePerPerson"> & { travelMin?: number };
 
 export function summarize(restaurants: Restaurant[], ids: Iterable<string>): Record<string, PlaceSummary> {
   const out: Record<string, PlaceSummary> = {};
   for (const id of ids) {
     const r = restaurants.find((x) => x.id === id);
-    if (r) out[id] = { name: r.name, cuisine: r.cuisine, pricePerPerson: r.pricePerPerson, travelMin: r.travelMin };
+    if (!r) continue;
+    out[id] = {
+      name: r.name,
+      cuisine: r.cuisine,
+      pricePerPerson: r.pricePerPerson,
+      ...(r.location ? {} : { travelMin: r.travelMin }),
+    };
   }
   return out;
 }
