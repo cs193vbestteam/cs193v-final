@@ -38,6 +38,9 @@
 html {
   background: var(--color-paper);
   scroll-behavior: smooth;
+  /* Decorative layers (the hero wash) may bleed past the viewport; clip on the
+     root too, since clipping on body alone does not stop the page scrolling sideways. */
+  overflow-x: clip;
 }
 body {
   background: var(--color-paper);
