@@ -1,0 +1,13 @@
+# gitleaks config: the default rules, plus narrow allowlists for known test fixtures.
+# Keep entries specific (file + line pattern). Never allowlist a real secret: rotate it.
+title = "cs193v-final gitleaks config"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Test-only ENCRYPTION_KEY in the Vitest config (not used anywhere real)"
+condition = "AND"
+paths = ['''^vitest\.config\.ts$''']
+regexTarget = "line"
+regexes = ['''^\s*ENCRYPTION_KEY:\s*"''']

@@ -39,6 +39,8 @@ afterEach(async () => {
 });
 
 const render = async (props: Partial<Parameters<typeof Reveal>[0]> = {}) => {
+  // Reveal requires children in its props type, so pass them as a prop here.
+  // eslint-disable-next-line react/no-children-prop
   await act(async () => root.render(createElement(Reveal, { children: "hello", ...props })));
   return container.firstElementChild as HTMLElement;
 };
