@@ -8,7 +8,9 @@ For how the system is put together, what it stores and how private data is prote
 
 ## See it live
 
-**The version in this repository is not deployed yet.** Until it is, the way to see it is to run it yourself, which takes a few commands and needs no accounts or keys (next section).
+**Live site:** _link to be added once this repository is deployed._
+
+Until then, the way to see it is to run it yourself, which takes a few commands and needs no accounts or keys (next section).
 
 An earlier version of the app is online at https://miniproject-europium.vercel.app. It has the same idea and flow but an older design, and it lacks most of what is described here.
 
