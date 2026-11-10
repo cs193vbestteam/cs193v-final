@@ -75,7 +75,11 @@ export type ChatState = {
   error?: string;
 };
 
-export async function sendMessageAction(eventId: string, inviteCode: string, text: string): Promise<ChatState | { error: string }> {
+export async function sendMessageAction(
+  eventId: string,
+  inviteCode: string,
+  text: string,
+): Promise<ChatState | { error: string }> {
   const user = await requireUser(`/e/${inviteCode}`);
   try {
     const { messages, constraints } = await sendMessage(eventId, user.id, text);

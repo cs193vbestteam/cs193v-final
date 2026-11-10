@@ -31,8 +31,18 @@ export type HardRule = z.infer<typeof HardRuleSchema>;
 
 export const SoftRuleSchema = z.discriminatedUnion("dim", [
   /** 1 at or below `ideal`, falling linearly to 0 at `ideal + tolerance`. */
-  z.object({ dim: z.literal("price"), ideal: z.number().positive(), tolerance: z.number().min(0), weight: z.number().min(0) }),
-  z.object({ dim: z.literal("distance"), ideal: z.number().positive(), tolerance: z.number().min(0), weight: z.number().min(0) }),
+  z.object({
+    dim: z.literal("price"),
+    ideal: z.number().positive(),
+    tolerance: z.number().min(0),
+    weight: z.number().min(0),
+  }),
+  z.object({
+    dim: z.literal("distance"),
+    ideal: z.number().positive(),
+    tolerance: z.number().min(0),
+    weight: z.number().min(0),
+  }),
   /** 1 for a preferred cuisine, `avoidScore` for an avoided one, neutral otherwise. */
   z.object({
     dim: z.literal("cuisine"),
@@ -52,7 +62,11 @@ export const PreferencesSchema = z.object({
 export type Preferences = z.infer<typeof PreferencesSchema>;
 
 /** Soft-dim names as they appear inside Preferences (distance, not travel). */
-export const SOFT_DIM_TO_RULE: Record<SoftDim, SoftRule["dim"]> = { budget: "price", travel: "distance", cuisine: "cuisine" };
+export const SOFT_DIM_TO_RULE: Record<SoftDim, SoftRule["dim"]> = {
+  budget: "price",
+  travel: "distance",
+  cuisine: "cuisine",
+};
 
 /** A cuisine nobody mentioned is not a problem, just not a treat. */
 export const NEUTRAL_CUISINE = 0.85;
@@ -103,7 +117,8 @@ export function relax(p: Preferences, level: number): Preferences {
     ...p,
     soft: p.soft.map((s) => {
       if (!loosened.has(s.dim)) return s;
-      if (s.dim === "cuisine") return { ...s, avoidScore: Math.max(s.avoidScore, 1 - 1 / factor), weight: s.weight / factor };
+      if (s.dim === "cuisine")
+        return { ...s, avoidScore: Math.max(s.avoidScore, 1 - 1 / factor), weight: s.weight / factor };
       // A zero tolerance has nothing to multiply: open a small band instead.
       const tolerance = s.tolerance > 0 ? s.tolerance * factor : s.ideal * 0.1;
       return { ...s, tolerance };

@@ -11,7 +11,9 @@ export default function NotFound() {
         That plan or page doesn&apos;t exist. Check the invite link, or head home.
       </p>
       <div className="rise mt-8" style={{ "--d": "0.24s" } as React.CSSProperties}>
-        <Link href="/" className="btn">Go home</Link>
+        <Link href="/" className="btn">
+          Go home
+        </Link>
       </div>
     </div>
   );

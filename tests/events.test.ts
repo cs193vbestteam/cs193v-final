@@ -21,7 +21,8 @@ beforeEach(() => {
 });
 
 let n = 0;
-const makeUser = (name: string) => createUser({ email: `${name}${n++}@test.dev`, displayName: name, password: "password123" });
+const makeUser = (name: string) =>
+  createUser({ email: `${name}${n++}@test.dev`, displayName: name, password: "password123" });
 
 async function setup() {
   const a = await makeUser("Alice");
@@ -211,7 +212,8 @@ describe("candidate pool per plan", () => {
     await setReady(event.id, b.id, true);
     const result = await runNegotiation(event.id, a.id);
     const mentioned = new Set(result.rounds.flatMap((r) => r.proposals.map((p) => p.proposal.restaurantId)));
-    for (const id of mentioned) expect(result.places[id]).toMatchObject({ name: expect.any(String), pricePerPerson: expect.any(Number) });
+    for (const id of mentioned)
+      expect(result.places[id]).toMatchObject({ name: expect.any(String), pricePerPerson: expect.any(Number) });
     expect(JSON.stringify(result.places)).not.toMatch(/budget|constraints|weight/);
     const stored = await getResult(event.id, b.id);
     expect(stored?.places).toEqual(result.places);

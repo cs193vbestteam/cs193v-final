@@ -22,10 +22,14 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           {event.title}
         </h1>
         <p className="lede rise mx-auto mt-5 max-w-md" style={{ "--d": "0.16s" } as React.CSSProperties}>
-          You&apos;ll get a private assistant. Tell it what actually works for you. Nobody else will see it,
-          only the final plan.
+          You&apos;ll get a private assistant. Tell it what actually works for you. Nobody else will see it, only the
+          final plan.
         </p>
-        <form action={joinEventAction.bind(null, code)} className="rise mt-8" style={{ "--d": "0.24s" } as React.CSSProperties}>
+        <form
+          action={joinEventAction.bind(null, code)}
+          className="rise mt-8"
+          style={{ "--d": "0.24s" } as React.CSSProperties}
+        >
           <button className="btn px-8">Join plan</button>
         </form>
       </div>
@@ -87,7 +91,9 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           <section className="card rise" style={{ "--d": "0.18s" } as React.CSSProperties}>
             <div className="flex items-baseline justify-between">
               <h2 className="font-serif text-xl">The group</h2>
-              <span className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">{members.length} joined</span>
+              <span className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
+                {members.length} joined
+              </span>
             </div>
             <ul className="mt-3 divide-y divide-line">
               {members.map((m) => (
@@ -102,7 +108,9 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
                       {m.userId === user.id && <span className="text-ink-3"> (you)</span>}
                     </span>
                   </span>
-                  <span className={`font-mono text-[0.6875rem] uppercase tracking-wider ${m.ready ? "text-moss" : "text-ink-3"}`}>
+                  <span
+                    className={`font-mono text-[0.6875rem] uppercase tracking-wider ${m.ready ? "text-moss" : "text-ink-3"}`}
+                  >
                     {m.ready ? "done" : "chatting…"}
                   </span>
                 </li>

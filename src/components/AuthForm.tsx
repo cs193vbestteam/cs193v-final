@@ -20,9 +20,13 @@ export function AuthForm({ mode, action, next }: Props) {
         <p className="eyebrow">{signup ? "New account" : "Welcome back"}</p>
         <h1 className="display mt-4 text-5xl sm:text-6xl">
           {signup ? (
-            <>Your assistant, <em>your</em> secrets.</>
+            <>
+              Your assistant, <em>your</em> secrets.
+            </>
           ) : (
-            <>Back to the <em>table.</em></>
+            <>
+              Back to the <em>table.</em>
+            </>
           )}
         </h1>
         <p className="lede mt-5">
@@ -39,16 +43,29 @@ export function AuthForm({ mode, action, next }: Props) {
           <input type="hidden" name="next" value={next} />
           {signup && (
             <div>
-              <label className="label" htmlFor="displayName">Name your friends will see</label>
-              <input className="input" id="displayName" name="displayName" required maxLength={40} autoComplete="nickname" />
+              <label className="label" htmlFor="displayName">
+                Name your friends will see
+              </label>
+              <input
+                className="input"
+                id="displayName"
+                name="displayName"
+                required
+                maxLength={40}
+                autoComplete="nickname"
+              />
             </div>
           )}
           <div>
-            <label className="label" htmlFor="email">Email</label>
+            <label className="label" htmlFor="email">
+              Email
+            </label>
             <input className="input" id="email" name="email" type="email" required autoComplete="email" />
           </div>
           <div>
-            <label className="label" htmlFor="password">Password</label>
+            <label className="label" htmlFor="password">
+              Password
+            </label>
             <input
               className="input"
               id="password"

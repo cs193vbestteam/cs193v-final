@@ -69,10 +69,19 @@ export type SimReport = {
   groups: GroupMetrics[];
 };
 
-export const DEFAULT_NEGOTIATE: Required<NonNullable<SimOptions["negotiate"]>> = { maxRounds: 6, perRound: 5, concessionFrom: 4, finalists: 3 };
+export const DEFAULT_NEGOTIATE: Required<NonNullable<SimOptions["negotiate"]>> = {
+  maxRounds: 6,
+  perRound: 5,
+  concessionFrom: 4,
+  finalists: 3,
+};
 
 /** Draw one scenario. Consumes the rng in a fixed order so a seed is a scenario. */
-export function synthCase(rng: Rng, id: number, opts: { restaurants: number; minSize: number; maxSize: number }): SimCase {
+export function synthCase(
+  rng: Rng,
+  id: number,
+  opts: { restaurants: number; minSize: number; maxSize: number },
+): SimCase {
   const size = rng.int(opts.minSize, opts.maxSize);
   const restaurants = synthRestaurants(rng, opts.restaurants);
   const constraints = synthGroup(rng, size);
@@ -101,7 +110,10 @@ export function countingAgent(agent: Agent, counter: { dims: number; calls: numb
   };
 }
 
-export async function runCase(c: SimCase, negotiateOpts: SimOptions["negotiate"] = DEFAULT_NEGOTIATE): Promise<{ result: NegotiationResult; metrics: GroupMetrics }> {
+export async function runCase(
+  c: SimCase,
+  negotiateOpts: SimOptions["negotiate"] = DEFAULT_NEGOTIATE,
+): Promise<{ result: NegotiationResult; metrics: GroupMetrics }> {
   const counter = { dims: 0, calls: 0 };
   const agents = agentsFor(c, (a) => countingAgent(a, counter));
   const result = await negotiate(agents, { restaurants: c.restaurants, ...negotiateOpts });
@@ -137,7 +149,12 @@ export async function runSim(opts: SimOptions): Promise<SimReport> {
       ...(llmMeta ? { llm: llmMeta } : {}),
     },
     overall: summarize("all", groups),
-    bySize: sizes.map((s) => summarize(`size ${s}`, groups.filter((g) => g.size === s))),
+    bySize: sizes.map((s) =>
+      summarize(
+        `size ${s}`,
+        groups.filter((g) => g.size === s),
+      ),
+    ),
     groups,
   };
 }
@@ -147,7 +164,11 @@ export async function runSim(opts: SimOptions): Promise<SimReport> {
  * about the protocol's numbers depends on the network; attaches an `llm`
  * outcome to each group it was asked about and returns the meta block.
  */
-async function runLlmBaseline(cases: SimCase[], groups: GroupMetrics[], opts: LlmRunOptions): Promise<NonNullable<SimReport["meta"]["llm"]>> {
+async function runLlmBaseline(
+  cases: SimCase[],
+  groups: GroupMetrics[],
+  opts: LlmRunOptions,
+): Promise<NonNullable<SimReport["meta"]["llm"]>> {
   const model = opts.model || process.env.ANTHROPIC_MODEL || DEFAULT_LLM_MODEL;
   const concurrency = opts.concurrency ?? DEFAULT_LLM_CONCURRENCY;
   const timeoutMs = opts.timeoutMs ?? DEFAULT_LLM_TIMEOUT_MS;
@@ -157,11 +178,18 @@ async function runLlmBaseline(cases: SimCase[], groups: GroupMetrics[], opts: Ll
     let proposal = null;
     let error: string | undefined;
     try {
-      proposal = await llmBaselinePick({ prefs: c.prefs, restaurants: c.restaurants }, { apiKey: opts.apiKey, model, timeoutMs });
+      proposal = await llmBaselinePick(
+        { prefs: c.prefs, restaurants: c.restaurants },
+        { apiKey: opts.apiKey, model, timeoutMs },
+      );
     } catch (err) {
       error = err instanceof Error ? err.message : String(err);
     }
-    const outcome: LlmOutcome = { ...outcomeFor(c.prefs, c.restaurants, proposal, m.oracle), model, ...(error ? { error } : {}) };
+    const outcome: LlmOutcome = {
+      ...outcomeFor(c.prefs, c.restaurants, proposal, m.oracle),
+      model,
+      ...(error ? { error } : {}),
+    };
     m.llm = outcome;
     done++;
     opts.onProgress?.(done, cases.length);

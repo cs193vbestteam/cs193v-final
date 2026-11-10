@@ -55,7 +55,12 @@ export default async function Home() {
                     <span className={`pill ${e.decided ? "pill-moss" : "pill-amber"}`}>
                       {e.decided ? "Decided" : "Collecting"}
                     </span>
-                    <span aria-hidden className="text-ink-3 transition-transform duration-500 ease-out group-hover:translate-x-1">→</span>
+                    <span
+                      aria-hidden
+                      className="text-ink-3 transition-transform duration-500 ease-out group-hover:translate-x-1"
+                    >
+                      →
+                    </span>
                   </span>
                 </Link>
               </li>
@@ -74,8 +79,14 @@ const STEPS = [
     body: "A one-minute private chat: budget, when you're free, what you won't eat. Nobody else sees it, not even the rest of the system.",
     demo: (
       <div className="space-y-2 text-sm">
-        <div className="flex justify-end"><span className="rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-paper">sat night only, under $40, no spicy</span></div>
-        <div className="flex"><span className="rounded-2xl rounded-bl-md bg-paper-2 px-3 py-1.5">Got it, noted privately.</span></div>
+        <div className="flex justify-end">
+          <span className="rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-paper">
+            sat night only, under $40, no spicy
+          </span>
+        </div>
+        <div className="flex">
+          <span className="rounded-2xl rounded-bl-md bg-paper-2 px-3 py-1.5">Got it, noted privately.</span>
+        </div>
       </div>
     ),
   },
@@ -126,17 +137,29 @@ function Landing() {
           <p className="eyebrow rise" style={{ "--d": "0s" } as React.CSSProperties}>
             Group decisions · private constraints
           </p>
-          <h1 className="display rise mt-5 text-[clamp(3rem,8.5vw,5.75rem)]" style={{ "--d": "0.08s" } as React.CSSProperties}>
+          <h1
+            className="display rise mt-5 text-[clamp(3rem,8.5vw,5.75rem)]"
+            style={{ "--d": "0.08s" } as React.CSSProperties}
+          >
             Group plans, <em>without</em> the group chat.
           </h1>
           <p className="lede rise mt-6" style={{ "--d": "0.18s" } as React.CSSProperties}>
             Everyone says &ldquo;whatever works&rdquo; and nobody means it. Settle lets each person tell their own
             assistant the real constraints, then the assistants negotiate a plan nobody has to secretly suffer through.
           </p>
-          <div className="rise mt-8 flex flex-wrap items-center gap-3" style={{ "--d": "0.28s" } as React.CSSProperties}>
-            <Link href="/signup" className="btn">Start a plan</Link>
-            <Link href="/login" className="btn-ghost">Log in</Link>
-            <span className="ml-1 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink-3">free · takes a minute</span>
+          <div
+            className="rise mt-8 flex flex-wrap items-center gap-3"
+            style={{ "--d": "0.28s" } as React.CSSProperties}
+          >
+            <Link href="/signup" className="btn">
+              Start a plan
+            </Link>
+            <Link href="/login" className="btn-ghost">
+              Log in
+            </Link>
+            <span className="ml-1 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink-3">
+              free · takes a minute
+            </span>
           </div>
         </div>
         <div className="rise" style={{ "--d": "0.3s" } as React.CSSProperties}>
@@ -148,8 +171,8 @@ function Landing() {
       <Reveal as="section" className="mt-28 grid gap-8 border-t border-line pt-10 lg:grid-cols-[0.4fr_0.6fr]">
         <p className="eyebrow">The problem</p>
         <p className="font-serif text-2xl leading-snug text-ink sm:text-[2rem]">
-          Everyone has real limits: a budget, a Saturday that only works after six, a 20-minute radius.
-          But saying <em className="text-seal">&ldquo;$40 max&rdquo;</em> in the group sounds cheap, and
+          Everyone has real limits: a budget, a Saturday that only works after six, a 20-minute radius. But saying{" "}
+          <em className="text-seal">&ldquo;$40 max&rdquo;</em> in the group sounds cheap, and
           <em className="text-seal"> &ldquo;not that far&rdquo;</em> sounds difficult. So everyone says
           &ldquo;whatever&rdquo;, the information stays hidden, and the loudest person decides.
         </p>
@@ -159,7 +182,9 @@ function Landing() {
       <section className="mt-28">
         <Reveal className="flex items-end justify-between border-t border-line pt-10">
           <h2 className="display text-4xl sm:text-5xl">How it works</h2>
-          <span className="hidden font-mono text-xs uppercase tracking-[0.14em] text-ink-3 sm:inline">three steps · one line</span>
+          <span className="hidden font-mono text-xs uppercase tracking-[0.14em] text-ink-3 sm:inline">
+            three steps · one line
+          </span>
         </Reveal>
         <ol className="mt-10 grid gap-5 md:grid-cols-3">
           {STEPS.map((s, i) => (
@@ -184,7 +209,10 @@ function Landing() {
             every assistant answers with a verdict and at most one dimension name. Here is what that looks like.
           </p>
         </Reveal>
-        <Reveal delay={0.1} className="mt-10 overflow-hidden rounded-[1.5rem] border border-line bg-surface shadow-[var(--shadow-card)]">
+        <Reveal
+          delay={0.1}
+          className="mt-10 overflow-hidden rounded-[1.5rem] border border-line bg-surface shadow-[var(--shadow-card)]"
+        >
           <div className="hidden border-b border-line font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink-3 sm:grid sm:grid-cols-[6rem_1fr_1fr]">
             <div className="px-5 py-3">Field</div>
             <div className="px-5 py-3">What your assistant knows</div>
@@ -192,15 +220,23 @@ function Landing() {
           </div>
           {LEDGER.map((row) => (
             <div key={row.label} className="grid border-b border-line last:border-b-0 sm:grid-cols-[6rem_1fr_1fr]">
-              <div className="px-5 pt-4 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink-3 sm:py-4">{row.label}</div>
+              <div className="px-5 pt-4 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink-3 sm:py-4">
+                {row.label}
+              </div>
               <div className="px-5 pb-2 pt-1 text-[0.9375rem] sm:py-4">{row.mine}</div>
               <div className="flex items-center gap-2 px-5 pb-4 pt-1 sm:border-l sm:border-line sm:py-4">
-                <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-ink-3 sm:hidden">group sees</span>
+                <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-ink-3 sm:hidden">
+                  group sees
+                </span>
                 <span className="redact" style={{ width: `${row.width * 3.5 + 2}rem` }} />
                 {row.verdict === "yes" ? (
-                  <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-0.5 font-mono text-xs text-moss">accept</span>
+                  <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-0.5 font-mono text-xs text-moss">
+                    accept
+                  </span>
                 ) : (
-                  <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-0.5 font-mono text-xs text-amber">reluctant · price</span>
+                  <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-0.5 font-mono text-xs text-amber">
+                    reluctant · price
+                  </span>
                 )}
               </div>
             </div>
@@ -229,8 +265,12 @@ function Landing() {
           First version: picking a restaurant and a time for the weekend. Trips, roommates and chores come next.
         </p>
         <div className="mt-8 flex justify-center gap-3">
-          <Link href="/signup" className="btn">Start a plan</Link>
-          <Link href="/login" className="btn-ghost">Log in</Link>
+          <Link href="/signup" className="btn">
+            Start a plan
+          </Link>
+          <Link href="/login" className="btn-ghost">
+            Log in
+          </Link>
         </div>
       </Reveal>
     </div>

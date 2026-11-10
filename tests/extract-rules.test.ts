@@ -88,7 +88,10 @@ describe("extractCuisines", () => {
       likedCuisines: ["japanese"],
       dislikedCuisines: ["american"],
     });
-    expect(extractCuisines("craving ramen, tired of hot pot")).toEqual({ likedCuisines: ["japanese"], dislikedCuisines: ["chinese"] });
+    expect(extractCuisines("craving ramen, tired of hot pot")).toEqual({
+      likedCuisines: ["japanese"],
+      dislikedCuisines: ["chinese"],
+    });
   });
 });
 
@@ -168,12 +171,14 @@ describe("bare answers to the pending question", () => {
       ["nothing", []],
     ] as const) {
       const pending = (["time", "budget", "distance", "diet"] as const).find((f) => {
-        const missing = new Set(["time", "budget", "distance", "diet"].filter((x) => {
-          if (x === "time") return !c.availableSlots?.length;
-          if (x === "budget") return c.budgetMax === null;
-          if (x === "distance") return c.maxTravelMin === null;
-          return !c.dietaryConfirmed;
-        }));
+        const missing = new Set(
+          ["time", "budget", "distance", "diet"].filter((x) => {
+            if (x === "time") return !c.availableSlots?.length;
+            if (x === "budget") return c.budgetMax === null;
+            if (x === "distance") return c.maxTravelMin === null;
+            return !c.dietaryConfirmed;
+          }),
+        );
         return missing.has(f);
       });
       const update = extractRules(text, pending);
@@ -189,7 +194,12 @@ describe("bare answers to the pending question", () => {
 });
 
 describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
-  const essentials = { availableSlots: ["sat_dinner" as const], budgetMax: 40, maxTravelMin: 15, dietaryConfirmed: true };
+  const essentials = {
+    availableSlots: ["sat_dinner" as const],
+    budgetMax: 40,
+    maxTravelMin: 15,
+    dietaryConfirmed: true,
+  };
   const start = (o: Parameters<typeof mergeConstraints>[1] = {}) => mergeConstraints(emptyConstraints(), o);
 
   it("turns a vague budget into an either/or and reads the answer", () => {
@@ -221,7 +231,11 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
   it("asks the two trade-offs and the concession question once the essentials are in, each exactly once", () => {
     let c = start(essentials);
     const t1 = ruleTurn("nothing", start({ ...essentials, dietaryConfirmed: false }));
-    expect(t1.update).toMatchObject({ dietaryConfirmed: true, pending: "tradeoff_budget_travel", probesAsked: ["tradeoff_budget_travel"] });
+    expect(t1.update).toMatchObject({
+      dietaryConfirmed: true,
+      pending: "tradeoff_budget_travel",
+      probesAsked: ["tradeoff_budget_travel"],
+    });
     expect(t1.reply).toMatch(/paying \$10 over/);
     c = mergeConstraints(c, t1.update);
 
@@ -254,7 +268,11 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
   });
 
   it("an off-topic message while a probe is pending is still understood, and the probe is repeated", () => {
-    const c = start({ ...essentials, pending: "concession", probesAsked: ["tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"] });
+    const c = start({
+      ...essentials,
+      pending: "concession",
+      probesAsked: ["tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"],
+    });
     const t = ruleTurn("actually no seafood for me", c);
     expect(t.update).toMatchObject({ dietary: ["no_seafood"] });
     expect(t.reply).toMatch(/what goes first/);
@@ -267,11 +285,20 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
 });
 
 describe("answering an either/or by echoing an option", () => {
-  const essentials = { availableSlots: ["sat_dinner" as const], budgetMax: 40, maxTravelMin: 15, dietaryConfirmed: true };
+  const essentials = {
+    availableSlots: ["sat_dinner" as const],
+    budgetMax: 40,
+    maxTravelMin: 15,
+    dietaryConfirmed: true,
+  };
   const PROBE_ORDER = ["tradeoff_budget_travel", "tradeoff_cuisine_travel", "concession"] as const;
   const pendingOn = (pending: Parameters<typeof answerPending>[1]) => {
     const upTo = PROBE_ORDER.indexOf(pending as (typeof PROBE_ORDER)[number]);
-    return mergeConstraints(emptyConstraints(), { ...essentials, pending, probesAsked: upTo >= 0 ? [...PROBE_ORDER.slice(0, upTo + 1)] : [] });
+    return mergeConstraints(emptyConstraints(), {
+      ...essentials,
+      pending,
+      probesAsked: upTo >= 0 ? [...PROBE_ORDER.slice(0, upTo + 1)] : [],
+    });
   };
 
   it.each([
@@ -298,7 +325,11 @@ describe("answering an either/or by echoing an option", () => {
   it("vague either/ors accept an echo too", () => {
     const c = mergeConstraints(emptyConstraints(), { availableSlots: ["sat_dinner"], pending: "vague_budget" });
     expect(ruleTurn("the less exciting one", c).update).toMatchObject({ budgetMax: 60, pending: null });
-    const d = mergeConstraints(emptyConstraints(), { availableSlots: ["sat_dinner"], budgetMax: 40, pending: "vague_distance" });
+    const d = mergeConstraints(emptyConstraints(), {
+      availableSlots: ["sat_dinner"],
+      budgetMax: 40,
+      pending: "vague_distance",
+    });
     expect(ruleTurn("so-so place nearby", d).update).toMatchObject({ maxTravelMin: 40, pending: null });
   });
 

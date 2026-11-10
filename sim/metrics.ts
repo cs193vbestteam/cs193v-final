@@ -80,7 +80,9 @@ export function outcomeFor(
 }
 
 /** The baseline: no negotiation, just take the first round's best-received candidate. */
-export function naivePick(result: NegotiationResult): { proposal: Proposal; accepts: number; reluctant: number; rejects: number } | null {
+export function naivePick(
+  result: NegotiationResult,
+): { proposal: Proposal; accepts: number; reluctant: number; rejects: number } | null {
   const first = result.rounds[0];
   if (!first || first.proposals.length === 0) return null;
   const ranked = [...first.proposals].sort(
@@ -90,7 +92,12 @@ export function naivePick(result: NegotiationResult): { proposal: Proposal; acce
       `${a.proposal.restaurantId}@${a.proposal.slot}`.localeCompare(`${b.proposal.restaurantId}@${b.proposal.slot}`),
   );
   const top = ranked[0];
-  return { proposal: top.proposal, accepts: top.tally.accept, reluctant: top.tally.reluctant, rejects: top.tally.reject };
+  return {
+    proposal: top.proposal,
+    accepts: top.tally.accept,
+    reluctant: top.tally.reluctant,
+    rejects: top.tally.reject,
+  };
 }
 
 export function metricsFor(
@@ -117,7 +124,12 @@ export function metricsFor(
     concessionLevel: result.concessionLevel,
     oracle,
     protocol,
-    naive: { ...naiveOutcome, accepts: naive?.accepts ?? 0, reluctant: naive?.reluctant ?? 0, rejects: naive?.rejects ?? 0 },
+    naive: {
+      ...naiveOutcome,
+      accepts: naive?.accepts ?? 0,
+      reluctant: naive?.reluctant ?? 0,
+      rejects: naive?.rejects ?? 0,
+    },
     leakedDims: result.leakedDims,
     leakedPerPersonPerRound: rounds > 0 && size > 0 ? result.leakedDims / (size * rounds) : 0,
     observedDims,
@@ -205,7 +217,8 @@ export function summarize(label: string, ms: readonly GroupMetrics[]): Summary {
   let hits = 0;
   for (const m of ms) {
     statusCounts[m.status]++;
-    if (m.converged) roundsHistogram[String(m.roundsToConverge)] = (roundsHistogram[String(m.roundsToConverge)] ?? 0) + 1;
+    if (m.converged)
+      roundsHistogram[String(m.roundsToConverge)] = (roundsHistogram[String(m.roundsToConverge)] ?? 0) + 1;
     if (m.oracle.feasibleCount > 0) {
       feasible++;
       if (m.converged) agreedFeasible++;

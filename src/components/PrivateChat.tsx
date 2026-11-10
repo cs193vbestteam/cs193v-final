@@ -14,7 +14,12 @@ type Props = {
   ready: boolean;
 };
 
-const MISSING_LABEL: Record<MissingField, string> = { time: "when", budget: "budget", distance: "distance", diet: "diet" };
+const MISSING_LABEL: Record<MissingField, string> = {
+  time: "when",
+  budget: "budget",
+  distance: "distance",
+  diet: "diet",
+};
 
 type ChatSnapshot = {
   eventId: string;
@@ -31,11 +36,18 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
   const [pending, startTransition] = useTransition();
   const bottom = useRef<HTMLDivElement>(null);
 
-  const serverSnapshot: ChatSnapshot = { eventId, messages: initialMessages, summary: initialSummary, missing: initialMissing };
+  const serverSnapshot: ChatSnapshot = {
+    eventId,
+    messages: initialMessages,
+    summary: initialSummary,
+    missing: initialMissing,
+  };
   // Chats are append-only. Keep a completed send until server props catch up,
   // then render refreshed props directly instead of copying them into state.
-  const latest = localReply?.eventId === eventId && localReply.messages.length > initialMessages.length
-    ? localReply : serverSnapshot;
+  const latest =
+    localReply?.eventId === eventId && localReply.messages.length > initialMessages.length
+      ? localReply
+      : serverSnapshot;
   // A refresh during a send must not erase its optimistic message or draft.
   const { messages, summary, missing } = submission?.eventId === eventId ? submission : latest;
 
@@ -89,7 +101,10 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
         </span>
       </header>
 
-      <div className="scroll-quiet max-h-[26rem] min-h-[16rem] flex-1 space-y-3 overflow-y-auto px-5 py-4 lg:max-h-none" aria-live="polite">
+      <div
+        className="scroll-quiet max-h-[26rem] min-h-[16rem] flex-1 space-y-3 overflow-y-auto px-5 py-4 lg:max-h-none"
+        aria-live="polite"
+      >
         {messages.map((m, i) => (
           <div key={i} className={`bubble-in flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <p
@@ -105,7 +120,11 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
         ))}
         {pending && (
           <p className="flex items-center gap-2 text-xs text-ink-3">
-            <span className="thinking inline-flex gap-1"><span /><span /><span /></span>
+            <span className="thinking inline-flex gap-1">
+              <span />
+              <span />
+              <span />
+            </span>
             Assistant is thinking…
           </p>
         )}
@@ -122,7 +141,9 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
           aria-label="Message your assistant"
           autoComplete="off"
         />
-        <button className="btn" disabled={pending || !text.trim()}>Send</button>
+        <button className="btn" disabled={pending || !text.trim()}>
+          Send
+        </button>
       </form>
 
       <div className="border-t border-line bg-paper-2/40 px-5 py-4">
@@ -151,7 +172,9 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
           <p className="mt-2.5 text-sm text-ink-3">Nothing yet. Just talk to it like a friend who keeps secrets.</p>
         )}
         <div className="mt-4 flex items-center justify-between gap-3">
-          <span className={`font-mono text-[0.6875rem] uppercase tracking-wider ${missing.length ? "text-ink-3" : "text-moss"}`}>
+          <span
+            className={`font-mono text-[0.6875rem] uppercase tracking-wider ${missing.length ? "text-ink-3" : "text-moss"}`}
+          >
             {missing.length ? `Still needs: ${missing.map((m) => MISSING_LABEL[m]).join(", ")}` : "All set ✓"}
           </span>
           <button
@@ -162,7 +185,11 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
             {ready ? "Not done yet" : "I'm done"}
           </button>
         </div>
-        {error && <p role="alert" className="mt-3 text-sm text-seal">{error}</p>}
+        {error && (
+          <p role="alert" className="mt-3 text-sm text-seal">
+            {error}
+          </p>
+        )}
       </div>
     </section>
   );

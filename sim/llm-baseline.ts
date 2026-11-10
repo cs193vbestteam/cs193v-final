@@ -35,7 +35,8 @@ export type LlmBaselineOptions = {
 
 export const PICK_TOOL = {
   name: "pick_plan",
-  description: "Commit to the single best (restaurant, slot) plan for the whole group. Both fields must come from the candidate list.",
+  description:
+    "Commit to the single best (restaurant, slot) plan for the whole group. Both fields must come from the candidate list.",
   input_schema: {
     type: "object",
     properties: {
@@ -164,7 +165,11 @@ export async function llmBaselinePick(group: LlmBaselineGroup, opts: LlmBaseline
  * Run `fn` over `items` with at most `concurrency` in flight, preserving order.
  * Small and local so the harness needs no extra dependency.
  */
-export async function mapWithConcurrency<T, R>(items: readonly T[], concurrency: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> {
+export async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
   const out: R[] = new Array(items.length);
   let next = 0;
   const workers = Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, async () => {

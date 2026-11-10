@@ -4,11 +4,18 @@ import type { StoredResult } from "@/lib/events";
 import type { Tally } from "@/lib/mediator";
 import { getRestaurant } from "@/lib/restaurants";
 
-export const DIM_LABEL: Record<Dim, string> = { time: "timing", price: "price", diet: "diet", distance: "distance", cuisine: "cuisine" };
+export const DIM_LABEL: Record<Dim, string> = {
+  time: "timing",
+  price: "price",
+  diet: "diet",
+  distance: "distance",
+  cuisine: "cuisine",
+};
 
 function describeDims(t: Tally): string {
   const parts: string[] = [];
-  for (const [dim, n] of Object.entries(t.rejectDims) as [Dim, number][]) parts.push(`${n}× reject · ${DIM_LABEL[dim]}`);
+  for (const [dim, n] of Object.entries(t.rejectDims) as [Dim, number][])
+    parts.push(`${n}× reject · ${DIM_LABEL[dim]}`);
   for (const [dim, n] of Object.entries(t.dims) as [Dim, number][]) parts.push(`${n}× reluctant · ${DIM_LABEL[dim]}`);
   return parts.join(", ");
 }
@@ -31,7 +38,10 @@ export function ResultCard({ result }: { result: StoredResult }) {
   const tried = result.rounds.reduce((n, round) => n + round.proposals.length, 0);
   const showPlan = r && result.proposal && result.status !== "no_deal";
   const names = result.memberNames ?? [];
-  const reservations = (result.reservations ?? []).map((x) => ({ name: names[x.member] ?? "Someone", dim: DIM_LABEL[x.dim] }));
+  const reservations = (result.reservations ?? []).map((x) => ({
+    name: names[x.member] ?? "Someone",
+    dim: DIM_LABEL[x.dim],
+  }));
 
   return (
     <div className={`relative overflow-hidden rounded-2xl border bg-surface ${tone.border}`}>
@@ -63,7 +73,8 @@ export function ResultCard({ result }: { result: StoredResult }) {
         )}
         {result.concessionLevel > 0 && result.status !== "no_deal" && (
           <p className="mt-2 text-xs text-ink-3">
-            Reached after {result.concessionLevel} concession step{result.concessionLevel === 1 ? "" : "s"}; nobody saw what anyone gave up.
+            Reached after {result.concessionLevel} concession step{result.concessionLevel === 1 ? "" : "s"}; nobody saw
+            what anyone gave up.
           </p>
         )}
         {result.status === "agreed" && (
@@ -81,9 +92,12 @@ export function ResultCard({ result }: { result: StoredResult }) {
       <details className="group px-4 pb-4 text-xs text-ink-2">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3 marker:hidden [&::-webkit-details-marker]:hidden">
           <span>
-            How they decided: {result.rounds.length} round{result.rounds.length === 1 ? "" : "s"}, {tried} options, {result.participants} people
+            How they decided: {result.rounds.length} round{result.rounds.length === 1 ? "" : "s"}, {tried} options,{" "}
+            {result.participants} people
           </span>
-          <span aria-hidden className="transition-transform duration-300 group-open:rotate-180">↓</span>
+          <span aria-hidden className="transition-transform duration-300 group-open:rotate-180">
+            ↓
+          </span>
         </summary>
 
         <ol className="mt-3 space-y-3">
@@ -98,9 +112,16 @@ export function ResultCard({ result }: { result: StoredResult }) {
                   const name = place(p.proposal.restaurantId)?.name ?? "?";
                   const why = describeDims(p.tally);
                   return (
-                    <li key={`${p.proposal.restaurantId}-${p.proposal.slot}`} className="grid grid-cols-[1fr_4rem] items-center gap-3">
+                    <li
+                      key={`${p.proposal.restaurantId}-${p.proposal.slot}`}
+                      className="grid grid-cols-[1fr_4rem] items-center gap-3"
+                    >
                       <span className="truncate" title={why || undefined}>
-                        {p.retried && <span className="text-amber" title="asked again after a concession step">↺ </span>}
+                        {p.retried && (
+                          <span className="text-amber" title="asked again after a concession step">
+                            ↺{" "}
+                          </span>
+                        )}
                         <span className="text-ink">{name}</span>
                         <span className="text-ink-3"> · {SLOT_LABELS[p.proposal.slot]}</span>
                         {why && <span className="text-ink-3"> · {why}</span>}
@@ -116,12 +137,20 @@ export function ResultCard({ result }: { result: StoredResult }) {
 
         {result.finalists?.length > 0 && (
           <div className="mt-4">
-            <div className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">Final pick · Nash product of 1–5 buckets</div>
+            <div className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
+              Final pick · Nash product of 1–5 buckets
+            </div>
             <ul className="mt-1.5 space-y-1">
               {result.finalists.map((f) => {
-                const chosen = result.proposal && f.proposal.restaurantId === result.proposal.restaurantId && f.proposal.slot === result.proposal.slot;
+                const chosen =
+                  result.proposal &&
+                  f.proposal.restaurantId === result.proposal.restaurantId &&
+                  f.proposal.slot === result.proposal.slot;
                 return (
-                  <li key={`${f.proposal.restaurantId}-${f.proposal.slot}`} className="flex items-center justify-between gap-3">
+                  <li
+                    key={`${f.proposal.restaurantId}-${f.proposal.slot}`}
+                    className="flex items-center justify-between gap-3"
+                  >
                     <span className={chosen ? "text-ink" : "text-ink-2"}>
                       {chosen ? "★ " : ""}
                       {place(f.proposal.restaurantId)?.name ?? "?"} · {SLOT_LABELS[f.proposal.slot]}
@@ -138,8 +167,10 @@ export function ResultCard({ result }: { result: StoredResult }) {
         )}
 
         <p className="mt-3 text-ink-3">
-          Only anonymous counts and dimension names are shown; buckets are sorted so they can&apos;t be traced back to anyone.
-          {typeof result.leakedDims === "number" && ` The mediator saw ${result.leakedDims} dimension name${result.leakedDims === 1 ? "" : "s"} in total, and no numbers.`}
+          Only anonymous counts and dimension names are shown; buckets are sorted so they can&apos;t be traced back to
+          anyone.
+          {typeof result.leakedDims === "number" &&
+            ` The mediator saw ${result.leakedDims} dimension name${result.leakedDims === 1 ? "" : "s"} in total, and no numbers.`}
         </p>
       </details>
     </div>

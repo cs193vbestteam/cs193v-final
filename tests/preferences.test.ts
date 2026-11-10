@@ -6,7 +6,9 @@ const c = (o: Parameters<typeof mergeConstraints>[1]) => mergeConstraints(emptyC
 
 describe("compile", () => {
   it("produces a schema-valid hard/soft/concession_order document", () => {
-    const p = compile(c({ budgetMax: 40, budgetFlex: 10, maxTravelMin: 15, availableSlots: ["sat_dinner"], dietary: ["no_spicy"] }));
+    const p = compile(
+      c({ budgetMax: 40, budgetFlex: 10, maxTravelMin: 15, availableSlots: ["sat_dinner"], dietary: ["no_spicy"] }),
+    );
     expect(PreferencesSchema.parse(p)).toEqual(p);
     expect(p.hard).toEqual(
       expect.arrayContaining([
@@ -43,7 +45,15 @@ describe("compile", () => {
 });
 
 describe("relax", () => {
-  const base = compile(c({ budgetMax: 40, budgetFlex: 10, maxTravelMin: 20, dislikedCuisines: ["thai"], concessionOrder: ["cuisine", "budget", "travel"] }));
+  const base = compile(
+    c({
+      budgetMax: 40,
+      budgetFlex: 10,
+      maxTravelMin: 20,
+      dislikedCuisines: ["thai"],
+      concessionOrder: ["cuisine", "budget", "travel"],
+    }),
+  );
 
   it("level 0 is the identity", () => {
     expect(relax(base, 0)).toBe(base);

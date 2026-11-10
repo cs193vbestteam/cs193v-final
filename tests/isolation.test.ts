@@ -38,7 +38,8 @@ function reachable(entry: string): Set<string> {
 describe("the mediator cannot reach anyone's preferences", () => {
   it.each(ENTRY_POINTS)("%s.ts imports no storage, crypto or vault module (transitively)", (entry) => {
     const graph = reachable(entry);
-    for (const bad of FORBIDDEN) expect(graph.has(bad), `${entry} reaches ${bad} via ${[...graph].join(" → ")}`).toBe(false);
+    for (const bad of FORBIDDEN)
+      expect(graph.has(bad), `${entry} reaches ${bad} via ${[...graph].join(" → ")}`).toBe(false);
   });
 
   it("the negotiation modules never mention the stored column or decryption", () => {

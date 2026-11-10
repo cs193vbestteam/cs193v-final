@@ -4,7 +4,19 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { runNegotiationAction } from "@/app/actions";
 
-export function NegotiateButton({ eventId, inviteCode, readyCount, memberCount, decided }: { eventId: string; inviteCode: string; readyCount: number; memberCount: number; decided: boolean }) {
+export function NegotiateButton({
+  eventId,
+  inviteCode,
+  readyCount,
+  memberCount,
+  decided,
+}: {
+  eventId: string;
+  inviteCode: string;
+  readyCount: number;
+  memberCount: number;
+  decided: boolean;
+}) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
@@ -23,9 +35,15 @@ export function NegotiateButton({ eventId, inviteCode, readyCount, memberCount, 
       </button>
       {readyCount < 2 && <p className="mt-2 text-center text-xs text-ink-3">Needs at least 2 people marked done.</p>}
       {memberCount >= 2 && readyCount < memberCount && (
-        <p className="mt-2 text-center text-xs text-ink-3">{readyCount} of {memberCount} people ready. Waiting for everyone to finish.</p>
+        <p className="mt-2 text-center text-xs text-ink-3">
+          {readyCount} of {memberCount} people ready. Waiting for everyone to finish.
+        </p>
       )}
-      {error && <p role="alert" className="mt-2 text-sm text-seal">{error}</p>}
+      {error && (
+        <p role="alert" className="mt-2 text-sm text-seal">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -38,7 +56,9 @@ export function CopyInvite({ url }: { url: string }) {
   useEffect(() => {
     setFeedback(null);
     // Ignore results from a previous URL or an unmounted component.
-    return () => { request.current += 1; };
+    return () => {
+      request.current += 1;
+    };
   }, [url]);
 
   useEffect(() => {
@@ -76,7 +96,13 @@ export function CopyInvite({ url }: { url: string }) {
       {status === "failed" && (
         <label className="block text-xs text-ink-3">
           Invitation link
-          <input className="input mt-1 font-mono text-xs" type="text" readOnly value={url} onFocus={(event) => event.currentTarget.select()} />
+          <input
+            className="input mt-1 font-mono text-xs"
+            type="text"
+            readOnly
+            value={url}
+            onFocus={(event) => event.currentTarget.select()}
+          />
         </label>
       )}
     </div>
