@@ -1,0 +1,146 @@
+import { randomBytes } from "node:crypto";
+import { expect, test, type Browser, type Page } from "@playwright/test";
+
+/**
+ * The whole product in one pass: two people sign up, one starts a plan, the
+ * other joins by invite link, each tells their own assistant their limits,
+ * and the group gets a plan. Along the way it checks the promise the product
+ * makes: what one person told their assistant never shows up for anyone else.
+ */
+
+type Person = {
+  name: string;
+  email: string;
+  password: string;
+  /** What they tell their assistant. One message covers time, budget, distance and diet. */
+  message: string;
+  /** Strings that only this person's private side may ever show. */
+  secrets: string[];
+};
+
+// Fresh per run: nothing here is a real credential, and the database starts empty.
+const run = randomBytes(4).toString("hex");
+const person = (name: string, message: string, secrets: string[]): Person => ({
+  name,
+  email: `${name.toLowerCase()}-${run}@e2e.test`,
+  password: randomBytes(12).toString("base64url"),
+  message,
+  secrets,
+});
+
+// Budgets and travel limits are numbers no seed restaurant uses, so they can only appear on a page by leaking.
+const ALEX = person("Alex", "Saturday dinner or Sunday lunch, under $47, up to 29 minutes, no spicy", [
+  "$47",
+  "29 min",
+  "under $47",
+  "no spicy",
+]);
+const BLAKE = person("Blake", "I'm free all weekend, max $53 per person, 33 minutes, no restrictions", [
+  "$53",
+  "33 min",
+  "max $53",
+]);
+const CASEY = person("Casey", "", []);
+
+async function newSession(browser: Browser): Promise<Page> {
+  const context = await browser.newContext();
+  return context.newPage();
+}
+
+async function signUp(page: Page, who: Person, next = "/") {
+  await page.goto(`/signup?next=${encodeURIComponent(next)}`);
+  await page.getByLabel("Name your friends will see").fill(who.name);
+  await page.getByLabel("Email").fill(who.email);
+  await page.getByLabel("Password").fill(who.password);
+  await page.getByRole("button", { name: "Create account" }).click();
+}
+
+async function tellAssistant(page: Page, who: Person) {
+  await page.getByLabel("Message your assistant").fill(who.message);
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.getByText("All set ✓")).toBeVisible();
+  // The owner sees their own numbers in "What your assistant knows".
+  await expect(page.getByText(`Budget: up to ${who.secrets[0]}/person`)).toBeVisible();
+  await page.getByRole("button", { name: "I'm done" }).click();
+  await expect(page.getByRole("button", { name: "Not done yet" })).toBeVisible();
+}
+
+async function expectNoSecrets(page: Page, of: Person) {
+  const text = await page.locator("body").innerText();
+  for (const secret of of.secrets) expect(text, `"${secret}" leaked to another person's page`).not.toContain(secret);
+}
+
+test("two people plan a meal without seeing each other's limits", async ({ browser }) => {
+  const alex = await newSession(browser);
+  const blake = await newSession(browser);
+  const casey = await newSession(browser);
+
+  await test.step("Alex signs up and starts a plan", async () => {
+    await signUp(alex, ALEX);
+    await alex.getByLabel("Plan name").fill("Weekend dinner");
+    await alex.getByRole("button", { name: "Start a plan" }).click();
+    await expect(alex).toHaveURL(/\/e\/[a-z0-9]+$/);
+    await expect(alex.getByRole("heading", { name: "Weekend dinner" })).toBeVisible();
+    await expect(alex.getByText("seed places")).toBeVisible();
+  });
+  const planPath = new URL(alex.url()).pathname;
+
+  await test.step("Blake follows the invite link, signs up and joins", async () => {
+    await blake.goto(planPath);
+    await expect(blake).toHaveURL(/\/login\?next=/);
+    await signUp(blake, BLAKE, planPath);
+    await expect(blake.getByText("You've been invited to")).toBeVisible();
+    await blake.getByRole("button", { name: "Join plan" }).click();
+    await expect(blake.getByRole("heading", { name: "Your private assistant" })).toBeVisible();
+    await expect(blake.getByText("2 joined")).toBeVisible();
+  });
+
+  await test.step("a plan cannot be found until everyone is done", async () => {
+    await expect(alex.getByRole("button", { name: "Find a plan" })).toBeDisabled();
+  });
+
+  await test.step("each person tells their own assistant their limits", async () => {
+    await tellAssistant(alex, ALEX);
+    await tellAssistant(blake, BLAKE);
+  });
+
+  await test.step("neither sees the other's chat or numbers before the result", async () => {
+    await alex.reload();
+    await blake.reload();
+    await expectNoSecrets(blake, ALEX);
+    await expectNoSecrets(alex, BLAKE);
+    await expect(alex.getByText("2 of 2 ready")).toBeVisible();
+  });
+
+  await test.step("the assistants negotiate and the group gets a plan", async () => {
+    await alex.getByRole("button", { name: "Find a plan" }).click();
+    await expect(alex.getByText("Everyone's in")).toBeVisible();
+    await expect(alex.getByText(/~\$\d+\/person/)).toBeVisible();
+    await blake.reload();
+    await expect(blake.getByText("Everyone's in")).toBeVisible();
+    // Both see the same plan.
+    const plan = (page: Page) => page.getByText(/~\$\d+\/person/).innerText();
+    expect(await plan(blake)).toBe(await plan(alex));
+  });
+
+  await test.step("the result reveals nobody's limits", async () => {
+    await expectNoSecrets(blake, ALEX);
+    await expectNoSecrets(alex, BLAKE);
+  });
+
+  await test.step("someone outside the plan sees only the invitation", async () => {
+    await signUp(casey, CASEY, planPath);
+    await expect(casey.getByRole("button", { name: "Join plan" })).toBeVisible();
+    const text = await casey.locator("body").innerText();
+    expect(text).not.toContain("Everyone's in");
+    expect(text).not.toContain(ALEX.name);
+    expect(text).not.toContain(BLAKE.name);
+    await expectNoSecrets(casey, ALEX);
+    await expectNoSecrets(casey, BLAKE);
+  });
+});
+
+test("the plan page requires an account", async ({ page }) => {
+  await page.goto("/e/doesnotexist");
+  await expect(page).toHaveURL(/\/login\?next=/);
+});

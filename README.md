@@ -47,6 +47,7 @@ To try the full flow alone, sign up in a normal window and an incognito window, 
 
 ```bash
 npm test          # vitest: crypto, extraction, evaluation, negotiation, auth, data access + privacy
+npm run test:e2e  # Playwright: two users go from signup to a plan in a real browser
 npm run typecheck
 ```
 
