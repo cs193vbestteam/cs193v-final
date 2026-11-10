@@ -9,6 +9,8 @@ import { describeConstraints, missingFields } from "@/lib/constraints";
 import { getEventByCode, getMyConstraints, getMyMessages, getResult, isMember, listMembers } from "@/lib/events";
 import { requireUser } from "@/lib/session";
 
+const POOL_LABEL = { places: "real places", yelp: "places from the Yelp Open Dataset", seed: "seed places" } as const;
+
 export default async function EventPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const user = await requireUser(`/e/${code}`);
@@ -65,7 +67,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           <p className="eyebrow">
             Plan · {code}
             {event.location ? ` · near ${event.location}` : ""}
-            {` · ${event.poolSize} ${event.poolSource === "places" ? "real places" : "seed places"}`}
+            {` · ${event.poolSize} ${POOL_LABEL[event.poolSource]}`}
           </p>
           <h1 className="display mt-2 truncate text-4xl sm:text-5xl">{event.title}</h1>
         </div>

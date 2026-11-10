@@ -11,6 +11,7 @@ import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./p
 import { canLocate, resolveStart } from "./start-point";
 import { agentsForEvent } from "./vault";
 import { clearRateKey, hit, LIMITS, rateKey, waitText } from "./ratelimit";
+import { resolveYelpPool } from "./yelp-pool";
 
 /**
  * Data access for plans ("events"). Every function takes the acting userId explicitly
@@ -91,8 +92,9 @@ export async function createEvent(
 ): Promise<EventSummary> {
   const client = await db();
   const where = LocationSchema.parse(location ?? "") || null;
-  const pool = await resolvePool(where);
-  const restaurants = pool.source === "places" ? pool.restaurants : null;
+  // The local Yelp dataset, when configured, comes first: it is free and offline (yelp-pool.ts).
+  const pool = (await resolveYelpPool(where)) ?? (await resolvePool(where));
+  const restaurants = pool.source === "seed" ? null : pool.restaurants;
   const event: EventSummary = {
     id: crypto.randomUUID(),
     title: TitleSchema.parse(title),

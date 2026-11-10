@@ -43,3 +43,15 @@ Writes `sim/out/yelp/report.json` and `report.md` and prints the summary. `--cit
 - **Dislikes are sparse.** People rarely go back to a cuisine they dislike, so few personas carry a disliked cuisine.
 - **Dietary flags are keyword guesses** from categories, as they are for live Google results.
 - **Reviewers are not everyone.** People with 20+ reviews in one city are heavier and more opinionated users than a typical group of friends.
+
+## Using the dataset as a local restaurant source
+
+For local development the app can also take a plan's candidates straight from the dataset, for free and with no API key (`src/lib/yelp-pool.ts`):
+
+1. Put `yelp_academic_dataset_business.json` in a folder, for example `data/yelp/`.
+2. Set `YELP_DATASET_DIR=data/yelp` in `.env.local` and restart `npm run dev`.
+3. Create a plan whose location is one of the dataset's cities, for example `Philadelphia` or `Tampa, FL`.
+
+The plan then shows "places from the Yelp Open Dataset". Any other location falls through to Google Places (if a key is set) or the seed. Only the business file is needed for this; the review and user files are for the evaluation above.
+
+**Local only.** The dataset may not be redistributed, so this source must never run on a deployed site. It switches itself off on Vercel, and the data folder is git-ignored. It is also a frozen snapshot of eleven metropolitan areas, so expect closed or changed places.

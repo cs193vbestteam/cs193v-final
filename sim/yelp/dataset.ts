@@ -16,21 +16,7 @@ export const FILES = {
   user: "yelp_academic_dataset_user.json",
 } as const;
 
-export type YelpBusiness = {
-  business_id: string;
-  name: string;
-  city: string;
-  state: string;
-  latitude: number | null;
-  longitude: number | null;
-  is_open: number;
-  /** e.g. `{ RestaurantsPriceRange2: "2" }`; values are strings, sometimes the string "None". */
-  attributes: Record<string, unknown> | null;
-  /** Comma-separated, e.g. "Mexican, Burgers, Restaurants". */
-  categories: string | null;
-  /** e.g. `{ Friday: "11:0-22:0" }`. */
-  hours: Record<string, string> | null;
-};
+export type { YelpBusiness } from "../../src/lib/yelp-business";
 
 export type YelpReview = {
   user_id: string;
