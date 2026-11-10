@@ -45,7 +45,7 @@ export default async function Home() {
               <li key={e.id} className="rise" style={{ "--d": `${0.3 + i * 0.05}s` } as React.CSSProperties}>
                 <Link
                   href={`/e/${e.inviteCode}`}
-                  className="group flex items-center justify-between gap-4 py-4 transition-colors hover:text-seal"
+                  className="group flex items-center justify-between gap-4 py-4 transition-colors hover:text-seal-ink"
                 >
                   <span className="flex min-w-0 items-baseline gap-3">
                     <span className="font-mono text-xs text-ink-3">{String(i + 1).padStart(2, "0")}</span>
@@ -97,9 +97,11 @@ const STEPS = [
     demo: (
       <div className="flex flex-wrap gap-2 font-mono text-xs">
         <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">accept</span>
-        <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-1 text-amber">reluctant · price</span>
+        <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-1 text-amber-ink">
+          reluctant · price
+        </span>
         <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">accept</span>
-        <span className="rounded-md border border-seal/30 bg-seal-soft px-2 py-1 text-seal">reject · time</span>
+        <span className="rounded-md border border-seal/30 bg-seal-soft px-2 py-1 text-seal-ink">reject · time</span>
       </div>
     ),
   },
@@ -172,8 +174,8 @@ function Landing() {
         <p className="eyebrow">The problem</p>
         <p className="font-serif text-2xl leading-snug text-ink sm:text-[2rem]">
           Everyone has real limits: a budget, a Saturday that only works after six, a 20-minute radius. But saying{" "}
-          <em className="text-seal">&ldquo;$40 max&rdquo;</em> in the group sounds cheap, and
-          <em className="text-seal"> &ldquo;not that far&rdquo;</em> sounds difficult. So everyone says
+          <em className="text-seal-ink">&ldquo;$40 max&rdquo;</em> in the group sounds cheap, and
+          <em className="text-seal-ink"> &ldquo;not that far&rdquo;</em> sounds difficult. So everyone says
           &ldquo;whatever&rdquo;, the information stays hidden, and the loudest person decides.
         </p>
       </Reveal>
@@ -189,7 +191,7 @@ function Landing() {
         <ol className="mt-10 grid gap-5 md:grid-cols-3">
           {STEPS.map((s, i) => (
             <Reveal as="li" key={s.n} delay={i * 0.12} className="card flex flex-col">
-              <span className="font-serif text-5xl leading-none text-ink-3/70">{s.n}</span>
+              <span className="font-serif text-5xl leading-none text-ink-3">{s.n}</span>
               <h3 className="mt-6 font-serif text-2xl leading-tight">{s.title}</h3>
               <p className="mt-2 text-sm leading-relaxed text-ink-2">{s.body}</p>
               <div className="mt-auto pt-6">{s.demo}</div>
@@ -234,7 +236,7 @@ function Landing() {
                     accept
                   </span>
                 ) : (
-                  <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-0.5 font-mono text-xs text-amber">
+                  <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-0.5 font-mono text-xs text-amber-ink">
                     reluctant · price
                   </span>
                 )}

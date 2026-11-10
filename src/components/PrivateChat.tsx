@@ -186,7 +186,7 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
           </button>
         </div>
         {error && (
-          <p role="alert" className="mt-3 text-sm text-seal">
+          <p role="alert" className="mt-3 text-sm text-seal-ink">
             {error}
           </p>
         )}

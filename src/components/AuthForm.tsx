@@ -78,7 +78,7 @@ export function AuthForm({ mode, action, next }: Props) {
             {signup && <p className="mt-1.5 text-xs text-ink-3">At least 8 characters. Stored salted and hashed.</p>}
           </div>
           {state.error && (
-            <p role="alert" className="rounded-lg border border-seal/30 bg-seal-soft px-3 py-2 text-sm text-seal">
+            <p role="alert" className="rounded-lg border border-seal/30 bg-seal-soft px-3 py-2 text-sm text-seal-ink">
               {state.error}
             </p>
           )}

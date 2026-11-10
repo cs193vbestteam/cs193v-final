@@ -22,7 +22,7 @@ export function HeroDemo() {
       <div className="relative overflow-hidden rounded-[1.5rem] border border-line bg-surface shadow-[var(--shadow-lift)]">
         <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3 font-mono text-[0.6875rem] uppercase tracking-[0.14em]">
           <span className="whitespace-nowrap text-ink-3">the crew · 4</span>
-          <span className="demo-count whitespace-nowrap text-seal">day 3 · nothing yet</span>
+          <span className="demo-count whitespace-nowrap text-seal-ink">day 3 · nothing yet</span>
         </div>
         <ol className="space-y-2.5 px-5 py-5">
           {DEMO_THREAD.map((m, i) => (
@@ -53,7 +53,7 @@ export function HeroDemo() {
               {DEMO_RESULT.when} · {DEMO_RESULT.where}
             </div>
             <div className="mt-1 text-sm text-paper/75">{DEMO_RESULT.cost} · 11 min away · mediterranean</div>
-            <div className="demo-seal absolute -right-2 -top-4 rounded-md border-2 border-seal px-2 py-0.5 font-mono text-[0.625rem] font-medium uppercase tracking-[0.18em] text-seal bg-paper">
+            <div className="demo-seal absolute -right-2 -top-4 rounded-md border-2 border-seal px-2 py-0.5 font-mono text-[0.625rem] font-medium uppercase tracking-[0.18em] text-seal-ink bg-paper">
               everyone&apos;s in
             </div>
           </div>

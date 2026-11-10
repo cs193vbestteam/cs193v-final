@@ -37,7 +37,7 @@ export function CreateEventForm() {
         </button>
       </div>
       {state.error && (
-        <p role="alert" className="text-sm text-seal">
+        <p role="alert" className="text-sm text-seal-ink">
           {state.error}
         </p>
       )}
