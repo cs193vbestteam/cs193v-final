@@ -16,7 +16,7 @@ To try the whole flow there you need two people, or two browser windows: sign up
 
 ## Run your own copy
 
-To run it on your own machine you need [Node.js](https://nodejs.org) 22 or newer. Nothing else: no database to install and no API keys.
+To run it on your own machine you need [Node.js](https://nodejs.org) 22.22.2 or newer on 22, or 24.15 or newer (`.nvmrc` says 24; with nvm, `nvm install && nvm use`). An older Node prints `EBADENGINE` warnings on `npm install`, because the browser-test dependency jsdom needs it. Nothing else: no database to install and no API keys.
 
 ```bash
 git clone https://github.com/cs193vbestteam/cs193v-final.git
