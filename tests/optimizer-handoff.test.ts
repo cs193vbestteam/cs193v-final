@@ -18,11 +18,25 @@ import {
 } from "@/lib/optimizer-handoff";
 import { START_TIMES, isSelectable, type PersonPreferences } from "@/lib/optimizer-input";
 import { loadOptimizerInput } from "@/lib/optimizer-source";
-import { priceOf, toRestaurant, type PlaceResult } from "@/lib/places";
+import { openOn } from "@/lib/opening-hours";
+import { priceOf, toPool, toRestaurant, type PlaceResult } from "@/lib/places";
 import { RESTAURANTS, type Restaurant } from "@/lib/restaurants";
 
 const DATE = "2026-11-21";
 const FIXTURE = path.resolve(__dirname, "fixtures/optimizer-input.sample.json");
+
+/**
+ * The sample's restaurants: what Google Places returns near Palo Alto, with the places' identities
+ * removed (sim/places-sample.ts), turned into a pool the way a real plan's pool is: converted,
+ * then kept only if the place can take a start time on the plan's date.
+ */
+const PLACES = JSON.parse(readFileSync(path.resolve(__dirname, "fixtures/places-sample.json"), "utf8")) as {
+  center: { lat: number; lng: number };
+  places: PlaceResult[];
+};
+const SAMPLE_POOL: Restaurant[] = toPool(PLACES.places, PLACES.center)
+  .map((r) => openOn(r, DATE))
+  .filter((r) => r.open.length > 0);
 
 /** Four people who do not all want the same thing: the sample the optimizer is developed against. */
 const SAMPLE_PEOPLE: PersonPreferences[] = [
@@ -49,13 +63,13 @@ const SAMPLE_PEOPLE: PersonPreferences[] = [
     travel: { maxMin: 15, strength: "must" },
     dietary: ["halal"],
     style: { excluded: ["fast_food"], strength: "mild" },
-    wantedRestaurants: [{ name: "Sakura Table", id: "sakura-table" }],
+    wantedRestaurants: [{ name: SAMPLE_POOL[0].name, id: SAMPLE_POOL[0].id }],
   },
   { version: 1, dietary: [] },
 ];
 const sampleMembers = (): HandoffMember[] => SAMPLE_PEOPLE.map((prefs) => ({ prefs, startPoint: null }));
 const sample = () =>
-  assembleOptimizerInput({ date: DATE, location: null, restaurants: RESTAURANTS, members: sampleMembers() });
+  assembleOptimizerInput({ date: DATE, location: "Palo Alto", restaurants: SAMPLE_POOL, members: sampleMembers() });
 
 const located = (id: string, lat: number, lng: number, extra: Partial<Restaurant> = {}): Restaurant => ({
   ...RESTAURANTS[0],
@@ -80,7 +94,13 @@ describe("assembling the optimizer's input", () => {
   });
 
   it("uses the seed's own anchor when the candidates have no coordinates", () => {
-    expect(sample().plan.anchor).toEqual(SEED_ANCHOR);
+    const seeded = assembleOptimizerInput({
+      date: DATE,
+      location: null,
+      restaurants: RESTAURANTS,
+      members: sampleMembers(),
+    });
+    expect(seeded.plan.anchor).toEqual(SEED_ANCHOR);
   });
 
   it("puts the anchor in the middle of the candidates and names it after the plan's location", () => {
@@ -275,7 +295,18 @@ describe("the optimizer's result", () => {
 });
 
 describe("the sample input in tests/fixtures", () => {
-  it("is exactly what the code produces for the sample people and the seed restaurants", () => {
+  it("has the cases real data brings: unknown prices, unknown vegetarian answers, many types", () => {
+    const { candidates } = sample();
+    expect(candidates.length).toBeGreaterThan(40);
+    expect(candidates.some((c) => c.price === null)).toBe(true);
+    expect(candidates.some((c) => c.price !== null && c.price.low < c.price.high)).toBe(true);
+    expect(candidates.some((c) => c.servesVegetarian === null)).toBe(true);
+    expect(candidates.some((c) => c.servesVegetarian === false)).toBe(true);
+    expect(new Set(candidates.flatMap((c) => c.types)).size).toBeGreaterThan(20);
+    expect(candidates.every(isSelectable)).toBe(true);
+  });
+
+  it("is exactly what the code produces for the sample people and the sample places", () => {
     const built = sample();
     // UPDATE_FIXTURES=1 npm test -- optimizer-handoff   rewrites the file after a deliberate change.
     if (process.env.UPDATE_FIXTURES || !existsSync(FIXTURE))
