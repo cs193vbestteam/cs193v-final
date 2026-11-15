@@ -79,6 +79,15 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   window_start BIGINT NOT NULL,
   count        INTEGER NOT NULL
 );
+
+-- Model spending per calendar month (src/lib/spend.ts), in millionths of a dollar.
+-- payer is a user id, or '*' for the whole app's total.
+CREATE TABLE IF NOT EXISTS llm_spend (
+  payer  TEXT NOT NULL,
+  month  TEXT NOT NULL,
+  micros BIGINT NOT NULL,
+  PRIMARY KEY (payer, month)
+);
 `;
 
 export type Row = Record<string, unknown>;

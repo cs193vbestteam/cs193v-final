@@ -49,6 +49,7 @@ import {
 } from "./optimizer-input";
 import type { Restaurant } from "./restaurants";
 import { canLocate, resolveStart } from "./start-point";
+import { recordUsage, type Usage } from "./spend-context";
 
 /**
  * One turn of the private chat (#83).
@@ -656,7 +657,8 @@ async function callModel(history: ChatTurn[], state: MemberState, apiKey: string
     signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
-  const data = (await res.json()) as { content?: { type: string; input?: unknown }[] };
+  const data = (await res.json()) as { content?: { type: string; input?: unknown }[]; usage?: Usage };
+  await recordUsage(data.usage);
   return ToolOutput.parse(data.content?.find((b) => b.type === "tool_use")?.input);
 }
 

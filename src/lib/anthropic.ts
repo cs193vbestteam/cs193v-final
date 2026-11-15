@@ -1,3 +1,5 @@
+import { recordUsage, type Usage } from "./spend-context";
+
 /**
  * One forced tool call to the Anthropic Messages API, for the negotiation's LLM parts
  * (agent-llm.ts, mediator-llm.ts). The caller validates what comes back; this only
@@ -44,7 +46,13 @@ export async function callTool(opts: {
     signal: AbortSignal.timeout(opts.timeoutMs ?? 12_000),
   });
   if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
-  const data = (await res.json()) as { content?: { type: string; input?: unknown }[]; stop_reason?: string };
+  const data = (await res.json()) as {
+    content?: { type: string; input?: unknown }[];
+    stop_reason?: string;
+    usage?: Usage;
+  };
+  // Charged before any check below: a reply cut short was still paid for.
+  await recordUsage(data.usage);
   // A reply cut off at the token limit is partial: treat it as a failure, not as a full answer.
   if (data.stop_reason === "max_tokens") throw new Error("Anthropic API: reply cut off at max_tokens");
   const block = data.content?.find((b) => b.type === "tool_use");

@@ -38,6 +38,7 @@ describe("schema (in-memory PGlite)", () => {
     );
     expect(rows.map((r) => r.table_name)).toEqual([
       "events",
+      "llm_spend",
       "members",
       "messages",
       "rate_limits",

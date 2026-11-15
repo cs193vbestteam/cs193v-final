@@ -14,6 +14,7 @@ import { refreshPool } from "./pool-refresh";
 import { DEFAULT_SCENARIO, parseScenarioId, ScenarioIdSchema, scenarioFor, type ScenarioId } from "./scenario";
 import { agentsForEvent } from "./vault";
 import { clearRateKey, hit, LIMITS, rateKey, waitText } from "./ratelimit";
+import { canSpend, withPayer } from "./spend";
 
 /**
  * Data access for plans ("events"). Every function takes the acting userId explicitly
@@ -179,11 +180,19 @@ export async function createEvent(
   const scenario = scenarioFor(ScenarioIdSchema.parse(scenarioId));
   const where = LocationSchema.parse(location ?? "") || null;
   const day = planDateSchema().parse(date);
+  const name = TitleSchema.parse(title);
+  // Counted after the input checks, so a typo in the form doesn't use up one of the day's plans.
+  const quota = await hit(rateKey.createPlan(userId), LIMITS.createPlanPerUser);
+  if (!quota.allowed) {
+    throw new RateLimitError(
+      `You've created ${LIMITS.createPlanPerUser.max} plans today. You can create another ${waitText(quota.retryAfterMs)}.`,
+    );
+  }
   const pool = await scenario.resolvePool(where, day);
   const restaurants = pool.source === "seed" ? null : pool.restaurants;
   const event: EventSummary = {
     id: crypto.randomUUID(),
-    title: TitleSchema.parse(title),
+    title: name,
     inviteCode: newInviteCode(),
     creatorId: userId,
     decided: false,
@@ -335,11 +344,18 @@ export async function sendMessage(
 
   const history = await getMyMessages(eventId, userId);
   const { restaurants } = await poolForEvent(eventId);
-  // Only count LLM calls when there is a key to spend; past the plan's daily budget, use the rules.
-  const allowLLM = !process.env.ANTHROPIC_API_KEY || (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed;
+  // Only count LLM calls when there is a key to spend; past the plan's daily budget, or past your
+  // own monthly spending cap (or the app's), use the rules. Your chat is charged to you.
+  const allowLLM =
+    !process.env.ANTHROPIC_API_KEY ||
+    ((await canSpend(userId)) && (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed);
   // Changing what you want un-readies you, so the group re-checks with fresh info. A reply that
   // only moves the conversation along (a question asked, a turn counted) does not.
-  const { reply, constraints: next, changed } = await scenario.chatTurn(history, current, restaurants, { allowLLM });
+  const {
+    reply,
+    constraints: next,
+    changed,
+  } = await withPayer(userId, () => scenario.chatTurn(history, current, restaurants, { allowLLM }));
   const client = await db();
   const { rows } = await client.execute({
     sql: "SELECT ready FROM members WHERE event_id = ? AND user_id = ?",
@@ -373,16 +389,26 @@ export async function setReady(eventId: string, userId: string, ready: boolean):
 export const LLM_NEGOTIATION_MS = 30_000;
 
 /**
- * Whether the negotiation may make one more LLM call: before the deadline, and within the
- * plan's daily LLM budget (#4, shared with the chat). Past the deadline nothing is counted.
+ * Whether the negotiation may make one more LLM call: before the deadline, within the
+ * plan's daily LLM budget (#4, shared with the chat), and while whoever pays for the run
+ * (the plan's creator) is under their monthly spending cap. Past the deadline nothing is counted.
  */
-export function llmGate(eventId: string, deadline: number, now: () => number = Date.now) {
-  return async () => now() < deadline && (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed;
+export function llmGate(eventId: string, deadline: number, now: () => number = Date.now, payer?: string | null) {
+  return async () =>
+    now() < deadline &&
+    (!payer || (await canSpend(payer))) &&
+    (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed;
 }
 
 export async function runNegotiation(eventId: string, userId: string): Promise<StoredResult> {
   await requireMember(eventId, userId);
-  const budget = llmGate(eventId, Date.now() + LLM_NEGOTIATION_MS);
+  // Every model call in the negotiation is charged to the plan's creator, whoever pressed the button.
+  const payer = (await creatorOf(eventId)) ?? userId;
+  return withPayer(payer, () => negotiateAndStore(eventId, userId, payer));
+}
+
+async function negotiateAndStore(eventId: string, userId: string, payer: string): Promise<StoredResult> {
+  const budget = llmGate(eventId, Date.now() + LLM_NEGOTIATION_MS, Date.now, payer);
   const { agents: firstAgents, userIds, readyCount } = await agentsForEvent(eventId, budget);
   if (readyCount < 2) throw new AccessError("At least 2 people need to be ready first");
   if (readyCount !== firstAgents.length) {
@@ -591,5 +617,7 @@ export async function deleteAccount(userId: string): Promise<void> {
   await client.execute({ sql: "DELETE FROM members WHERE user_id = ?", args: [userId] });
   await client.execute({ sql: "DELETE FROM sessions WHERE user_id = ?", args: [userId] });
   await clearRateKey(rateKey.chat(userId));
+  await clearRateKey(rateKey.createPlan(userId));
+  await client.execute({ sql: "DELETE FROM llm_spend WHERE payer = ?", args: [userId] });
   await client.execute({ sql: "DELETE FROM users WHERE id = ?", args: [userId] });
 }

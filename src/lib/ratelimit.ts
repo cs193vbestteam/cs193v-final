@@ -19,6 +19,8 @@ const DAY = 24 * HOUR;
 export const LIMITS = {
   /** Chat messages one person can send, across all their plans. */
   chatPerUser: { max: 30, windowMs: 10 * MINUTE },
+  /** Plans one person can create per day. Each new plan costs a geocode and a restaurant search (Google Places). */
+  createPlanPerUser: { max: 10, windowMs: DAY },
   /** LLM extraction calls per plan per day; after that, the rule-based extractor answers. */
   llmPerPlan: { max: 300, windowMs: DAY },
   /** Login attempts per email address (also covers the password check before deleting an account). */
@@ -37,6 +39,7 @@ export const LIMITS = {
 export const rateKey = {
   chat: (userId: string) => `chat:${userId}`,
   llm: (eventId: string) => `llm:${eventId}`,
+  createPlan: (userId: string) => `create-plan:${userId}`,
   autoNegotiate: (eventId: string) => `auto-negotiate:${eventId}`,
   loginEmail: (email: string) => `login-email:${blindIndex(email, "ratelimit")}`,
   loginIp: (ip: string) => `login-ip:${blindIndex(ip, "ratelimit")}`,
