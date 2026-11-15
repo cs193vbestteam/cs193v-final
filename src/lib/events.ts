@@ -394,12 +394,21 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
 /**
  * Finds the first plan as soon as the last member is done, so nobody has to keep watch
  * and press the button. It never re-runs a plan that already has a result: after that,
- * a new run is always somebody's explicit choice. Returns whether it ran.
+ * a new run is always somebody's explicit choice. Returns whether this call ran it.
  */
 export async function negotiateWhenAllReady(eventId: string, userId: string): Promise<boolean> {
   const [members, existing] = await Promise.all([listMembers(eventId, userId), getResult(eventId, userId)]);
   if (existing || members.length < 2 || !members.every((m) => m.ready)) return false;
-  await runNegotiation(eventId, userId);
+  // Two people who finish in the same instant both get this far. Counting is one atomic statement,
+  // so exactly one of them takes the claim and runs; the other's page shows the plan when it lands.
+  const claim = rateKey.autoNegotiate(eventId);
+  if (!(await hit(claim, LIMITS.autoNegotiate)).allowed) return false;
+  try {
+    await runNegotiation(eventId, userId);
+  } catch (err) {
+    await clearRateKey(claim); // a failed run must not block the next "I'm done" from trying
+    throw err;
+  }
   return true;
 }
 
@@ -508,6 +517,7 @@ export async function deletePlan(eventId: string, userId: string): Promise<void>
   await client.execute({ sql: "DELETE FROM members WHERE event_id = ?", args: [eventId] });
   await client.execute({ sql: "DELETE FROM events WHERE id = ? AND creator_id = ?", args: [eventId, userId] });
   await clearRateKey(rateKey.llm(eventId));
+  await clearRateKey(rateKey.autoNegotiate(eventId));
 }
 
 /** Removes one member's constraints and private chat from a plan and un-decides it. */

@@ -101,7 +101,8 @@ export function PrivateChat({
     startTransition(async () => {
       try {
         const res = await setReadyAction(eventId, inviteCode, !ready);
-        if (res.error) setError(res.error);
+        // A notice means being done was saved but the automatic run failed: say what to do next.
+        if (res.error || res.notice) setError(res.error ?? res.notice ?? null);
       } catch {
         setError("Couldn't save that. Please try again.");
       } finally {
