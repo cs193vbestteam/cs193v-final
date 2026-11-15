@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { decryptOrPlain, scope } from "./crypto";
 import type { Restaurant } from "./restaurants";
 import { parseScenarioId, scenarioFor, type ScenarioId } from "./scenario";
 
@@ -21,7 +22,7 @@ export async function poolForEvent(
   const scenario = parseScenarioId(rows[0]?.scenario);
   const raw = rows[0]?.pool_json;
   if (raw) {
-    const restaurants = JSON.parse(String(raw)) as Restaurant[];
+    const restaurants = JSON.parse(decryptOrPlain(String(raw), scope.plan(eventId, "pool"))) as Restaurant[];
     if (Array.isArray(restaurants) && restaurants.length)
       return { restaurants, source: (rows[0].pool_source as PoolSource) ?? "places", scenario };
   }

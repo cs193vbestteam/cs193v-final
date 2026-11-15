@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { MAX_MESSAGE_CHARS } from "./chat-limits";
 import { db } from "./db";
-import { decrypt, decryptJson, encrypt, encryptJson } from "./crypto";
+import { decrypt, decryptJson, decryptOrPlain, encrypt, encryptJson, scope } from "./crypto";
 import type { MemberState } from "./member-state";
 import type { ChatTurn } from "./extract";
 import { configuredExplainer, configuredSelector } from "./mediator-llm";
@@ -126,18 +126,22 @@ function newInviteCode(): string {
   return Array.from(bytes, (b) => INVITE_ALPHABET[b % INVITE_ALPHABET.length]).join("");
 }
 
+/** A plan's shared fields are encrypted with that plan's own keys. */
 function rowToEvent(row: Record<string, unknown>): EventSummary {
-  const pool = row.pool_json ? (JSON.parse(String(row.pool_json)) as unknown[]) : null;
+  const id = String(row.id);
+  const pool = row.pool_json
+    ? (JSON.parse(decryptOrPlain(String(row.pool_json), scope.plan(id, "pool"))) as unknown[])
+    : null;
   const scenario = parseScenarioId(row.scenario);
   return {
-    id: String(row.id),
-    title: String(row.title),
+    id,
+    title: decryptOrPlain(String(row.title), scope.plan(id, "title")),
     inviteCode: String(row.invite_code),
     creatorId: String(row.creator_id),
     decided: row.result_json !== null && row.result_json !== undefined,
     scenario,
-    location: row.location ? String(row.location) : null,
-    date: row.event_date ? String(row.event_date) : null,
+    location: row.location ? decryptOrPlain(String(row.location), scope.plan(id, "location")) : null,
+    date: row.event_date ? decryptOrPlain(String(row.event_date), scope.plan(id, "date")) : null,
     poolSource: pool?.length ? ((row.pool_source as PoolSource) ?? "places") : "seed",
     poolSize: pool?.length ?? scenarioFor(scenario).seedPool.length,
   };
@@ -150,7 +154,7 @@ async function addMember(event: Pick<EventSummary, "id" | "scenario">, userId: s
   const now = Date.now();
   await client.execute({
     sql: "INSERT INTO members (event_id, user_id, constraints_enc, ready, joined_at) VALUES (?, ?, ?, 0, ?) ON CONFLICT DO NOTHING",
-    args: [eventId, userId, encryptJson(scenario.emptyConstraints()), now],
+    args: [eventId, userId, encryptJson(scenario.emptyConstraints(), scope.constraints(eventId, userId)), now],
   });
   const { rows } = await client.execute({
     sql: "SELECT COUNT(*) AS n FROM messages WHERE event_id = ? AND user_id = ?",
@@ -185,20 +189,20 @@ export async function createEvent(
     poolSource: pool.source,
     poolSize: restaurants?.length ?? scenario.seedPool.length,
   };
-  if (pool.source === "seed" && where) console.info(`Plan "${event.title}": using seed pool (${pool.reason})`);
+  if (pool.source === "seed" && where) console.info(`Plan ${event.id}: using seed pool (${pool.reason})`);
   await client.execute({
     sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source, scenario, event_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     args: [
       event.id,
-      event.title,
+      encrypt(event.title, scope.plan(event.id, "title")),
       event.inviteCode,
       userId,
       Date.now(),
-      where,
-      restaurants ? JSON.stringify(restaurants) : null,
+      where ? encrypt(where, scope.plan(event.id, "location")) : null,
+      restaurants ? encryptJson(restaurants, scope.plan(event.id, "pool")) : null,
       pool.source,
       scenario.id,
-      day,
+      encrypt(day, scope.plan(event.id, "date")),
     ],
   });
   await addMember(event, userId);
@@ -252,7 +256,8 @@ export async function listMembers(eventId: string, viewerId: string): Promise<Me
   });
   return rows.map((r) => ({
     userId: String(r.user_id),
-    displayName: String(r.display_name),
+    // Each member's name opens with that member's own key.
+    displayName: decryptOrPlain(String(r.display_name), scope.displayName(String(r.user_id))),
     ready: Number(r.ready) === 1,
   }));
 }
@@ -261,7 +266,7 @@ async function addMessage(eventId: string, userId: string, role: ChatTurn["role"
   const client = await db();
   await client.execute({
     sql: "INSERT INTO messages (event_id, user_id, role, content_enc, created_at) VALUES (?, ?, ?, ?, ?)",
-    args: [eventId, userId, role, encrypt(content), Date.now()],
+    args: [eventId, userId, role, encrypt(content, scope.chat(eventId, userId)), Date.now()],
   });
 }
 
@@ -273,7 +278,10 @@ export async function getMyMessages(eventId: string, userId: string): Promise<Ch
     sql: "SELECT role, content_enc FROM messages WHERE event_id = ? AND user_id = ? ORDER BY id",
     args: [eventId, userId],
   });
-  return rows.map((r) => ({ role: r.role as ChatTurn["role"], content: decrypt(String(r.content_enc)) }));
+  return rows.map((r) => ({
+    role: r.role as ChatTurn["role"],
+    content: decrypt(String(r.content_enc), scope.chat(eventId, userId)),
+  }));
 }
 
 /** A member's stored constraints together with the scenario that defines them. */
@@ -286,7 +294,12 @@ async function loadConstraints(eventId: string, userId: string) {
     args: [eventId, userId],
   });
   const scenario = scenarioFor(parseScenarioId(rows[0].scenario));
-  return { scenario, constraints: scenario.parseConstraints(decryptJson(String(rows[0].constraints_enc))) };
+  return {
+    scenario,
+    constraints: scenario.parseConstraints(
+      decryptJson(String(rows[0].constraints_enc), scope.constraints(eventId, userId)),
+    ),
+  };
 }
 
 export async function getMyConstraints(eventId: string, userId: string): Promise<MemberState> {
@@ -297,7 +310,7 @@ async function saveConstraints(eventId: string, userId: string, c: MemberState, 
   const client = await db();
   await client.execute({
     sql: "UPDATE members SET constraints_enc = ?, ready = ? WHERE event_id = ? AND user_id = ?",
-    args: [encryptJson(c), ready ? 1 : 0, eventId, userId],
+    args: [encryptJson(c, scope.constraints(eventId, userId)), ready ? 1 : 0, eventId, userId],
   });
 }
 
@@ -403,7 +416,7 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
   const client = await db();
   await client.execute({
     sql: "UPDATE events SET result_json = ?, decided_at = ? WHERE id = ?",
-    args: [JSON.stringify(result), result.decidedAt, eventId],
+    args: [encryptJson(result, scope.plan(eventId, "result")), result.decidedAt, eventId],
   });
   return result;
 }
@@ -434,7 +447,9 @@ export async function getResult(eventId: string, userId: string): Promise<Stored
   const client = await db();
   const { rows } = await client.execute({ sql: "SELECT result_json FROM events WHERE id = ?", args: [eventId] });
   const raw = rows[0]?.result_json;
-  return raw ? forGroupSize(upgradeResult(JSON.parse(String(raw)))) : null;
+  return raw
+    ? forGroupSize(upgradeResult(JSON.parse(decryptOrPlain(String(raw), scope.plan(eventId, "result")))))
+    : null;
 }
 
 type LegacyTally = { yes: number; meh: number; no: number; reasons: Record<string, number> };
