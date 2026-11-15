@@ -918,6 +918,15 @@ describe("an update the model wrapped in a string", () => {
     expect(turn.state.prefs.budget).toEqual({ max: 40, strength: "must" });
   });
 
+  it("reads a don't-mind list sent as a string, or as one bare name", async () => {
+    for (const dontMind of ['["travel"]', "travel"]) {
+      stubModel(() => ({ reply: "No limit on distance then.", asks: "none", dontMind, update: {} }));
+      const turn = await assistantTurn([{ role: "user", content: "I don't mind" }], emptyMemberState(), RESTAURANTS);
+      expect(turn.source).toBe("llm");
+      expect(turn.state.chat.answered).toContain("travel");
+    }
+  });
+
   it("still falls back when the string is not JSON", async () => {
     stubModel(() => ({ reply: "Noted.", asks: "none", update: "budget is 40" }));
     const turn = await assistantTurn([{ role: "user", content: "40 max" }], emptyMemberState(), RESTAURANTS);
