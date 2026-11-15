@@ -175,6 +175,20 @@
         "dietaryConfirmed": true
       }
     },
+    {
+      "id": "clear-15",
+      "category": "clear",
+      "note": "\"No restrictions\" at the end of a message that answers everything else is the diet answer. The reply names times in plain words, never the slot ids.",
+      "turns": ["Only Saturday lunch. Under $47, 23 minutes, no restrictions."],
+      "expected": {
+        "availableSlots": ["sat_lunch"],
+        "budgetMax": 47,
+        "maxTravelMin": 23,
+        "dietary": [],
+        "dietaryConfirmed": true
+      },
+      "replyMustNotMatch": ["\\b(fri|sat|sun)_(lunch|dinner)\\b"]
+    },
 
     {
       "id": "vague-01",
