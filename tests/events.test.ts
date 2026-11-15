@@ -10,6 +10,7 @@ import {
   joinEvent,
   listMembers,
   listMyEvents,
+  negotiateWhenAllReady,
   runNegotiation,
   sendMessage,
   setReady,
@@ -132,6 +133,37 @@ describe("chat → constraints → negotiation", () => {
     await sendMessage(event.id, a.id, "Saturday dinner, $40, 20 minutes, no restrictions");
     await setReady(event.id, a.id, true);
     await expect(runNegotiation(event.id, a.id)).rejects.toThrow(/2 people/);
+  });
+
+  it("finds the plan by itself once the last person is done, and never re-runs a decided plan", async () => {
+    const { a, b, event } = await setup();
+    await sendMessage(event.id, a.id, "Saturday night only, under $40, no spicy, max 20 minutes away");
+    await setReady(event.id, a.id, true);
+    // One of two done: nothing happens yet.
+    expect(await negotiateWhenAllReady(event.id, a.id)).toBe(false);
+    expect(await getResult(event.id, a.id)).toBeNull();
+
+    await sendMessage(event.id, b.id, "free all weekend, $35 max, 15 minutes, vegetarian");
+    await setReady(event.id, b.id, true);
+    expect(await negotiateWhenAllReady(event.id, b.id)).toBe(true);
+    const first = await getResult(event.id, a.id);
+    expect(first?.status).toBe("agreed");
+
+    // Marking done again leaves the decided plan alone: a re-run is always an explicit choice.
+    await setReady(event.id, b.id, false);
+    await setReady(event.id, b.id, true);
+    expect(await negotiateWhenAllReady(event.id, b.id)).toBe(false);
+    expect(await getResult(event.id, a.id)).toEqual(first);
+  });
+
+  it("does not start a plan for one person, or for someone outside it", async () => {
+    const a = await makeUser("Alice");
+    const eve = await makeUser("Eve");
+    const event = await createEvent(a.id, "Solo");
+    await sendMessage(event.id, a.id, "Saturday dinner, $40, 20 minutes, no restrictions");
+    await setReady(event.id, a.id, true);
+    expect(await negotiateWhenAllReady(event.id, a.id)).toBe(false);
+    await expect(negotiateWhenAllReady(event.id, eve.id)).rejects.toThrow(AccessError);
   });
 
   it("end to end: two people agree on a plan; result has no private data", async () => {

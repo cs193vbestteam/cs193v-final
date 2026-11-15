@@ -12,6 +12,8 @@ type Props = {
   initialSummary: string[];
   initialMissing: MissingField[];
   ready: boolean;
+  /** Everyone else is done and there is no plan yet: finishing here starts the negotiation. */
+  lastOne?: boolean;
 };
 
 const MISSING_LABEL: Record<MissingField, string> = {
@@ -28,7 +30,16 @@ type ChatSnapshot = {
   missing: MissingField[];
 };
 
-export function PrivateChat({ eventId, inviteCode, initialMessages, initialSummary, initialMissing, ready }: Props) {
+export function PrivateChat({
+  eventId,
+  inviteCode,
+  initialMessages,
+  initialSummary,
+  initialMissing,
+  ready,
+  lastOne = false,
+}: Props) {
+  const [finding, setFinding] = useState(false);
   const [localReply, setLocalReply] = useState<ChatSnapshot | null>(null);
   const [submission, setSubmission] = useState<ChatSnapshot | null>(null);
   const [text, setText] = useState("");
@@ -86,9 +97,16 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
 
   function toggleReady() {
     setError(null);
+    setFinding(!ready && lastOne);
     startTransition(async () => {
-      const res = await setReadyAction(eventId, inviteCode, !ready);
-      if (res.error) setError(res.error);
+      try {
+        const res = await setReadyAction(eventId, inviteCode, !ready);
+        if (res.error) setError(res.error);
+      } catch {
+        setError("Couldn't save that. Please try again.");
+      } finally {
+        setFinding(false);
+      }
     });
   }
 
@@ -132,7 +150,7 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
               <span />
               <span />
             </span>
-            Assistant is thinking…
+            {finding ? "Everyone's done. The assistants are finding a plan…" : "Assistant is thinking…"}
           </p>
         )}
         <div ref={bottom} />
@@ -194,7 +212,7 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
             className={ready ? "btn-ghost btn-sm" : `btn btn-sm${askedToFinish ? " btn-attention" : ""}`}
             data-attention={askedToFinish || undefined}
           >
-            {ready ? "Not done yet" : "I'm done"}
+            {finding ? "Finding a plan…" : ready ? "Not done yet" : "I'm done"}
           </button>
         </div>
         {error && (

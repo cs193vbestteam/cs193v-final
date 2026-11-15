@@ -1,12 +1,15 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { PlanDangerZone } from "@/components/DangerActions";
-import { AutoRefresh, CopyInvite, NegotiateButton } from "@/components/GroupActions";
+import { AutoRefresh, CopyInvite, NegotiateButton, ShareMessage } from "@/components/GroupActions";
 import { PrivateChat } from "@/components/PrivateChat";
 import { ResultCard } from "@/components/ResultCard";
 import { joinEventAction } from "@/app/actions";
 import { getEventByCode, getMyConstraints, getMyMessages, getResult, isMember, listMembers } from "@/lib/events";
+import { SLOT_LABELS } from "@/lib/constraints";
+import { getRestaurant } from "@/lib/restaurants";
 import { scenarioFor } from "@/lib/scenario";
+import { nudgeMessage, resultMessage } from "@/lib/share";
 import { currentUser, requireUser } from "@/lib/session";
 
 // Finding a plan can make a few LLM calls per round (agents + mediator); give it room on Vercel.
@@ -60,6 +63,26 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
   const readyCount = members.filter((m) => m.ready).length;
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
+  const planUrl = `${origin}/e/${code}`;
+  const chosen =
+    result?.proposal && result.status !== "no_deal"
+      ? (result.places?.[result.proposal.restaurantId] ?? getRestaurant(result.proposal.restaurantId))
+      : undefined;
+  const shareResult =
+    result?.proposal && chosen
+      ? resultMessage({
+          title: event.title,
+          place: chosen.name,
+          when: SLOT_LABELS[result.proposal.slot],
+          options: result.options?.length ?? 1,
+          url: planUrl,
+        })
+      : null;
+  // The creator can nudge while the group is still collecting; a count only, never who.
+  const nudge =
+    !result && event.creatorId === user.id && members.length >= 2 && readyCount < members.length
+      ? nudgeMessage({ title: event.title, ready: readyCount, members: members.length, url: planUrl })
+      : null;
   const status = result
     ? result.status === "agreed"
       ? { label: "Decided", cls: "pill-moss" }
@@ -111,6 +134,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             initialSummary={describeConstraints(constraints)}
             initialMissing={missingFields(constraints)}
             ready={me.ready}
+            lastOne={!result && members.length >= 2 && members.every((m) => m.ready || m.userId === user.id)}
           />
         </div>
         <aside className="space-y-5">
@@ -143,8 +167,13 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
               ))}
             </ul>
             <div className="mt-4">
-              <CopyInvite url={`${origin}/e/${code}`} />
+              <CopyInvite url={planUrl} />
             </div>
+            {nudge && (
+              <div className="mt-2">
+                <ShareMessage label="Nudge the group" message={nudge} />
+              </div>
+            )}
             <div className="mt-4 border-t border-line pt-3.5">
               <PlanDangerZone
                 eventId={event.id}
@@ -163,11 +192,17 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
                 <ResultCard result={result} sample={sample} />
               ) : (
                 <p className="rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
-                  No plan yet. Once everyone&apos;s done, the assistants will talk it out.
+                  No plan yet. As soon as everyone&apos;s done, the assistants talk it out. Nobody has to press
+                  anything.
                 </p>
               )}
             </div>
-            <div className="mt-4">
+            {shareResult && (
+              <div className="mt-4">
+                <ShareMessage label="Share with the group" message={shareResult} primary />
+              </div>
+            )}
+            <div className={shareResult ? "mt-2" : "mt-4"}>
               <NegotiateButton
                 eventId={event.id}
                 inviteCode={code}

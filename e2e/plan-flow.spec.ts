@@ -100,27 +100,29 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expect(alex.getByRole("button", { name: "Find a plan" })).toBeDisabled();
   });
 
-  await test.step("each person tells their own assistant their limits", async () => {
+  await test.step("Alex finishes first; Blake's page shows none of it", async () => {
     await tellAssistant(alex, ALEX);
-    await tellAssistant(blake, BLAKE);
-  });
-
-  await test.step("neither sees the other's chat or numbers before the result", async () => {
-    await alex.reload();
     await blake.reload();
     await expectNoSecrets(blake, ALEX);
-    await expectNoSecrets(alex, BLAKE);
-    await expect(alex.getByText("2 of 2 ready")).toBeVisible();
+    await expect(blake.getByText("1 of 2 ready")).toBeVisible();
   });
 
-  await test.step("the assistants negotiate and the group gets a plan", async () => {
-    await alex.getByRole("button", { name: "Find a plan" }).click();
+  await test.step("the creator can nudge the group with a count, never a name or a limit", async () => {
+    await alex.reload();
+    await expect(alex.getByRole("button", { name: "Nudge the group" })).toBeVisible();
+    await expect(blake.getByRole("button", { name: "Nudge the group" })).toHaveCount(0);
+  });
+
+  await test.step("the last person finishes and the plan is found without anyone pressing a button", async () => {
+    await tellAssistant(blake, BLAKE);
+    await expect(blake.getByText("Everyone's in")).toBeVisible();
+    await alex.reload();
+    await expectNoSecrets(alex, BLAKE);
+    await expect(alex.getByText("2 of 2 ready")).toBeVisible();
     await expect(alex.getByText("Everyone's in")).toBeVisible();
     // The plan on the page is the first price line; the same line is repeated on the tiles of the pop-out.
     const planLine = (page: Page) => page.getByText(/~\$\d+\/person/).first();
     await expect(planLine(alex)).toBeVisible();
-    await blake.reload();
-    await expect(blake.getByText("Everyone's in")).toBeVisible();
     // Both see the same plan.
     expect(await planLine(blake).innerText()).toBe(await planLine(alex).innerText());
 
@@ -132,6 +134,17 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     expect(await window.getByRole("listitem").count()).toBeGreaterThanOrEqual(1);
     await window.getByRole("button", { name: "Close" }).click();
     await expect(window).toBeHidden();
+  });
+
+  await test.step("the message for the group chat carries the plan and the link, and nobody's limits", async () => {
+    await alex.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await alex.evaluate(() => Reflect.deleteProperty(Navigator.prototype, "share"));
+    await alex.getByRole("button", { name: "Share with the group" }).click();
+    await expect(alex.getByText("Message copied")).toBeVisible();
+    const copied = await alex.evaluate(() => navigator.clipboard.readText());
+    expect(copied).toContain("Weekend dinner is settled:");
+    expect(copied).toContain(planPath);
+    for (const secret of [...ALEX.secrets, ...BLAKE.secrets]) expect(copied).not.toContain(secret);
   });
 
   await test.step("the result reveals nobody's limits", async () => {
