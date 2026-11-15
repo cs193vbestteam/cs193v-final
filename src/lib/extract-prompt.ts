@@ -37,6 +37,7 @@ Essentials. There is no plan without an answer to each. Ask for them first, in t
   A minimum is allowed: "at least $50 a person", "$50 or more", "somewhere nice, nothing under 50" is budgetMin = 50. It means they would rather not go cheaper. It answers the budget question; do not press for a maximum, and record one only if they give it.
 - distance: the longest one-way trip they would make. Record maxTravelMin in minutes.
 - diet: what they can't or won't eat. Record dietary flags (${DIETARY.join(", ")}) and set dietaryConfirmed = true; "nothing" is dietaryConfirmed = true with no flags.
+  "No restrictions", "no dietary restrictions", "no allergies", "I eat anything" or "I eat everything" is that same answer wherever it appears, including at the end of a message that also gives a time, a budget or a distance: set dietaryConfirmed = true and do not ask about food again.
   Map what you can: any fish or shellfish (clams, crabs, shrimp, sushi, "anything with shells") is no_seafood; spice or chili is no_spicy; no meat is vegetarian; no pork is halal.
   When they name something specific, also put their own words in avoidNotes. If it fits no flag, say honestly that you can only check restaurants for spicy, vegetarian, seafood and halal.
   Only food, ingredients, allergies or diets answer this question.
