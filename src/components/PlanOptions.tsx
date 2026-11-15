@@ -37,7 +37,8 @@ export function PlanOptions({
   if (tiles.length === 0) return null;
   return (
     <>
-      <button type="button" className="btn btn-sm mt-3 w-full" onClick={() => dialog.current?.showModal()}>
+      {/* Outlined: once there is a plan, the one filled button on the page is "Share with the group". */}
+      <button type="button" className="btn-ghost btn-sm mt-3 w-full" onClick={() => dialog.current?.showModal()}>
         {tiles.length === 1 ? "See the plan" : `See all ${tiles.length} options`}
       </button>
       <dialog
