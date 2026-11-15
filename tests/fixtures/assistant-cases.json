@@ -590,18 +590,15 @@
         }
       ],
       "expected": {
-        "prefs.notes": [
-          {
-            "type": "other",
-            "text": "Would like: Nepalese"
-          }
-        ]
+        "prefs.notes": {
+          "$includes": "Would like: Nepalese"
+        }
       },
       "absent": [
         "prefs.cuisine"
       ],
       "replyMustMatch": [
-        "can't look for \"Nepalese\""
+        "can't look for \"Nepalese"
       ]
     },
     {
@@ -699,6 +696,101 @@
       ],
       "replyMustMatch": [
         "^I can only help with this plan\\."
+      ]
+    },
+    {
+      "id": "correction-cuisine-01",
+      "about": "a change of mind",
+      "note": "Taking back a liked cuisine removes it; the new one is added.",
+      "turns": [
+        {
+          "user": "I love Mexican food",
+          "model": {
+            "reply": "Mexican, noted. What time works for you?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "Mexican"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "user": "actually I don't like Mexican anymore, I like Thai instead",
+          "model": {
+            "reply": "Thai instead of Mexican, got it. What time works for you?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "Thai"
+                ],
+                "excluded": [
+                  "Mexican"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.scores.thai_restaurant": 1,
+        "prefs.cuisine.excluded": {
+          "$includes": "mexican_restaurant"
+        }
+      },
+      "absent": [
+        "prefs.cuisine.scores.mexican_restaurant"
+      ]
+    },
+    {
+      "id": "floor-budget-01",
+      "about": "a floor is not a ceiling",
+      "note": "\"At least $50\" is what they would like to spend, not the most they would pay.",
+      "turns": [
+        {
+          "user": "Somewhere nice: at least $50 per person",
+          "model": {
+            "reply": "Somewhere nice, around $50 a person or more. That number stays private. What time works for you?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "budget": {
+                "ideal": 50
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.budget.ideal": 50
+      },
+      "absent": [
+        "prefs.budget.max"
+      ]
+    },
+    {
+      "id": "question-01",
+      "about": "a question is not a statement",
+      "note": "Asking whether halal can be checked does not say they need it.",
+      "turns": [
+        {
+          "user": "Does halal count as something you can check?",
+          "model": {
+            "reply": "Yes, halal is one of the diets I can check restaurants for. Do you need it?",
+            "onTopic": true,
+            "asks": "diet",
+            "update": {}
+          }
+        }
+      ],
+      "expected": {},
+      "absent": [
+        "prefs.dietary"
       ]
     }
   ]

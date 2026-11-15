@@ -122,6 +122,15 @@ const BLOCKS = {
 type BlockName = keyof typeof BLOCKS;
 type Blocks = { [K in BlockName]?: z.infer<(typeof BLOCKS)[K]> };
 
+function unwrapJson(value: unknown): unknown {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
 const ToolOutput = z.object({
   reply: z.string().trim().min(1),
   // Required: an answer that does not say whether the message was about the plan is not used
@@ -129,7 +138,9 @@ const ToolOutput = z.object({
   onTopic: z.boolean(),
   asks: z.string().optional(),
   dontMind: z.array(z.string()).optional(),
-  update: z.record(z.string(), z.unknown()).optional(),
+  // Now and then the model sends the whole update as a JSON string instead of an object.
+  // That is the same answer in a different wrapper, so it is unwrapped, not thrown away.
+  update: z.preprocess(unwrapJson, z.record(z.string(), z.unknown())).optional(),
 });
 export type AssistantOutput = z.infer<typeof ToolOutput>;
 
