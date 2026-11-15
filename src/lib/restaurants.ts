@@ -1,5 +1,6 @@
 import type { Cuisine, Slot } from "./constraints";
 import type { LatLng } from "./geo";
+import { dailyHours, type WeeklyHours } from "./opening-hours";
 
 /**
  * Hard-coded, fictional restaurant data: the seed pool, used when a plan has no
@@ -23,6 +24,11 @@ export type Restaurant = {
   halal: boolean;
   /** Slots the restaurant is open for. */
   open: Slot[];
+  /**
+   * Opening hours through the week (see opening-hours.ts). Absent when unknown, which is
+   * not the same as open. Will replace `open` when plans move to hourly start times (#81).
+   */
+  hours?: WeeklyHours;
   /** Google's public rating, 1 to 5, and how many reviews it rests on. Places results only. */
   rating?: number;
   ratingCount?: number;
@@ -33,6 +39,11 @@ export type Restaurant = {
 
 const ALL: Slot[] = ["fri_dinner", "sat_lunch", "sat_dinner", "sun_lunch", "sun_dinner"];
 const DINNER_ONLY: Slot[] = ["fri_dinner", "sat_dinner", "sun_dinner"];
+
+/** Made-up hours for the seed places, the same every day. */
+const LUNCH_AND_DINNER_HOURS = dailyHours([11, 15], [17, 22]);
+const DINNER_HOURS = dailyHours([17, 23]);
+const LUNCH_HOURS = dailyHours([10, 16]);
 
 export const RESTAURANTS: Restaurant[] = [
   {
@@ -46,6 +57,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: true,
     halal: false,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "noodle-lab",
@@ -58,6 +70,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "red-lantern",
@@ -70,6 +83,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: DINNER_ONLY,
+    hours: DINNER_HOURS,
   },
   {
     id: "jade-garden",
@@ -82,6 +96,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: ["sat_lunch", "sun_lunch"],
+    hours: LUNCH_HOURS,
   },
   {
     id: "seoul-grill",
@@ -94,6 +109,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "bibim-bowl",
@@ -106,6 +122,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "lemongrass",
@@ -118,6 +135,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "pho-corner",
@@ -130,6 +148,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "saffron",
@@ -142,6 +161,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: true,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "taqueria-sol",
@@ -154,6 +174,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "trattoria-luce",
@@ -166,6 +187,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: DINNER_ONLY,
+    hours: DINNER_HOURS,
   },
   {
     id: "slice-society",
@@ -178,6 +200,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "patty-shack",
@@ -190,6 +213,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: false,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "harbor-oyster",
@@ -202,6 +226,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: true,
     halal: false,
     open: DINNER_ONLY,
+    hours: DINNER_HOURS,
   },
   {
     id: "olive-tree",
@@ -214,6 +239,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: true,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
   {
     id: "kebab-house",
@@ -226,6 +252,7 @@ export const RESTAURANTS: Restaurant[] = [
     seafoodHeavy: false,
     halal: true,
     open: ALL,
+    hours: LUNCH_AND_DINNER_HOURS,
   },
 ];
 
