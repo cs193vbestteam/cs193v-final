@@ -70,7 +70,9 @@ export const LIMITS = {
   notes: 10,
   nameChars: 100,
   namedRestaurants: 5,
-  cuisines: 30,
+  // Room for every cuisine the table has (cuisine-table.ts): "Asian or Western" is 36 of them.
+  // Dishes rarely add to it, because a dish scored like its cuisine is not stored (compactScores).
+  cuisines: 64,
   maxBudget: 1000,
   maxTravelMin: 180,
 } as const;

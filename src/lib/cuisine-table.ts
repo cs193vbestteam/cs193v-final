@@ -16,9 +16,22 @@ import { LIMITS, type Style } from "./optimizer-input";
  * dish (ramen under Japanese); under the generic "Eastern European", "Scandinavian" and
  * "South American" nodes it is a national cuisine (Polish under Eastern European).
  *
- * Nothing here is wired into the chat yet. It only adds: the table, the words people use
- * for its entries, the scores a wish turns into (the #82 `cuisine.scores` format), the
- * kind of place a restaurant is (`style`), and which search results are places to eat.
+ * What is here: the table, the words people use for its entries, the scores a wish turns
+ * into (the #82 `cuisine.scores` format), the kind of place a restaurant is (`style`), and
+ * which search results are places to eat. The private assistant (assistant.ts) uses it to
+ * turn the words a person said into scores; the model never does that itself.
+ *
+ * FOR WHOEVER WRITES THE OPTIMIZER
+ * - A person's `cuisine.scores` holds three values: 1 for what they asked for, NEAR_SCORE
+ *   (0.5) for the next best thing, FAR_SCORE (0.25) for a more distant relative. They are
+ *   starting values; how much a partial match is worth is yours to retune.
+ * - Score a restaurant with `matchCuisine(restaurant.types, person.cuisine)`, not with a
+ *   plain key lookup. A dish inherits from its cuisine: a place tagged only
+ *   `hot_pot_restaurant` matches a wish for, or a ban on, `chinese_restaurant`. The stored
+ *   map relies on this and leaves out a dish whose score equals its cuisine's
+ *   (`compactScores`), so a key lookup would miss it.
+ * - `matchCuisine` returns the best score over the restaurant's types and whether any of
+ *   them is excluded. Exclusion always filters, whatever the strength.
  */
 
 /** Google Places (New) Table A, "Food and Drink", as published in 2026. Used to catch typos in the table. */
@@ -783,6 +796,108 @@ export function describeMatch(match: CuisineMatch): string {
     return dishes.length ? `${match.label} (including ${dishes.map((d) => d.label).join(", ")})` : match.label;
   }
   return match.label;
+}
+
+/**
+ * A scores map with nothing redundant in it, short enough for the #82 format. A dish whose
+ * score equals its cuisine's is left out, because `matchCuisine` gives a dish its cuisine's
+ * score anyway. If the map is still too long, the highest scores are kept, in table order
+ * within one score.
+ */
+export function compactScores(scores: Record<string, number>, limit: number = LIMITS.cuisines): Record<string, number> {
+  const entries = Object.entries(scores).filter(([type, score]) => {
+    const parent = parentCuisine(type);
+    return parent === undefined || scores[parent] !== score;
+  });
+  if (entries.length <= limit) return Object.fromEntries(entries);
+  const order = new Map(tableTypes().map((t, i) => [t, i]));
+  const kept = entries
+    .map(([type, score], i) => ({ type, score, at: order.get(type) ?? order.size + i }))
+    .sort((a, b) => b.score - a.score || a.at - b.at)
+    .slice(0, limit)
+    .sort((a, b) => a.at - b.at);
+  return Object.fromEntries(kept.map((k) => [k.type, k.score]));
+}
+
+/**
+ * A favourite named after a broad wish: "Asian", then "Korean most of all". The rest of the
+ * broad wish stays wanted but drops to NEAR_SCORE, so the favourite stands out once its own
+ * scores are merged in. Only a whole region (or a whole group) at score 1 counts as a broad
+ * wish; scores that are not part of one are returned unchanged.
+ */
+export function lowerBroadWish(
+  scores: Record<string, number>,
+  favourites: readonly CuisineMatch[],
+): Record<string, number> {
+  const whole = (region: RegionDef) => region.related && region.cuisines.every((cu) => scores[cu.type] === 1);
+  const lowered = new Set<string>();
+  for (const favourite of favourites) {
+    const region =
+      favourite.level === "cuisine"
+        ? CUISINE_BY_TYPE.get(favourite.id)?.region
+        : favourite.level === "dish"
+          ? DISH_BY_TYPE.get(favourite.id)?.region
+          : undefined;
+    if (!region || !whole(region)) continue;
+    const group = GROUPS.find(
+      (g) => g.regions.includes(region.id) && g.regions.every((id) => whole(REGION_BY_ID.get(id)!)),
+    );
+    const regions = group ? group.regions.map((id) => REGION_BY_ID.get(id)!) : [region];
+    for (const t of group?.types ?? []) lowered.add(t);
+    for (const r of regions) for (const t of regionTypes(r)) lowered.add(t);
+  }
+  if (lowered.size === 0) return scores;
+  return Object.fromEntries(
+    Object.entries(scores).map(([type, score]) => [type, lowered.has(type) && score === 1 ? NEAR_SCORE : score]),
+  );
+}
+
+/** An excluded list with nothing redundant in it: a dish is left out when its cuisine is excluded too. */
+export function compactExcluded(types: readonly string[], limit: number = LIMITS.cuisines): string[] {
+  const all = new Set(types);
+  const kept = [...all].filter((t) => {
+    const parent = parentCuisine(t);
+    return parent === undefined || !all.has(parent);
+  });
+  return kept.slice(-limit);
+}
+
+/**
+ * How to say a set of types to a person, without spelling out what a broader word already
+ * says: every Asian cuisine is "Asian", a whole region is its name, a cuisine stands for its
+ * dishes. A type the table does not place is tidied up, never shown raw.
+ */
+export function describeTypes(types: readonly string[]): string[] {
+  const set = new Set(types);
+  const whole = (region: RegionDef) => region.related && region.cuisines.every((cu) => set.has(cu.type));
+  const labels: string[] = [];
+  const said = new Set<string>();
+  const covered = new Set<string>();
+  for (const group of GROUPS) {
+    const regions = group.regions.map((id) => REGION_BY_ID.get(id)!);
+    const ownOnly = group.types.some((t) => set.has(t));
+    if (!regions.every(whole) && !ownOnly) continue;
+    labels.push(group.label);
+    group.types.forEach((t) => said.add(t));
+    if (regions.every(whole)) regions.forEach((r) => covered.add(r.id));
+  }
+  for (const region of REGIONS) {
+    if (covered.has(region.id)) continue;
+    if (whole(region)) {
+      labels.push(region.label);
+      covered.add(region.id);
+      continue;
+    }
+    for (const cu of region.cuisines) {
+      if (set.has(cu.type)) labels.push(cu.label);
+      else for (const dish of cu.dishes) if (set.has(dish.type)) labels.push(dish.label);
+    }
+  }
+  for (const t of types) {
+    if (CUISINE_BY_TYPE.has(t) || DISH_BY_TYPE.has(t) || said.has(t)) continue;
+    labels.push(labelOf(t));
+  }
+  return [...new Set(labels)];
 }
 
 // ---------------------------------------------------------------------------------------

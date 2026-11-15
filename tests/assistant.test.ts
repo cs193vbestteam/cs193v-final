@@ -9,10 +9,26 @@ import {
   type AssistantOutput,
 } from "@/lib/assistant";
 import { RUBRIC, TOOL, stateBlock } from "@/lib/assistant-prompt";
+import { FAR_SCORE, NEAR_SCORE, compactScores, matchCuisine } from "@/lib/cuisine-table";
 import type { ChatTurn } from "@/lib/extract";
 import { OPENING_MESSAGE } from "@/lib/extract-rules";
-import { MAX_ASSISTANT_TURNS, emptyMemberState, missingRequired, type MemberState } from "@/lib/member-state";
-import { MEALS, MEAL_RANGES, START_TIMES, mealStartTimes, type PersonPreferences } from "@/lib/optimizer-input";
+import {
+  MAX_ASSISTANT_TURNS,
+  allowedToAsk,
+  describeState,
+  emptyMemberState,
+  missingRequired,
+  type MemberState,
+} from "@/lib/member-state";
+import {
+  LIMITS,
+  MEALS,
+  MEAL_RANGES,
+  PersonPreferencesSchema,
+  START_TIMES,
+  mealStartTimes,
+  type PersonPreferences,
+} from "@/lib/optimizer-input";
 import { RESTAURANTS } from "@/lib/restaurants";
 import { START_UNAVAILABLE } from "@/lib/start-point";
 import { loadAssistantCases, matches, runAssistantCase, runAssistantSuite, scriptedFetch } from "../sim/assistant-eval";
@@ -275,7 +291,6 @@ describe("one bad block never costs the rest of what they said", () => {
     ["a number as text", { budget: { max: "forty" } }],
     ["a diet that does not exist", { dietary: ["no_gluten"] }],
     ["a meal that does not exist", { time: { only: [{ meal: "elevenses" }] } }],
-    ["a kind of place that does not exist", { style: { wanted: ["rooftop"] } }],
     ["a priority that does not exist", { priority: ["vibes"] }],
     ["a note of the wrong type", { notes: [{ type: "secret", text: "x" }] }],
   ])("records nothing for %s", (_name, update) => {
@@ -369,15 +384,127 @@ describe("diet, allergies and other things that cannot be checked", () => {
   });
 });
 
-describe("cuisines and kinds of place", () => {
-  it("stores cuisines under Google Places type names, wanted at 1", () => {
+describe("cuisines: the model passes the words on, the table in code says what they mean", () => {
+  const scoresOf = (r: ReturnType<typeof apply>) => r.state.prefs.cuisine?.scores ?? {};
+  const ASIAN = [
+    "chinese_restaurant",
+    "japanese_restaurant",
+    "korean_restaurant",
+    "thai_restaurant",
+    "vietnamese_restaurant",
+    "indian_restaurant",
+  ];
+
+  it("stores a cuisine under its Google Places type name at 1, with its neighbours lower", () => {
     const r = apply(state(), out({ cuisine: { liked: ["Korean", "thai"], excluded: ["indian"], strength: "strong" } }));
-    expect(r.state.prefs.cuisine).toEqual({
-      scores: { korean_restaurant: 1, thai_restaurant: 1 },
-      excluded: ["indian_restaurant"],
-      strength: "strong",
-    });
+    const scores = scoresOf(r);
+    expect(scores.korean_restaurant).toBe(1);
+    expect(scores.thai_restaurant).toBe(1);
+    // The next best things come from the table, not from the model.
+    expect(scores.japanese_restaurant).toBe(NEAR_SCORE);
+    expect(scores.vietnamese_restaurant).toBe(NEAR_SCORE);
+    expect(Object.values(scores).filter((x) => x === 1)).toHaveLength(2);
+    expect(r.state.prefs.cuisine?.excluded).toEqual(["indian_restaurant"]);
+    expect(scores.indian_restaurant).toBeUndefined();
+    expect(r.state.prefs.cuisine?.strength).toBe("strong");
     expect(r.state.chat.answered).toEqual(["cuisine"]);
+    expect(r.reply).toBe("Noted.");
+  });
+
+  it('issue #62: "Asian food" is understood, said back, and costs nothing else in the message', () => {
+    const r = apply(
+      state(),
+      out(
+        {
+          cuisine: { liked: ["Asian food"] },
+          budget: { max: 40, strength: "must" },
+          time: { only: [{ meal: "dinner" }] },
+        },
+        { reply: "Asian food for dinner, at most $40. Noted." },
+      ),
+    );
+    const scores = scoresOf(r);
+    for (const type of ASIAN) expect(scores[type], type).toBe(1);
+    // A cuisine from another part of the world is not in it.
+    expect(scores.italian_restaurant).toBeUndefined();
+    expect(r.reply).toMatch(/By Asian I mean: .*Chinese.*Japanese.*Korean.*Thai.*Indian/);
+    // The rest of the message is kept, and nothing was thrown away.
+    expect(r.state.prefs.budget).toEqual({ max: 40, strength: "must" });
+    expect(r.state.prefs.time?.unavailable).toBeDefined();
+    expect(r.dropped).toEqual([]);
+    expect(r.state.prefs.notes).toBeUndefined();
+    expect(PersonPreferencesSchema.safeParse(r.state.prefs).success).toBe(true);
+    // The person sees one word for it, never a list of type names.
+    expect(describeState(r.state)).toContain("Would like to eat: Asian");
+  });
+
+  it("does not repeat what a broad word means when the model already listed it", () => {
+    const reply = "Asian it is: Chinese, Japanese, Korean, Thai and so on.";
+    expect(apply(state(), out({ cuisine: { liked: ["Asian"] } }, { reply })).reply).toBe(reply);
+  });
+
+  it("leaves room for one question about a favourite after a broad word, and only if cuisine was never asked", () => {
+    const broad = out({ cuisine: { liked: ["Asian"] } });
+    const fresh = apply(state(), broad);
+    expect(fresh.state.chat.answered).toEqual([]);
+    expect(allowedToAsk(fresh.state)).toContain("cuisine");
+    // Already asked once: a broad answer settles it, and it is not asked again.
+    const asked = apply(state({}, { asked: ["cuisine"], lastAsked: "cuisine" }), broad);
+    expect(asked.state.chat.answered).toEqual(["cuisine"]);
+    expect(allowedToAsk(asked.state)).not.toContain("cuisine");
+  });
+
+  it("puts a favourite at 1 and keeps the rest of the earlier broad wish wanted, lower", () => {
+    const first = apply(state(), out({ cuisine: { liked: ["Asian"] } }));
+    const second = apply(first.state, out({ cuisine: { liked: ["Korean"] } }));
+    const scores = scoresOf(second);
+    expect(scores.korean_restaurant).toBe(1);
+    for (const type of ASIAN.filter((t) => t !== "korean_restaurant")) expect(scores[type], type).toBe(NEAR_SCORE);
+    expect(second.state.chat.answered).toEqual(["cuisine"]);
+    expect(describeState(second.state)).toContain("Would like to eat: Korean");
+  });
+
+  it("keeps a dish a dish: hot pot at 1, Chinese food lower, other Chinese dishes lower still", () => {
+    const scores = scoresOf(apply(state(), out({ cuisine: { liked: ["hot pot"] } })));
+    expect(scores.hot_pot_restaurant).toBe(1);
+    expect(scores.chinese_restaurant).toBe(NEAR_SCORE);
+    expect(scores.dim_sum_restaurant).toBe(FAR_SCORE);
+    expect(scores.japanese_restaurant).toBeUndefined();
+  });
+
+  it("records a cuisine the old list of ten never had", () => {
+    const r = apply(state(), out({ cuisine: { liked: ["French"] } }));
+    expect(scoresOf(r).french_restaurant).toBe(1);
+    expect(r.reply).toBe("Noted.");
+  });
+
+  it("understands the words in Chinese as well", () => {
+    const r = apply(state(), out({ cuisine: { liked: ["火锅"], excluded: ["西餐"] } }));
+    expect(scoresOf(r).hot_pot_restaurant).toBe(1);
+    expect(r.state.prefs.cuisine?.excluded).toEqual(
+      expect.arrayContaining(["italian_restaurant", "american_restaurant"]),
+    );
+  });
+
+  it("does not store a dish that only repeats its cuisine's score", () => {
+    // Chinese at 1 means its dishes at 1 too; matchCuisine supplies them, so they are not stored.
+    const r = apply(state(), out({ cuisine: { liked: ["Chinese"] } }));
+    expect(scoresOf(r).chinese_restaurant).toBe(1);
+    expect(scoresOf(r).hot_pot_restaurant).toBeUndefined();
+    expect(matchCuisine(["hot_pot_restaurant"], r.state.prefs.cuisine!)).toEqual({ excluded: false, score: 1 });
+  });
+
+  it("fits two whole halves of the world, and keeps the highest scores if a list is ever too long", () => {
+    const r = apply(state(), out({ cuisine: { liked: ["Asian", "Western"] } }));
+    expect(r.dropped).toEqual([]);
+    expect(Object.keys(scoresOf(r)).length).toBeLessThanOrEqual(LIMITS.cuisines);
+    expect(describeState(r.state)).toContain("Would like to eat: Asian, Western");
+    // With a tighter limit than the app uses: what was asked for stays, the next best things go first.
+    const tight = compactScores(
+      { thai_restaurant: 0.5, korean_restaurant: 1, japanese_restaurant: 0.5, french_restaurant: 1 },
+      2,
+    );
+    expect(tight).toEqual({ korean_restaurant: 1, french_restaurant: 1 });
   });
 
   it('turns "no seafood" into a kind of place to leave out, which is not a cuisine wish', () => {
@@ -386,16 +513,36 @@ describe("cuisines and kinds of place", () => {
     expect(r.state.chat.answered).toEqual([]);
   });
 
-  it("keeps the cuisines it knows next to a word it does not, and says which it left out", () => {
-    const r = apply(state(), out({ cuisine: { liked: ["japanese", "Ethiopian"] }, budget: { max: 40 } }));
-    expect(r.state.prefs.cuisine?.scores).toEqual({ japanese_restaurant: 1 });
+  it("keeps what it knows next to a word it does not, says so honestly, and keeps the word as a note", () => {
+    const r = apply(state(), out({ cuisine: { liked: ["japanese", "Nepalese"] }, budget: { max: 40 } }));
+    expect(scoresOf(r).japanese_restaurant).toBe(1);
+    expect(scoresOf(r).nepalese_restaurant).toBeUndefined();
     expect(r.state.prefs.budget?.max).toBe(40);
-    expect(r.reply).toContain('couldn\'t match "Ethiopian" to a cuisine I can look for');
-    // Nothing is added when every word is one we have.
+    expect(r.reply).toContain('I can\'t look for "Nepalese" as a kind of food or place');
+    expect(r.reply).toContain("kept it as a note");
+    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would like: Nepalese" }]);
+    // The note is not an answer to "anything you can't eat?", and it is said only once.
+    expect(r.state.chat.answered).toEqual(["budget", "cuisine"]);
+    expect(r.reply).not.toContain("That is noted for you");
+    // Nothing is added when every word is one the table has.
     expect(apply(state(), out({ cuisine: { liked: ["japanese"] } })).reply).toBe("Noted.");
   });
 
-  it("lets a change of mind move a cuisine from wanted to not wanted", () => {
+  it("an unknown food in reply to the cuisine question still settles that question", () => {
+    const r = apply(state({}, { asked: ["cuisine"], lastAsked: "cuisine" }), out({ cuisine: { liked: ["Nepalese"] } }));
+    expect(r.state.prefs.cuisine).toBeUndefined();
+    expect(r.state.chat.answered).toEqual(["cuisine"]);
+  });
+
+  it("sends a diet said as a cuisine to the diets, where it filters", () => {
+    const r = apply(state(), out({ cuisine: { liked: ["vegetarian food"] } }));
+    expect(r.state.prefs.dietary).toEqual(["vegetarian"]);
+    expect(r.state.prefs.cuisine).toBeUndefined();
+    expect(r.state.prefs.notes).toBeUndefined();
+    expect(r.state.chat.answered).toEqual(["diet"]);
+  });
+
+  it("lets a change of mind move a cuisine from wanted to not wanted, and back", () => {
     const before = state({ cuisine: { scores: { thai_restaurant: 1, korean_restaurant: 1 }, strength: "mild" } });
     const r = apply(before, out({ cuisine: { excluded: ["thai"] } }));
     expect(r.state.prefs.cuisine).toEqual({
@@ -403,11 +550,45 @@ describe("cuisines and kinds of place", () => {
       excluded: ["thai_restaurant"],
       strength: "mild",
     });
+    const back = apply(r.state, out({ cuisine: { liked: ["Thai"] } }));
+    expect(back.state.prefs.cuisine?.excluded).toBeUndefined();
+    expect(back.state.prefs.cuisine?.scores?.thai_restaurant).toBe(1);
   });
 
-  it("records a kind of place only from the fixed list", () => {
+  it("wanting one dish lifts an earlier ban on its whole cuisine", () => {
+    const before = state({ cuisine: { excluded: ["chinese_restaurant"], strength: "mild" } });
+    const r = apply(before, out({ cuisine: { liked: ["hot pot"] } }));
+    expect(r.state.prefs.cuisine?.excluded).toBeUndefined();
+    expect(matchCuisine(["hot_pot_restaurant"], r.state.prefs.cuisine!)).toEqual({ excluded: false, score: 1 });
+  });
+});
+
+describe("kinds of place: words in, the fixed list out", () => {
+  it("maps the words people use to the fixed kinds of place", () => {
+    const r = apply(state(), out({ style: { wanted: ["somewhere fancy"], excluded: ["fast food"] } }));
+    expect(r.state.prefs.style).toEqual({ wanted: ["fine_dining"], excluded: ["fast_food"], strength: "mild" });
+    expect(r.reply).toBe("Noted.");
+  });
+
+  it("still takes a value from the fixed list as it is", () => {
     const r = apply(state(), out({ style: { wanted: ["fine_dining"], excluded: ["fast_food"] } }));
     expect(r.state.prefs.style).toEqual({ wanted: ["fine_dining"], excluded: ["fast_food"], strength: "mild" });
+  });
+
+  it("puts a word under the right heading even when the model filed it under the other", () => {
+    const r = apply(state(), out({ cuisine: { excluded: ["fast food"] }, style: { wanted: ["hot pot"] } }));
+    expect(r.state.prefs.style).toEqual({ excluded: ["fast_food"], strength: "mild" });
+    expect(r.state.prefs.cuisine?.scores?.hot_pot_restaurant).toBe(1);
+  });
+
+  it("keeps a kind of place it does not know as a note, and stores no kind of place", () => {
+    const before = state({ budget: { max: 40, strength: "must" } }, { answered: ["budget"] });
+    const r = apply(before, out({ style: { wanted: ["rooftop"] } }));
+    expect(r.state.prefs.style).toBeUndefined();
+    expect(r.state.prefs.budget).toEqual(before.prefs.budget);
+    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would like: rooftop" }]);
+    expect(r.reply).toContain('I can\'t look for "rooftop"');
+    expect(r.dropped).toEqual([]);
   });
 });
 
@@ -641,6 +822,10 @@ describe("what is sent to the model", () => {
     expect(RUBRIC).toContain("mild: everything else. This is the default");
     expect(RUBRIC).toContain("An allergy goes in notes");
     expect(RUBRIC).toContain("Code turns these into start times");
+    // Cuisines and kinds of place are passed on as words; the table in code decides what they cover.
+    expect(RUBRIC).toContain("never expand a broad word");
+    expect(RUBRIC).not.toMatch(/"Asian" is japanese/);
+    expect(JSON.stringify(TOOL)).not.toContain('"mediterranean"');
     expect(RUBRIC).toContain("in the language the person is writing in");
     // The model is given the meal words, never their hours.
     expect(RUBRIC).not.toMatch(/\b1[0-9]:00, 1[0-9]:00/);
@@ -748,6 +933,12 @@ describe("the assistant's own cases (tests/fixtures/assistant-cases.json)", () =
       "allergy becomes a note",
       "named restaurant",
       "vague budget, then a concrete answer",
+      "a broad cuisine word",
+      "a dish, not a cuisine",
+      "a cuisine outside the old ten",
+      "a cuisine that cannot be looked for",
+      "a kind-of-place word",
+      "a cuisine word in Chinese",
     ])
       expect(about, topic).toContain(topic);
     expect(new Set(cases.map((c) => c.id)).size).toBe(cases.length);

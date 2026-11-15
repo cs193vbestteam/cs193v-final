@@ -1,4 +1,3 @@
-import { CUISINES } from "./constraints";
 import {
   MAX_ASSISTANT_TURNS,
   VARIABLES,
@@ -65,12 +64,13 @@ travel, in minutes one way: idealMin and maxMin, in the same way. If they say wh
 
 dietary: only ${LIST(DIETARY_NEEDS)}. These are the diets restaurants can be checked for. "Nothing", "no restrictions", "I eat everything" is nothingTheyCannotEat = true.
 Anything else they cannot eat cannot be checked against restaurants. An allergy goes in notes with type "allergy", in their words. "No spicy food", "no pork", "no cilantro" go in notes with type "other". Say honestly that it is noted for them but cannot be checked against restaurants.
-One exception: no fish or seafood is cuisine.excluded = ["seafood"].
+One exception: no fish or seafood is cuisine.excluded = ["seafood"]. And a diet said as a kind of food ("vegetarian food", "halal places") is dietary, not cuisine.
 Whenever a message says what they cannot eat, in any of these forms and whether or not you asked, also set saidWhatTheyCannotEat = true: that question is then answered and must not be asked again.
 
-cuisine: liked and excluded, using only these names: ${LIST(CUISINES)} (and "seafood", in excluded only). Translate a region, a style or a dish yourself: "Asian" is japanese, chinese, korean, thai and vietnamese; "something like ramen" is japanese. excluded is only for food they say they do NOT want. If nothing on the list fits, record no cuisine and say plainly that you cannot look for it. Say which cuisines you noted so they can correct you.
+cuisine: liked and excluded, as the WORDS the person used for the food, one entry per thing they named: "Asian", "Chinese", "hot pot", "French", "Korean BBQ", "火锅", "seafood". A table in code says what each word covers and what to look for, so pass the word on and do not work it out yourself: never expand a broad word ("Asian" stays "Asian", not a list of cuisines), never turn a dish into a cuisine ("ramen" stays "ramen"), and never replace a word with a nearby one because you think it is not supported. excluded is only for food they say they do NOT want.
+Code tells the person what a broad word was taken to mean, and says so when a word cannot be looked for; you do not need to list cuisines yourself. After a broad word, if cuisine is still on your list in STATE, your one question may be whether they have a favourite among them.
 
-style: wanted and excluded, from ${LIST(STYLES)}. Only when they bring it up.
+style: the kind of place, wanted and excluded, again as the words they used ("fast food", "fine dining", "somewhere fancy", "a café", "a bar"). Code maps them to ${LIST(STYLES)}. Only when they bring it up.
 
 priority: only when they say what matters most, in their order, from ${LIST(PRIORITY_DIMS)}. Never rank things for them and never give a number for importance.
 
@@ -200,16 +200,24 @@ export const TOOL = {
           cuisine: {
             type: "object",
             properties: {
-              liked: { type: "array", items: { type: "string", enum: [...CUISINES] } },
-              excluded: { type: "array", items: { type: "string", enum: [...CUISINES, "seafood"] } },
+              liked: {
+                type: "array",
+                items: { type: "string" },
+                description: "Food they would like, in the words they used. Never expanded or translated.",
+              },
+              excluded: {
+                type: "array",
+                items: { type: "string" },
+                description: "Food they do not want, in the words they used.",
+              },
               strength: STRENGTH,
             },
           },
           style: {
             type: "object",
             properties: {
-              wanted: { type: "array", items: { type: "string", enum: [...STYLES] } },
-              excluded: { type: "array", items: { type: "string", enum: [...STYLES] } },
+              wanted: { type: "array", items: { type: "string" }, description: "Kind of place, in their words." },
+              excluded: { type: "array", items: { type: "string" }, description: "Kind of place, in their words." },
               strength: STRENGTH,
             },
           },

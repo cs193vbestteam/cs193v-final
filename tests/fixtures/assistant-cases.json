@@ -126,12 +126,8 @@
         }
       ],
       "expected": {
-        "prefs.cuisine": {
-          "scores": {
-            "korean_restaurant": 1
-          },
-          "strength": "strong"
-        },
+        "prefs.cuisine.scores.korean_restaurant": 1,
+        "prefs.cuisine.strength": "strong",
         "chat.answered": [
           "cuisine"
         ]
@@ -449,6 +445,234 @@
       },
       "absent": [
         "prefs.budget"
+      ]
+    },
+    {
+      "id": "cuisine-broad-01",
+      "about": "a broad cuisine word",
+      "note": "Issue #62. The model passes \"Asian\" on as a word; the table in code says what it covers, the reply says so, and nothing else in the message is lost. A favourite named afterwards scores 1 and the rest of the broad wish stays wanted, lower.",
+      "turns": [
+        {
+          "user": "Asian food sounds good, and no more than $40",
+          "model": {
+            "reply": "Asian food and at most $40 a person, noted. Is there a favourite among them?",
+            "onTopic": true,
+            "asks": "cuisine",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "Asian"
+                ]
+              },
+              "budget": {
+                "max": 40,
+                "strength": "must"
+              }
+            }
+          }
+        },
+        {
+          "user": "Korean most of all",
+          "model": {
+            "reply": "Korean most of all, noted. What time works for you?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "Korean"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.scores.korean_restaurant": 1,
+        "prefs.cuisine.scores.thai_restaurant": 0.5,
+        "prefs.cuisine.scores.indian_restaurant": 0.5,
+        "prefs.budget.max": 40,
+        "chat.answered": [
+          "budget",
+          "cuisine"
+        ]
+      },
+      "absent": [
+        "prefs.notes",
+        "prefs.cuisine.excluded"
+      ],
+      "replyMustMatch": [
+        "By Asian I mean: .*Japanese.*Korean.*Thai"
+      ]
+    },
+    {
+      "id": "cuisine-dish-01",
+      "about": "a dish, not a cuisine",
+      "note": "\"Hot pot\" stays hot pot: it scores 1, Chinese food in general scores lower, and the model does not turn it into a cuisine.",
+      "turns": [
+        {
+          "user": "I'm craving hot pot",
+          "model": {
+            "reply": "Hot pot, noted. Is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "diet",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "hot pot"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.scores.hot_pot_restaurant": 1,
+        "prefs.cuisine.scores.chinese_restaurant": 0.5,
+        "chat.answered": [
+          "cuisine"
+        ]
+      },
+      "absent": [
+        "prefs.notes"
+      ]
+    },
+    {
+      "id": "cuisine-beyond-ten-01",
+      "about": "a cuisine outside the old ten",
+      "note": "French was not on the old list of ten. It is in the table, so it is recorded like any other.",
+      "turns": [
+        {
+          "user": "French would be lovely",
+          "model": {
+            "reply": "French, noted. What time works for you?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "French"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.scores.french_restaurant": 1,
+        "chat.answered": [
+          "cuisine"
+        ]
+      },
+      "absent": [
+        "prefs.notes"
+      ]
+    },
+    {
+      "id": "cuisine-unknown-01",
+      "about": "a cuisine that cannot be looked for",
+      "note": "Google Places has no type for Nepalese food. Nothing is stored as a cuisine, the person is told, and their words are kept as a note.",
+      "turns": [
+        {
+          "user": "I'd really love Nepalese food",
+          "model": {
+            "reply": "Nepalese, noted. What time works for you?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "Nepalese"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.notes": [
+          {
+            "type": "other",
+            "text": "Would like: Nepalese"
+          }
+        ]
+      },
+      "absent": [
+        "prefs.cuisine"
+      ],
+      "replyMustMatch": [
+        "can't look for \"Nepalese\""
+      ]
+    },
+    {
+      "id": "style-word-01",
+      "about": "a kind-of-place word",
+      "note": "The model passes the person's words on; code maps them to the fixed kinds of place.",
+      "turns": [
+        {
+          "user": "Somewhere fancy please, definitely not fast food",
+          "model": {
+            "reply": "Somewhere fancy and no fast food, noted. What time works for you?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "style": {
+                "wanted": [
+                  "somewhere fancy"
+                ],
+                "excluded": [
+                  "fast food"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.style.wanted": [
+          "fine_dining"
+        ],
+        "prefs.style.excluded": [
+          "fast_food"
+        ]
+      },
+      "absent": [
+        "prefs.cuisine",
+        "prefs.notes"
+      ]
+    },
+    {
+      "id": "cuisine-chinese-word-01",
+      "about": "a cuisine word in Chinese",
+      "note": "People write in Chinese too. The words go to the table as written.",
+      "turns": [
+        {
+          "user": "想吃火锅，不要西餐",
+          "model": {
+            "reply": "好的，记下了：想吃火锅，不要西餐。那天几点方便？",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "火锅"
+                ],
+                "excluded": [
+                  "西餐"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.scores.hot_pot_restaurant": 1,
+        "prefs.cuisine.excluded": {
+          "$includes": "italian_restaurant"
+        }
+      },
+      "absent": [
+        "prefs.notes"
       ]
     },
     {

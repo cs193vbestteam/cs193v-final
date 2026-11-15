@@ -236,7 +236,7 @@
         "asks": "time",
         "update": { "cuisine": { "liked": ["korean"] } }
       },
-      "expected": { "prefs.cuisine.scores": { "korean_restaurant": 1 } }
+      "expected": { "prefs.cuisine.scores.korean_restaurant": 1 }
     },
     {
       "id": "mixed-05",

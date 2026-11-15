@@ -1,4 +1,5 @@
 import { CUISINES, type Cuisine } from "./constraints";
+import { isMealCandidate, stylesOf } from "./cuisine-table";
 import { travelMinutes, type LatLng } from "./geo";
 import { weeklyHoursFromGoogle } from "./opening-hours";
 import type { Restaurant } from "./restaurants";
@@ -133,7 +134,11 @@ export function toRestaurant(p: PlaceResult, center: LatLng): Restaurant | null 
   if (p.businessStatus && p.businessStatus !== "OPERATIONAL") return null;
   const reviews = p.userRatingCount ?? 0;
   if (p.rating !== undefined && reviews >= MIN_REVIEWS && p.rating < MIN_RATING) return null;
-  const types = [...(p.types ?? []), p.primaryType ?? ""].map((t) => t.toLowerCase());
+  const primaryType = p.primaryType?.toLowerCase();
+  const placeTypes = Array.from(new Set((p.types ?? []).map((t) => t.toLowerCase()).filter(Boolean)));
+  // A supermarket with a cafe inside comes back from a cafe search; it is not somewhere to eat a meal.
+  if (!isMealCandidate({ primaryType, types: placeTypes })) return null;
+  const types = [...placeTypes, primaryType ?? ""];
   const name = p.displayName?.text ?? "Unnamed place";
   const cuisine = inferCuisine(types, name);
   if (!cuisine) return null;
@@ -144,6 +149,8 @@ export function toRestaurant(p: PlaceResult, center: LatLng): Restaurant | null 
     id: p.id,
     name,
     cuisine,
+    types: primaryType && !placeTypes.includes(primaryType) ? [primaryType, ...placeTypes] : placeTypes,
+    style: stylesOf(placeTypes, primaryType),
     pricePerPerson: PRICE_BY_LEVEL[p.priceLevel ?? ""] ?? DEFAULT_PRICE,
     travelMin: travelMinutes(center, location),
     location,

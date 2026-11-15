@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { PENDING, PROBES, StartPointSchema, describeSlots, type MissingField, type Slot } from "./constraints";
+import { describeTypes } from "./cuisine-table";
 import {
   PersonPreferencesSchema,
   START_TIMES,
@@ -138,11 +139,6 @@ export function availableTimes(prefs: PersonPreferences): StartTime[] {
 // The summary shown to the owner, and to nobody else
 // ---------------------------------------------------------------------------------------
 
-/** "hot_pot_restaurant" → "hot pot". */
-export function placeTypeLabel(type: string): string {
-  return type.replace(/_restaurant$/, "").replaceAll("_", " ");
-}
-
 const STRENGTH_WORDS: Record<Strength, string> = { must: " (a must)", strong: " (matters a lot)", mild: "" };
 const PRIORITY_WORDS: Record<string, string> = {
   time: "the time",
@@ -193,12 +189,17 @@ export function describeState(state: MemberState): string[] {
   if (prefs.dietary?.length) lines.push(`Diet: ${prefs.dietary.join(", ")}`);
   else if (settled("diet")) lines.push(`Diet: ${allergies.length ? "see the note below" : "no restrictions"}`);
 
-  const liked = Object.keys(prefs.cuisine?.scores ?? {});
+  // What they asked for scores 1. Lower scores are the next best things code added (cuisine-table.ts)
+  // and are not something the person said, so they are not listed. Labels come from the table:
+  // people see "Korean, hot pot", never a type name.
+  const liked = Object.entries(prefs.cuisine?.scores ?? {})
+    .filter(([, score]) => score === 1)
+    .map(([type]) => type);
   const excluded = prefs.cuisine?.excluded ?? [];
   if (liked.length)
-    lines.push(`Would like to eat: ${liked.map(placeTypeLabel).join(", ")}${STRENGTH_WORDS[prefs.cuisine!.strength]}`);
+    lines.push(`Would like to eat: ${describeTypes(liked).join(", ")}${STRENGTH_WORDS[prefs.cuisine!.strength]}`);
   else if (!excluded.length && settled("cuisine")) lines.push("Cuisine: no preference");
-  if (excluded.length) lines.push(`Not for them: ${excluded.map(placeTypeLabel).join(", ")}`);
+  if (excluded.length) lines.push(`Not for them: ${describeTypes(excluded).join(", ")}`);
 
   if (prefs.style?.wanted?.length)
     lines.push(
