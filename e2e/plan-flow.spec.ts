@@ -81,7 +81,8 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await alex.getByRole("button", { name: "Start a plan" }).click();
     await expect(alex).toHaveURL(/\/e\/[a-z0-9]+$/);
     await expect(alex.getByRole("heading", { name: "Weekend dinner" })).toBeVisible();
-    await expect(alex.getByText("seed places")).toBeVisible();
+    await expect(alex.getByText("Sample data")).toBeVisible();
+    await expect(alex.getByText("They are not real places.")).toBeVisible();
   });
   const planPath = new URL(alex.url()).pathname;
 

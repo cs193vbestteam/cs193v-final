@@ -4,12 +4,15 @@ import { HeroDemo } from "@/components/HeroDemo";
 import { Reveal } from "@/components/Reveal";
 import { listMyEvents } from "@/lib/events";
 import { currentUser } from "@/lib/session";
+import { yelpDatasetDir } from "@/lib/yelp-pool";
 
 export default async function Home() {
   const user = await currentUser();
   if (!user) return <Landing />;
   const events = await listMyEvents(user.id);
   const open = events.filter((e) => !e.decided).length;
+  // Whether a plan can get real restaurants here decides what the form promises.
+  const realPlaces = !!process.env.GOOGLE_PLACES_API_KEY?.trim() || !!yelpDatasetDir();
   return (
     <div className="mx-auto mt-10 max-w-3xl sm:mt-16">
       <div className="rise" style={{ "--d": "0.05s" } as React.CSSProperties}>
@@ -28,7 +31,9 @@ export default async function Home() {
         <p className="eyebrow mb-3">New plan</p>
         <CreateEventForm />
         <p className="mt-3 text-xs text-ink-3">
-          Add a place and the candidates come from real restaurants nearby; leave it blank for the built-in set.
+          {realPlaces
+            ? "Add a place to choose from real restaurants nearby. Leave it blank and the plan uses made-up sample restaurants."
+            : "Sample data: plans in this version pick from made-up sample restaurants, not real places."}
         </p>
       </section>
 

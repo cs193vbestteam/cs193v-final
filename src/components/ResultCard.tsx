@@ -21,7 +21,7 @@ function describeDims(t: Tally): string {
   return parts.join(", ");
 }
 
-export function ResultCard({ result }: { result: StoredResult }) {
+export function ResultCard({ result, sample = false }: { result: StoredResult; sample?: boolean }) {
   const place = (id: string) => result.places?.[id] ?? getRestaurant(id);
   const r = result.proposal ? place(result.proposal.restaurantId) : undefined;
   const headline =
@@ -80,11 +80,12 @@ export function ResultCard({ result }: { result: StoredResult }) {
               {SLOT_LABELS[result.proposal!.slot]} · ~${r.pricePerPerson}/person
               {r.travelMin !== undefined ? ` · ${r.travelMin} min away` : ""} · {r.cuisine}
             </div>
+            {sample && <p className="mt-1 text-xs text-amber-ink">Sample place, not a real restaurant.</p>}
             {result.explanation && <p className="mt-2 text-sm italic text-ink-2">{result.explanation}</p>}
             {tiles.length > 1 && (
               <p className="mt-2 text-xs text-ink-3">Best fit of {tiles.length} places that work for the group.</p>
             )}
-            <PlanOptions tiles={tiles} />
+            <PlanOptions tiles={tiles} sample={sample} />
           </div>
         ) : (
           <p className="mt-2 text-sm text-ink-2">
