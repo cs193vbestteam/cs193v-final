@@ -541,9 +541,13 @@ export function ruleReply(before: Constraints, update: ConstraintsUpdate): strin
   return `${ack} ${QUESTIONS[missing[0]]}`;
 }
 
+/**
+ * The assistant's first message (#83, #85): an open question, and only promises the product
+ * keeps. It says who else sees the chat (nobody in the group), what the answers are used for,
+ * and which AI provider processes them.
+ */
 export const OPENING_MESSAGE =
-  "Hi! I'm your private assistant for this plan. Only you can see this chat, and I'll never share your numbers with the group. I'll only ever answer \"works / a stretch / doesn't work\" on your behalf. " +
-  QUESTIONS.time;
+  "Hi! I'm your private assistant for this plan. Nobody else in the group sees this chat or your numbers. What you tell me becomes your preferences for a program that picks the place and time, and the group only sees the result. This chat is processed by Anthropic's Claude. So, what are you hoping for with this meal?";
 
 /* ── Follow-up questions ────────────────────────────────────────────────
    "Whatever" is not an answer. A vague reply to a numeric question becomes an

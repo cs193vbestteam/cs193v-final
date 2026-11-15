@@ -60,4 +60,4 @@ npm run personas -- --people 5 --seed sim/seeds/friends.md
 
 ## Extractors
 
-`npm run sim:extract` replays `tests/fixtures/extract-cases.json` (39 ordinary private chats and 16 adversarial ones) through the rule-based extractor and reports field-level accuracy and violations; `-- --llm` adds the LLM extractor when `ANTHROPIC_API_KEY` is set. See "Elicitation" in `docs/evaluation.md`.
+`npm run sim:extract` replays `tests/fixtures/extract-cases.json` (39 ordinary private chats and 16 adversarial ones) through the rule-based reader, the safety net that answers when the model cannot, and reports field-level accuracy and violations. That run says nothing about the assistant itself. `-- --llm` (needs `ANTHROPIC_API_KEY`) also runs the assistant, Claude, on its own cases in `tests/fixtures/assistant-cases.json` (indirect statements, limits versus wishes, strength, "I don't mind", allergies, named restaurants) and on the comparable fields of the rule reader's cases, and reports it separately. See "Elicitation" in `docs/evaluation.md`.

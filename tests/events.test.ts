@@ -109,9 +109,15 @@ describe("chat → constraints → negotiation", () => {
   it("extracts constraints from chat and replies", async () => {
     const { a, event } = await setup();
     const { messages, constraints } = await sendMessage(event.id, a.id, "Dinner, under $30, no spicy");
-    expect(constraints.availableSlots).toEqual(["17:00", "18:00", "19:00", "20:00"]);
-    expect(constraints.budgetMax).toBe(30);
-    expect(constraints.dietary).toEqual(["no_spicy"]);
+    // Stored in the format the optimizer reads (#83): the times they cannot make, a ceiling, and
+    // a note for what no restaurant data can confirm.
+    expect(constraints.prefs.time?.unavailable).toEqual([
+      { from: "10:00", to: "16:00" },
+      { from: "21:00", to: "23:00" },
+    ]);
+    expect(constraints.prefs.budget).toEqual({ max: 30, strength: "must" });
+    expect(constraints.prefs.dietary).toBeUndefined();
+    expect(constraints.prefs.notes).toEqual([{ type: "other", text: "No spicy food" }]);
     expect(messages.at(-1)?.role).toBe("assistant");
   });
 
@@ -126,6 +132,27 @@ describe("chat → constraints → negotiation", () => {
     await setReady(event.id, a.id, true);
     await sendMessage(event.id, a.id, "actually $25");
     expect((await listMembers(event.id, a.id))[0].ready).toBe(false);
+  });
+
+  it("a message that changes nothing they want leaves them ready", async () => {
+    const { a, event } = await setup();
+    await sendMessage(event.id, a.id, "Saturday dinner, $40, 20 minutes, no restrictions");
+    await setReady(event.id, a.id, true);
+    // The reply is counted and may ask something, but what Alice wants is the same.
+    await sendMessage(event.id, a.id, "thanks!");
+    expect((await listMembers(event.id, a.id))[0].ready).toBe(true);
+  });
+
+  it('lets someone be done with only a time and the "anything you can\'t eat" answer (#83)', async () => {
+    const { a, event } = await setup();
+    await sendMessage(event.id, a.id, "dinner");
+    await expect(setReady(event.id, a.id, true)).rejects.toThrow(/still needs diet/);
+    await sendMessage(event.id, a.id, "no restrictions");
+    // No budget and no distance: both may stay empty.
+    const mine = await getMyConstraints(event.id, a.id);
+    expect(mine.prefs.budget).toBeUndefined();
+    expect(mine.prefs.travel).toBeUndefined();
+    await expect(setReady(event.id, a.id, true)).resolves.toBeUndefined();
   });
 
   it("needs two ready people to negotiate", async () => {

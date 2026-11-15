@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { db } from "./db";
 import { decrypt, decryptJson, encrypt, encryptJson } from "./crypto";
-import type { Constraints } from "./constraints";
+import type { MemberState } from "./member-state";
 import type { ChatTurn } from "./extract";
 import { configuredExplainer, configuredSelector } from "./mediator-llm";
 import type { Proposal } from "./evaluate";
@@ -280,11 +280,11 @@ async function loadConstraints(eventId: string, userId: string) {
   return { scenario, constraints: scenario.parseConstraints(decryptJson(String(rows[0].constraints_enc))) };
 }
 
-export async function getMyConstraints(eventId: string, userId: string): Promise<Constraints> {
+export async function getMyConstraints(eventId: string, userId: string): Promise<MemberState> {
   return (await loadConstraints(eventId, userId)).constraints;
 }
 
-async function saveConstraints(eventId: string, userId: string, c: Constraints, ready: boolean) {
+async function saveConstraints(eventId: string, userId: string, c: MemberState, ready: boolean) {
   const client = await db();
   await client.execute({
     sql: "UPDATE members SET constraints_enc = ?, ready = ? WHERE event_id = ? AND user_id = ?",
@@ -296,7 +296,7 @@ export async function sendMessage(
   eventId: string,
   userId: string,
   text: string,
-): Promise<{ messages: ChatTurn[]; constraints: Constraints; scenario: ScenarioId }> {
+): Promise<{ messages: ChatTurn[]; constraints: MemberState; scenario: ScenarioId }> {
   const content = MessageSchema.parse(text);
   const { scenario, constraints: current } = await loadConstraints(eventId, userId); // also checks membership
   const chat = await hit(rateKey.chat(userId), LIMITS.chatPerUser);
@@ -309,10 +309,9 @@ export async function sendMessage(
   const { restaurants } = await poolForEvent(eventId);
   // Only count LLM calls when there is a key to spend; past the plan's daily budget, use the rules.
   const allowLLM = !process.env.ANTHROPIC_API_KEY || (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed;
-  const { reply, constraints: next } = await scenario.chatTurn(history, current, restaurants, { allowLLM });
-
-  // Changing constraints un-readies you, so the group re-checks with fresh info.
-  const changed = JSON.stringify(next) !== JSON.stringify(current);
+  // Changing what you want un-readies you, so the group re-checks with fresh info. A reply that
+  // only moves the conversation along (a question asked, a turn counted) does not.
+  const { reply, constraints: next, changed } = await scenario.chatTurn(history, current, restaurants, { allowLLM });
   const client = await db();
   const { rows } = await client.execute({
     sql: "SELECT ready FROM members WHERE event_id = ? AND user_id = ?",

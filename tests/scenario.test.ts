@@ -3,7 +3,8 @@ import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { createUser } from "@/lib/auth";
-import { describeConstraints, emptyConstraints, missingFields } from "@/lib/constraints";
+import { toLegacyConstraints } from "@/lib/legacy-adapter";
+import { describeState, emptyMemberState, missingRequired, type MemberState } from "@/lib/member-state";
 import { db, resetDbForTests } from "@/lib/db";
 import { createEvent, getEventByCode, getMyMessages, joinEvent, listMyEvents, sendMessage } from "@/lib/events";
 import { OPENING_MESSAGE } from "@/lib/extract-rules";
@@ -38,12 +39,16 @@ describe("the meal scenario is the existing behaviour, unchanged", () => {
 
   it("uses the same opening message, empty constraints, seed pool and compile", () => {
     expect(meal.openingMessage).toBe(OPENING_MESSAGE);
-    expect(meal.emptyConstraints()).toEqual(emptyConstraints());
+    expect(meal.emptyConstraints()).toEqual(emptyMemberState());
     expect(meal.seedPool).toBe(RESTAURANTS);
-    const c = { ...emptyConstraints(), budgetMax: 30, maxTravelMin: 20 };
-    expect(meal.compile(c)).toEqual(compile(c));
-    expect(meal.missingFields(c)).toEqual(missingFields(c));
-    expect(meal.describeConstraints(c)).toEqual(describeConstraints(c));
+    const state: MemberState = {
+      ...emptyMemberState(),
+      prefs: { version: 1, budget: { max: 30, strength: "must" }, travel: { maxMin: 20, strength: "must" } },
+    };
+    // The engine still reads the older format, through the transitional adapter.
+    expect(meal.compile(state)).toEqual(compile(toLegacyConstraints(state)));
+    expect(meal.missingFields(state)).toEqual(missingRequired(state));
+    expect(meal.describeConstraints(state)).toEqual(describeState(state));
   });
 
   it("rejects stored constraints that do not fit its schema", () => {
@@ -55,10 +60,15 @@ describe("the meal scenario is the existing behaviour, unchanged", () => {
   });
 
   it("keeps the current constraints when a chat turn changes nothing", async () => {
-    const current = emptyConstraints();
-    const { reply, constraints } = await meal.chatTurn([{ role: "user", content: "hello" }], current, RESTAURANTS);
+    const current = emptyMemberState();
+    const { reply, constraints, changed } = await meal.chatTurn(
+      [{ role: "user", content: "hello" }],
+      current,
+      RESTAURANTS,
+    );
     expect(reply.length).toBeGreaterThan(0);
-    expect(constraints.budgetMax).toBeNull();
+    expect(constraints.prefs).toEqual(current.prefs);
+    expect(changed).toBe(false);
   });
 });
 
@@ -88,7 +98,7 @@ describe("plans carry their scenario", () => {
     expect((await getMyMessages(e.id, b.id))[0].content).toBe(scenarioFor("meal").openingMessage);
     const turn = await sendMessage(e.id, b.id, "Saturday dinner, under $30");
     expect(turn.scenario).toBe("meal");
-    expect(turn.constraints.budgetMax).toBe(30);
+    expect(turn.constraints.prefs.budget?.max).toBe(30);
   });
 });
 
@@ -144,11 +154,11 @@ describe("features added since the seam still go through it", () => {
     try {
       const { constraints } = await scenarioFor("meal").chatTurn(
         [{ role: "user", content: "Saturday dinner, under $30" }],
-        emptyConstraints(),
+        emptyMemberState(),
         RESTAURANTS,
         { allowLLM: false },
       );
-      expect(constraints.budgetMax).toBe(30);
+      expect(constraints.prefs.budget?.max).toBe(30);
       expect(calls).toHaveLength(0);
     } finally {
       globalThis.fetch = realFetch;

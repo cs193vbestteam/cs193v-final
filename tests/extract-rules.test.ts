@@ -451,7 +451,7 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
     expect(t.reply).toMatch(/what goes first/);
   });
 
-  it("still gates readiness on the four essentials only", () => {
+  it("the rule-based reader still asks for its four essentials before it calls itself done", () => {
     const c = mergeConstraints(start(essentials), { pending: "concession" });
     expect(missingFields(c)).toEqual([]);
   });

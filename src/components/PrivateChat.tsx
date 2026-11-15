@@ -20,7 +20,7 @@ const MISSING_LABEL: Record<MissingField, string> = {
   time: "when",
   budget: "budget",
   distance: "distance",
-  diet: "diet",
+  diet: "what you can't eat",
 };
 
 type ChatSnapshot = {
@@ -111,8 +111,6 @@ export function PrivateChat({
     });
   }
 
-  const progress = 4 - missing.length;
-
   return (
     <section className="card flex flex-col !p-0 lg:h-[min(42rem,calc(100dvh-14rem))] lg:min-h-[30rem]">
       <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
@@ -162,7 +160,7 @@ export function PrivateChat({
           className="input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder='Try: "dinner after 7, under $40, no spicy"'
+          placeholder='Try: "dinner after 7, around $30, vegetarian"'
           maxLength={1000}
           aria-label="Message your assistant"
           autoComplete="off"
@@ -173,22 +171,7 @@ export function PrivateChat({
       </form>
 
       <div className="border-t border-line bg-paper-2/40 px-5 py-4">
-        <div className="flex items-center justify-between gap-3">
-          <div className="eyebrow">What your assistant knows</div>
-          <div
-            className="flex shrink-0 items-center gap-1"
-            role="img"
-            aria-label={`${progress} of 4 essentials covered`}
-          >
-            {Array.from({ length: 4 }, (_, i) => (
-              <span
-                key={i}
-                aria-hidden
-                className={`h-1.5 w-5 rounded-full transition-colors duration-500 ${i < progress ? "bg-ink" : "bg-line-strong"}`}
-              />
-            ))}
-          </div>
-        </div>
+        <div className="eyebrow">What your assistant knows</div>
         {summary.length ? (
           <ul className="mt-2.5 grid gap-x-6 gap-y-1 text-sm text-ink-2 sm:grid-cols-2">
             {summary.map((s) => (

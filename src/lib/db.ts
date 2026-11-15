@@ -54,7 +54,7 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS event_date TEXT;
 CREATE TABLE IF NOT EXISTS members (
   event_id        TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  constraints_enc TEXT NOT NULL,        -- AES-GCM encrypted Constraints JSON
+  constraints_enc TEXT NOT NULL,        -- AES-GCM encrypted member state (member-state.ts)
   ready           INTEGER NOT NULL DEFAULT 0,
   joined_at       BIGINT NOT NULL,
   PRIMARY KEY (event_id, user_id)

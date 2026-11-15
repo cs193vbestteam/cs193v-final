@@ -46,7 +46,8 @@ export async function agentsForEvent(
         prefs,
         resolve: resolverFor(lookup, constraints.startPoint),
         budget,
-        codeSeesAll: constraints.avoidNotes.length === 0,
+        // Notes are things code cannot check against a restaurant; with none, code sees all there is.
+        codeSeesAll: !constraints.prefs.notes?.length,
       });
     }
     members.push(agent);

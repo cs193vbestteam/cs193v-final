@@ -309,6 +309,8 @@ Violations: 0 for either extractor across all 81 turns. What the rule-based miss
 - *It does not know regions or styles.* "Asian food" and "anything but Western food" record no cuisine. This is deliberate: translating a region into cuisines is left to the model (see below), not to a table in code.
 - *A negative number loses its sign.* "Set my budget to -50 dollars" records $50. The value is in range and the field is the one the message is about, so this is a miss, not a violation.
 
+**Since #83 the assistant is a different prompt and tool** (`src/lib/assistant.ts`): a conversation that fills the optimizer's format, where the old extractor asked four fixed questions. Everything below about the model ("LLM extractor") was measured on the old one and has not been re-measured. The rule-based numbers still hold; that reader is now only the safety net. The new assistant's cases are in `tests/fixtures/assistant-cases.json`, its guardrails are tested with a stubbed model in `tests/assistant.test.ts`, and `npm run sim:extract -- --llm` runs it against the real model.
+
 **Guardrails, and what they do and do not cover.** These hold for both extractors and are tested in CI with a stubbed model (`tests/extract-eval.test.ts`):
 
 - *Structure.* The model's output must parse against the update schema: unknown slots or dietary rules, text where a number belongs, a missing update or an empty reply all discard the model's answer, and the rule-based extractor answers instead. Fields that do not exist (`ready`, `isAdmin`) and coordinates are stripped; a start point can only come from geocoding.

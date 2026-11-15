@@ -118,7 +118,7 @@ describe("production driver (pg over the Postgres wire protocol)", () => {
     await joinEvent(e.inviteCode, b.id); // ON CONFLICT DO NOTHING
     expect(await listMembers(e.id, a.id)).toHaveLength(2);
     const { constraints } = await sendMessage(e.id, b.id, "Saturday dinner, under $30");
-    expect(constraints.budgetMax).toBe(30);
+    expect(constraints.prefs.budget?.max).toBe(30);
     expect((await getMyMessages(e.id, b.id)).map((m) => m.role)).toEqual(["assistant", "user", "assistant"]);
   });
 });
