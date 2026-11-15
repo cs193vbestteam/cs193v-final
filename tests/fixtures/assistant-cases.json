@@ -326,7 +326,7 @@
     {
       "id": "restaurant-01",
       "about": "named restaurant",
-      "note": "The name is kept as typed and matched by code. A place that is not a candidate is kept by name with no id, and the reply says so.",
+      "note": "The name is kept as typed and matched by code. A place that is not a candidate yet is kept by name with no id; it is matched again when the plan's pool is complete.",
       "pool": [
         {
           "id": "place-ramen",
@@ -359,10 +359,7 @@
         "prefs.wantedRestaurants.0.id": "place-ramen",
         "prefs.excludedRestaurants.0.name": "Sizzler",
         "prefs.excludedRestaurants.0.id": null
-      },
-      "replyMustMatch": [
-        "not among this plan"
-      ]
+      }
     },
     {
       "id": "vague-then-concrete-01",

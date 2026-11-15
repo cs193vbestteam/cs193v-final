@@ -30,7 +30,7 @@ export async function loadOptimizerInput(
     args: [eventId],
   });
   if (rows.length === 0) throw new Error("The plan has no members");
-  const { restaurants, scenario } = await poolForEvent(eventId);
+  const { places: restaurants, scenario } = await poolForEvent(eventId);
   const parse = scenarioFor(scenario).parseConstraints;
   const members = rows.map((row) => {
     const state = parse(decryptJson(String(row.constraints_enc), scope.constraints(eventId, String(row.user_id))));

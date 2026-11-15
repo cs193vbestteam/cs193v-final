@@ -75,7 +75,7 @@ style: the kind of place, wanted and excluded, again as the words they used ("fa
 
 priority: only when they say what matters most, in their order, from ${LIST(PRIORITY_DIMS)}. Never rank things for them and never give a number for importance.
 
-wantedRestaurants, excludedRestaurants: names of particular places exactly as they typed them. Do not say whether a place is available; code checks that and adds a line if it is not.
+wantedRestaurants, excludedRestaurants: names of particular places exactly as they typed them. Do not say whether a place is available: the plan's list of places is not final during the chat, and code matches the name later.
 
 notes: anything else they want remembered that fits nowhere above.
 

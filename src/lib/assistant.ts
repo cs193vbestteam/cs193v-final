@@ -415,8 +415,6 @@ function offTopicTurn(state: MemberState): AssistantTurn {
 }
 
 const CANNOT_CHECK = /can(?:no|')t (?:be )?check|cannot (?:be )?check|not (?:be )?checked|unable to check/i;
-const NOT_A_CANDIDATE =
-  /not (?:among|one of|on|in) (?:this plan|the plan|the candidates|the list)|isn'?t (?:among|one of)/i;
 
 /**
  * Apply what the model returned to the stored state. Pure: no network, no clock. Returns the
@@ -560,13 +558,9 @@ export function applyAssistantOutput(
 
   if (blocks.priority?.length) put("priority", uniq(blocks.priority));
 
-  const unmatched: string[] = [];
-  const named = (names: readonly string[]) =>
-    names.map((name) => {
-      const id = matchRestaurant(name, pool);
-      if (!id) unmatched.push(name);
-      return { name, id };
-    });
+  // A name with no match yet is kept as it is and matched again once the plan's pool is complete
+  // (pool-refresh.ts). The chat does not say "not found": at this point the pool is not final.
+  const named = (names: readonly string[]) => names.map((name) => ({ name, id: matchRestaurant(name, pool) }));
   if (blocks.wantedRestaurants?.length || blocks.excludedRestaurants?.length) {
     const wantedNew = named(blocks.wantedRestaurants ?? []);
     const excludedNew = named(blocks.excludedRestaurants ?? []).filter(
@@ -622,12 +616,6 @@ export function applyAssistantOutput(
     reply += ` (I can't look for ${uniq(words.unknown.map((u) => `"${u.word}"`)).join(
       " or ",
     )} as a kind of food or place, so it won't change which places are picked. I've kept it as a note for you.)`;
-  if (unmatched.length && !NOT_A_CANDIDATE.test(reply))
-    reply += ` (${uniq(unmatched)
-      .map((n) => `"${n}"`)
-      .join(
-        " and ",
-      )} ${unmatched.length > 1 ? "are" : "is"} not among this plan's places, so I can't count ${unmatched.length > 1 ? "them" : "it"}; I've kept the name.)`;
   if ((allergyNoted || otherNoted) && !CANNOT_CHECK.test(reply))
     reply += " (That is noted for you. I can't check restaurants for it, so it won't change which places are picked.)";
   if (dropped.length)

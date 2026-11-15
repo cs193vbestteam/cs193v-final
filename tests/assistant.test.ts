@@ -613,16 +613,10 @@ describe("restaurants named by the person", () => {
     expect(r.state.prefs.excludedRestaurants).toEqual([{ name: "Sizzler", id: null }]);
   });
 
-  it("says a place is not among this plan's candidates, unless the model already did", () => {
-    const silent = apply(state(), out({ wantedRestaurants: ["Sizzler"] }, { reply: "Sizzler, noted!" }));
-    expect(silent.reply).toMatch(/"Sizzler" is not among this plan's places/);
-    const honest = apply(
-      state(),
-      out({ wantedRestaurants: ["Sizzler"] }, { reply: "Sizzler is not among this plan's places, sorry." }),
-    );
-    expect(honest.reply).toBe("Sizzler is not among this plan's places, sorry.");
-    // A place that is a candidate needs no such line.
-    expect(apply(state(), out({ wantedRestaurants: ["Evvia"] })).reply).toBe("Noted.");
+  it("does not say a place is missing: the plan's places are not final during the chat", () => {
+    const r = apply(state(), out({ wantedRestaurants: ["Sizzler"] }, { reply: "Sizzler, noted!" }));
+    expect(r.reply).toBe("Sizzler, noted!");
+    expect(r.state.prefs.wantedRestaurants).toEqual([{ name: "Sizzler", id: null }]);
   });
 
   it("never accepts an id from the model", () => {

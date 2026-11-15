@@ -56,6 +56,14 @@ export type Restaurant = {
   mapsUrl?: string;
 };
 
+/**
+ * A place in a plan's pool. Most are `Restaurant`s; a place whose food is none of the ten
+ * cuisines the current negotiation engine knows (French, Burmese, …) has `cuisine: null`. Such
+ * places are kept for the optimizer, which matches on `types`, and never shown to that engine.
+ */
+export type Place = Omit<Restaurant, "cuisine"> & { cuisine: Cuisine | null };
+export const hasLegacyCuisine = (p: Place): p is Restaurant => p.cuisine !== null;
+
 /** Made-up hours for the seed places, the same every day, so `open` does not depend on the date. */
 const hoursAndOpen = (hours: WeeklyHours) => ({ hours, open: openStartTimes(hours, "2026-01-01") ?? [] });
 const LUNCH_AND_DINNER = hoursAndOpen(dailyHours([11, 15], [17, 22]));

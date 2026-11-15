@@ -2,21 +2,18 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { SLOTS } from "@/lib/constraints";
-import { CUISINES, type Cuisine } from "@/lib/constraints";
+import type { Cuisine } from "@/lib/constraints";
 import { openOn, openStartTimes } from "@/lib/opening-hours";
 import {
-  CUISINE_QUERY_TYPES,
-  MAX_NEARBY_CALLS,
   MIN_RATING,
   MIN_REVIEWS,
   PLACE_FIELDS,
-  POOL_TARGET,
-  cuisineQueryOrder,
-  gatherPlaces,
   haversineKm,
   inferCuisine,
   mergePools,
   resolvePool,
+  toPlace,
+  toPlaces,
   toPool,
   toRestaurant,
   type PlaceResult,
@@ -28,9 +25,6 @@ import type { Restaurant } from "@/lib/restaurants";
 const fixture = JSON.parse(readFileSync(path.join(__dirname, "fixtures/places-nearby.json"), "utf8")) as {
   places: PlaceResult[];
 };
-const byCuisine = JSON.parse(readFileSync(path.join(__dirname, "fixtures/places-by-cuisine.json"), "utf8")) as Partial<
-  Record<Cuisine, { places: PlaceResult[] }>
->;
 const CENTER = { lat: 37.4275, lng: -122.1697 }; // Stanford
 const byId = (id: string) => fixture.places.find((p) => p.id === id)!;
 
@@ -134,13 +128,10 @@ describe("toPool", () => {
   });
 });
 
-/** Which query a Nearby Search request is: "general" or the cuisine whose types it asks for. */
-function queryOf(init?: RequestInit): "general" | Cuisine {
+/** Which query a Nearby Search request is: "general", or the types it asks for joined by commas. */
+function queryOf(init?: RequestInit): string {
   const types = (JSON.parse(String(init?.body)) as { includedTypes: string[] }).includedTypes;
-  if (types.length === 1 && types[0] === "restaurant") return "general";
-  const cuisine = CUISINES.find((c) => CUISINE_QUERY_TYPES[c].join() === types.join());
-  if (!cuisine) throw new Error(`unexpected includedTypes ${types.join()}`);
-  return cuisine;
+  return types.length === 1 && types[0] === "restaurant" ? "general" : types.join(",");
 }
 
 const GEOCODE_RESPONSE = { places: [{ location: { latitude: CENTER.lat, longitude: CENTER.lng } }] };
@@ -151,11 +142,8 @@ const json = (body: unknown) =>
  * A fetch that answers geocoding, then each Nearby Search query from `pages`
  * (a missing page is an empty result). Queries named in `failing` get a 500.
  */
-function placesFetch(
-  pages: Partial<Record<"general" | Cuisine, { places: PlaceResult[] }>>,
-  failing: ("general" | Cuisine)[] = [],
-) {
-  const queries: ("general" | Cuisine)[] = [];
+function placesFetch(pages: Record<string, { places: PlaceResult[] }>, failing: string[] = []) {
+  const queries: string[] = [];
   const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     if (String(url).includes("searchText")) return json(GEOCODE_RESPONSE);
     const q = queryOf(init);
@@ -166,8 +154,7 @@ function placesFetch(
   return { fetcher: fetcher as unknown as typeof fetch, queries, mock: fetcher };
 }
 
-const RECORDED = { general: fixture, ...byCuisine };
-const GENERAL_IDS = ["ChIJ_sushi", "ChIJ_taqueria", "ChIJ_thai", "ChIJ_latenight", "ChIJ_247"];
+const RECORDED = { general: fixture };
 
 const restaurant = (id: string, cuisine: Cuisine): Restaurant => ({
   id,
@@ -180,43 +167,6 @@ const restaurant = (id: string, cuisine: Cuisine): Restaurant => ({
   seafoodHeavy: false,
   halal: false,
   open: [...SLOTS],
-});
-
-/** A full Nearby Search page of 20 distinct places of one Places type. */
-const fullPage = (type: string, prefix: string) => ({
-  places: Array.from({ length: 20 }, (_, i): PlaceResult => ({
-    id: `${prefix}_${i}`,
-    displayName: { text: `${prefix} ${i}` },
-    primaryType: type,
-    types: [type, "restaurant"],
-    location: { latitude: 37.43, longitude: -122.17 },
-  })),
-});
-
-describe("cuisineQueryOrder", () => {
-  it("asks first for the cuisines the pool covers least, ties in CUISINES order", () => {
-    const pool = [
-      restaurant("a", "japanese"),
-      restaurant("b", "japanese"),
-      restaurant("c", "thai"),
-      restaurant("d", "chinese"),
-    ];
-    const order = cuisineQueryOrder(pool);
-    expect(order).toHaveLength(CUISINES.length);
-    expect(order.slice(0, 7)).toEqual([
-      "korean",
-      "vietnamese",
-      "indian",
-      "mexican",
-      "italian",
-      "american",
-      "mediterranean",
-    ]);
-    expect(order.slice(7)).toEqual(["chinese", "thai", "japanese"]);
-  });
-  it("is the plain CUISINES order for an empty pool", () => {
-    expect(cuisineQueryOrder([])).toEqual([...CUISINES]);
-  });
 });
 
 describe("mergePools", () => {
@@ -248,98 +198,6 @@ describe("mergePools", () => {
   });
 });
 
-describe("gatherPlaces", () => {
-  it("merges the general page with one page per missing cuisine", async () => {
-    const { fetcher, queries } = placesFetch(RECORDED);
-    const got = await gatherPlaces(CENTER, "k", fetcher, { maxCalls: 6 });
-    // The general page has japanese, mexican, thai, mediterranean and american, so the
-    // five cuisine queries go to the five cuisines it lacks.
-    expect(queries).toEqual(["general", "chinese", "korean", "vietnamese", "indian", "italian"]);
-    expect(got.calls).toBe(6);
-    expect(got.failedCalls).toBe(0);
-    expect(got.restaurants.map((r) => r.id)).toEqual([
-      ...GENERAL_IDS,
-      "ChIJ_dumpling",
-      "ChIJ_tofu",
-      "ChIJ_pho",
-      "ChIJ_dosa",
-      "ChIJ_sichuan",
-      "ChIJ_bbq_hotpot",
-      "ChIJ_banhmi",
-      "ChIJ_tandoor",
-      "ChIJ_trattoria",
-      "ChIJ_bibimbap",
-      "ChIJ_biryani",
-      "ChIJ_slice",
-    ]);
-  });
-
-  it("keeps one copy of a place returned by several queries", async () => {
-    const { fetcher } = placesFetch(RECORDED);
-    const ids = (await gatherPlaces(CENTER, "k", fetcher)).restaurants.map((r) => r.id);
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(ids.filter((id) => id === "ChIJ_bbq_hotpot")).toHaveLength(1); // on the chinese and the korean page
-    expect(ids.filter((id) => id === "ChIJ_247")).toHaveLength(1); // on the general and the italian page
-  });
-
-  it("never makes more Nearby Search calls than the cap", async () => {
-    for (const maxCalls of [1, 3, MAX_NEARBY_CALLS, 50]) {
-      const { fetcher, mock } = placesFetch(RECORDED);
-      const got = await gatherPlaces(CENTER, "k", fetcher, { maxCalls });
-      const expected = Math.min(maxCalls, 1 + CUISINES.length);
-      expect(mock).toHaveBeenCalledTimes(expected);
-      expect(got.calls).toBe(expected);
-    }
-    expect(MAX_NEARBY_CALLS).toBe(1 + CUISINES.length); // the general page, then every cuisine once
-  });
-
-  it("makes a single call when the general page already fills the pool", async () => {
-    const { fetcher, mock } = placesFetch(RECORDED);
-    const got = await gatherPlaces(CENTER, "k", fetcher, { target: 5 });
-    expect(mock).toHaveBeenCalledTimes(1);
-    expect(got.restaurants.map((r) => r.id)).toEqual(GENERAL_IDS);
-  });
-
-  it("trims a large result to the pool target, across every query", async () => {
-    const pages = {
-      general: fullPage("thai_restaurant", "general"),
-      ...Object.fromEntries(CUISINES.map((c) => [c, fullPage(CUISINE_QUERY_TYPES[c][0], c)])),
-    };
-    const { fetcher, queries } = placesFetch(pages);
-    const got = await gatherPlaces(CENTER, "k", fetcher, { maxCalls: 6 });
-    expect(got.restaurants).toHaveLength(POOL_TARGET);
-    const perQuery = queries.slice(1).map((c) => got.restaurants.filter((r) => r.id.startsWith(`${c}_`)).length);
-    expect(perQuery).toEqual([8, 8, 8, 8, 8]); // 20 general + 40 shared evenly by 5 cuisine pages
-  });
-
-  it("keeps the rest of the pool when some queries fail", async () => {
-    const { fetcher } = placesFetch(RECORDED, ["korean", "indian"]);
-    const got = await gatherPlaces(CENTER, "k", fetcher, { maxCalls: 6 });
-    expect(got).toMatchObject({ calls: 6, failedCalls: 2 });
-    const ids = got.restaurants.map((r) => r.id);
-    expect(ids).toEqual(
-      expect.arrayContaining([...GENERAL_IDS, "ChIJ_dumpling", "ChIJ_bbq_hotpot", "ChIJ_pho", "ChIJ_trattoria"]),
-    );
-    expect(ids).not.toContain("ChIJ_tofu");
-    expect(ids).not.toContain("ChIJ_dosa");
-  });
-
-  it("still builds a pool from the cuisine pages when the general query fails", async () => {
-    const { fetcher, queries } = placesFetch(RECORDED, ["general"]);
-    const got = await gatherPlaces(CENTER, "k", fetcher);
-    expect(queries.slice(1)).toEqual(CUISINES.slice(0, MAX_NEARBY_CALLS - 1));
-    expect(got.failedCalls).toBe(1);
-    expect(got.restaurants.map((r) => r.id)).toEqual(
-      expect.arrayContaining(["ChIJ_dumpling", "ChIJ_tofu", "ChIJ_pho"]),
-    );
-  });
-
-  it("throws the first error when every query fails", async () => {
-    const { fetcher } = placesFetch(RECORDED, ["general", ...CUISINES]);
-    await expect(gatherPlaces(CENTER, "k", fetcher)).rejects.toThrow("Places places:searchNearby 500");
-  });
-});
-
 describe("resolvePool", () => {
   it("uses the seed when there is no location or no key", async () => {
     expect(await resolvePool(null, "k")).toMatchObject({ source: "seed", reason: "no location given" });
@@ -349,27 +207,46 @@ describe("resolvePool", () => {
     });
   });
 
-  it("geocodes, gathers nearby places over several queries and maps them", async () => {
-    const { fetcher, mock } = placesFetch(RECORDED);
+  it("geocodes, then makes exactly one general search and maps it", async () => {
+    const { fetcher, mock, queries } = placesFetch(RECORDED);
     const pool = await resolvePool("Stanford, CA", "k", fetcher);
     expect(pool.source).toBe("places");
     if (pool.source !== "places") throw new Error();
     expect(pool.center).toEqual(CENTER);
-    expect(pool.restaurants).toHaveLength(17);
-    expect(pool.restaurants.length).toBeGreaterThan(fixture.places.length);
-    expect(pool).toMatchObject({ calls: MAX_NEARBY_CALLS, failedCalls: 0 });
-    expect(mock).toHaveBeenCalledTimes(1 + MAX_NEARBY_CALLS); // geocode + nearby
-    for (const [, init] of mock.mock.calls.slice(1)) {
-      const headers = init!.headers as Record<string, string>;
-      expect(headers["X-Goog-Api-Key"]).toBe("k");
-      expect(headers["X-Goog-FieldMask"]).toContain("places.regularOpeningHours");
-      expect((JSON.parse(String(init!.body)) as { maxResultCount: number }).maxResultCount).toBe(20);
-    }
+    expect(pool.restaurants.map((r) => r.id)).toEqual(toPlaces(fixture.places, CENTER).map((r) => r.id));
+    expect(queries).toEqual(["general"]); // what the group wants is not known yet (#101)
+    expect(mock).toHaveBeenCalledTimes(2); // geocode + one nearby search
+    const [, init] = mock.mock.calls[1];
+    const headers = init!.headers as Record<string, string>;
+    expect(headers["X-Goog-Api-Key"]).toBe("k");
+    expect(headers["X-Goog-FieldMask"]).toContain("places.regularOpeningHours");
+    expect((JSON.parse(String(init!.body)) as { maxResultCount: number }).maxResultCount).toBe(20);
   });
 
-  it("still returns a places pool when one cuisine query fails", async () => {
-    const { fetcher } = placesFetch(RECORDED, ["vietnamese"]);
-    expect(await resolvePool("Stanford, CA", "k", fetcher)).toMatchObject({ source: "places", failedCalls: 1 });
+  it("keeps a place the current engine has no cuisine for, without counting it as usable", async () => {
+    const french: PlaceResult = {
+      id: "fr1",
+      displayName: { text: "Chez Nous" },
+      primaryType: "french_restaurant",
+      types: ["french_restaurant", "restaurant"],
+      location: { latitude: 37.43, longitude: -122.17 },
+    };
+    expect(toRestaurant(french, CENTER)).toBeNull();
+    expect(toPlace(french, CENTER)).toMatchObject({
+      id: "fr1",
+      cuisine: null,
+      types: ["french_restaurant", "restaurant"],
+    });
+    expect(toPool([french], CENTER)).toEqual([]);
+    const { fetcher } = placesFetch({ general: { places: [...fixture.places, french] } });
+    const pool = await resolvePool("Stanford, CA", "k", fetcher);
+    if (pool.source !== "places") throw new Error();
+    expect(pool.restaurants.map((r) => r.id)).toContain("fr1");
+    const onlyFrench = placesFetch({ general: { places: [french] } });
+    expect(await resolvePool("Stanford", "k", onlyFrench.fetcher)).toMatchObject({
+      source: "seed",
+      reason: "only 0 usable places nearby",
+    });
   });
 
   it("falls back when too few places map, when the place is unknown, or when the API errors", async () => {
@@ -387,7 +264,7 @@ describe("resolvePool", () => {
       source: "seed",
       reason: "Places places:searchText 403",
     });
-    const nearbyDown = placesFetch(RECORDED, ["general", ...CUISINES]);
+    const nearbyDown = placesFetch(RECORDED, ["general"]);
     expect(await resolvePool("Stanford", "k", nearbyDown.fetcher)).toMatchObject({
       source: "seed",
       reason: "Places places:searchNearby 500",
@@ -431,13 +308,9 @@ describe("ratings, closed places and what the group is shown", () => {
     expect(toRestaurant({ ...sushi, rating: MIN_RATING, userRatingCount: 500 }, CENTER)).not.toBeNull();
   });
 
-  it("asks Google for the rating fields, and for every cuisine by default", async () => {
+  it("asks Google for the rating fields", () => {
     expect(PLACE_FIELDS).toContain("places.rating");
     expect(PLACE_FIELDS).toContain("places.businessStatus");
-    const { fetcher, queries } = placesFetch(RECORDED);
-    const got = await gatherPlaces(CENTER, "k", fetcher);
-    expect(got.calls).toBe(1 + CUISINES.length);
-    expect([...queries.slice(1)].sort()).toEqual([...CUISINES].sort());
   });
 
   it("the mediator tries the better-reviewed of two otherwise identical places first", () => {
