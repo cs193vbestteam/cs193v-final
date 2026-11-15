@@ -54,6 +54,8 @@ Add either of these to `.env.local` and restart `npm run dev`.
 
 Both are paid services billed to whoever owns the key. Set a quota or budget alert on the Google key: each plan with a location makes at most 9 calls: one to find the location and one general search when it is created, then, when everyone is done chatting, one search per cuisine or kind of place somebody asked for (7 at most over the plan's life). With an Anthropic key, Claude also runs the negotiation: each person's assistant is LLM-driven, Claude chooses what to propose each round, and it writes one sentence about the final plan; hard rules and the final pick stay in code. Set `SETTLE_LLM_NEGOTIATION=0` to use the code-only negotiation instead. A negotiation makes at most 7 calls per person plus 7 for the mediator (35 for four people), usually far fewer.
 
+Spending limits in the app (`src/lib/spend.ts`, `src/lib/ratelimit.ts`): one person can create 10 plans a day. Each model call is priced from the token counts the API reports; a person's own chat is charged to them, and a plan's negotiation is charged to its creator. Once a person reaches $10 in a calendar month, or the whole app reaches $10, the rule-based code answers instead of Claude until the month ends (`LLM_MONTHLY_CAP_PER_USER_USD`, `LLM_MONTHLY_CAP_TOTAL_USD`). These caps count what the app asked for; also set a spend limit on the Anthropic account and a budget on the Google Cloud project, which hold even if the app's counting is wrong.
+
 ### Put your own copy online
 
 1. **Database.** Create a free Postgres database at [Neon](https://neon.tech) and copy its connection string (it starts with `postgresql://`).
