@@ -19,6 +19,7 @@ import {
   sendMessage,
   setReady,
 } from "@/lib/events";
+import { planDateSchema } from "@/lib/plan-date";
 import { DEFAULT_SCENARIO, ScenarioIdSchema, scenarioFor } from "@/lib/scenario";
 import { endSession, requireUser, startSession } from "@/lib/session";
 import { safeNext } from "@/lib/redirect";
@@ -77,8 +78,11 @@ export async function createEventAction(_: FormState, form: FormData): Promise<F
   let code: string;
   try {
     const scenario = ScenarioIdSchema.parse(form.get("scenario") ?? DEFAULT_SCENARIO);
-    code = (await createEvent(user.id, String(form.get("title") ?? ""), String(form.get("location") ?? ""), scenario))
-      .inviteCode;
+    // The form always sends a date; a request without one is refused here rather than defaulted.
+    const date = planDateSchema().parse(String(form.get("date") ?? ""));
+    code = (
+      await createEvent(user.id, String(form.get("title") ?? ""), String(form.get("location") ?? ""), scenario, date)
+    ).inviteCode;
   } catch (err) {
     return { error: friendly(err) };
   }

@@ -162,7 +162,7 @@ Return ONLY a JSON object {"personas": [...]} with exactly ${PEOPLE} personas. E
   "texting_style": how they type (length, punctuation, slang, emoji, typos), 1-2 sentences,
   "openness": "forthcoming" | "vague" | "evasive"  (at least one "vague" and one "evasive"),
   "hidden": {
-    "availableSlots": subset of ${JSON.stringify(T.SLOTS)} (1 to 5 items, realistic),
+    "availableSlots": subset of ${JSON.stringify(T.SLOTS)} (start times on the day of the plan, 24-hour clock; 1 to 14 items, realistic: usually a meal or two),
     "budgetMax": integer dollars per person 15..70,
     "budgetFlex": integer 0..15 (how far over they'd tolerate),
     "maxTravelMin": integer minutes 5..40,

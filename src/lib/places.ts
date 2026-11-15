@@ -1,4 +1,4 @@
-import { CUISINES, SLOTS, type Cuisine, type Slot } from "./constraints";
+import { CUISINES, type Cuisine } from "./constraints";
 import { travelMinutes, type LatLng } from "./geo";
 import { weeklyHoursFromGoogle } from "./opening-hours";
 import type { Restaurant } from "./restaurants";
@@ -126,35 +126,6 @@ export function inferCuisine(types: readonly string[], name = ""): Cuisine | nul
   return null;
 }
 
-/** Google days: 0 = Sunday … 6 = Saturday. Our slots probe lunch at 12:30 and dinner at 19:30. */
-const SLOT_PROBE: Record<Slot, { day: number; minutes: number }> = {
-  fri_dinner: { day: 5, minutes: 19 * 60 + 30 },
-  sat_lunch: { day: 6, minutes: 12 * 60 + 30 },
-  sat_dinner: { day: 6, minutes: 19 * 60 + 30 },
-  sun_lunch: { day: 0, minutes: 12 * 60 + 30 },
-  sun_dinner: { day: 0, minutes: 19 * 60 + 30 },
-};
-
-/** Which of our weekend slots a place is open for. Unknown hours → assume open. */
-export function openSlots(hours: PlaceResult["regularOpeningHours"]): Slot[] {
-  const periods = hours?.periods;
-  if (!periods || periods.length === 0) return [...SLOTS];
-  // A period with no close means open 24/7.
-  if (periods.some((p) => !p.close)) return [...SLOTS];
-  const minutesOfWeek = (day: number, hour: number, minute = 0) => day * 1440 + hour * 60 + minute;
-  const intervals = periods.map((p) => {
-    const start = minutesOfWeek(p.open.day, p.open.hour, p.open.minute);
-    let end = minutesOfWeek(p.close!.day, p.close!.hour, p.close!.minute);
-    if (end <= start) end += 7 * 1440; // wraps past Saturday night into Sunday
-    return [start, end] as const;
-  });
-  return SLOTS.filter((slot) => {
-    const probe = SLOT_PROBE[slot];
-    const t = probe.day * 1440 + probe.minutes;
-    return intervals.some(([s, e]) => (t >= s && t < e) || (t + 7 * 1440 >= s && t + 7 * 1440 < e));
-  });
-}
-
 /** Map one Places result onto our Restaurant shape. Returns null for things we can't place. */
 export function toRestaurant(p: PlaceResult, center: LatLng): Restaurant | null {
   if (!p.id || !p.location) return null;
@@ -180,7 +151,8 @@ export function toRestaurant(p: PlaceResult, center: LatLng): Restaurant | null 
     vegetarianFriendly: p.servesVegetarianFood === true || /vegetarian|vegan/.test(joined),
     seafoodHeavy: /seafood|sushi|fish|oyster|crab/.test(joined),
     halal: /halal/.test(joined),
-    open: openSlots(p.regularOpeningHours),
+    // Filled in for the plan's date once the pool is gathered (openOn in opening-hours.ts).
+    open: [],
     ...(hours ? { hours } : {}),
     ...(p.rating !== undefined ? { rating: p.rating, ratingCount: reviews } : {}),
     ...(p.formattedAddress ? { address: p.formattedAddress } : {}),

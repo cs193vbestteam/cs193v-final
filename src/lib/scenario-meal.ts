@@ -7,6 +7,7 @@ import {
 } from "./constraints";
 import { extract } from "./extract";
 import { OPENING_MESSAGE } from "./extract-rules";
+import { openOn } from "./opening-hours";
 import { resolvePool } from "./places";
 import { compile } from "./preferences";
 import { RESTAURANTS } from "./restaurants";
@@ -14,7 +15,7 @@ import type { Scenario } from "./scenario";
 import { canLocate, resolveStart } from "./start-point";
 import { resolveYelpPool } from "./yelp-pool";
 
-/** Picking a restaurant and a weekend slot. The original scenario; see scenario.ts. */
+/** Picking a restaurant and a start time on the plan's date. The original scenario; see scenario.ts. */
 export const meal: Scenario = {
   id: "meal",
   label: "A meal",
@@ -40,7 +41,15 @@ export const meal: Scenario = {
 
   seedPool: RESTAURANTS,
   // The local Yelp dataset, when configured, comes first: it is free and offline (yelp-pool.ts).
-  resolvePool: async (location) => (await resolveYelpPool(location)) ?? (await resolvePool(location)),
+  async resolvePool(location, date) {
+    const pool = (await resolveYelpPool(location)) ?? (await resolvePool(location));
+    if (pool.source === "seed") return pool;
+    // A place that cannot take any start time on the plan's date is not a candidate for this plan.
+    const restaurants = pool.restaurants.map((r) => openOn(r, date)).filter((r) => r.open.length > 0);
+    if (restaurants.length < 5)
+      return { source: "seed", location: pool.location, reason: `only ${restaurants.length} places open on ${date}` };
+    return { ...pool, restaurants };
+  },
 
   compile,
 };

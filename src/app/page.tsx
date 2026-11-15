@@ -3,6 +3,7 @@ import { CreateEventForm } from "@/components/CreateEventForm";
 import { HeroDemo } from "@/components/HeroDemo";
 import { Reveal } from "@/components/Reveal";
 import { listMyEvents } from "@/lib/events";
+import { latestPlanDate, todayPacific } from "@/lib/plan-date";
 import { currentUser } from "@/lib/session";
 import { yelpDatasetDir } from "@/lib/yelp-pool";
 
@@ -29,7 +30,7 @@ export default async function Home() {
 
       <section className="card rise mt-8" style={{ "--d": "0.15s" } as React.CSSProperties}>
         <p className="eyebrow mb-3">New plan</p>
-        <CreateEventForm />
+        <CreateEventForm minDate={todayPacific()} maxDate={latestPlanDate()} />
         <p className="mt-3 text-xs text-ink-3">
           {realPlaces
             ? "Add a place to choose from real restaurants nearby. Leave it blank and the plan uses made-up sample restaurants."

@@ -58,14 +58,14 @@ const card = (result: StoredResult) => renderToStaticMarkup(createElement(Result
 const VERDICTS = /reject|reluctant|\baccept\b|rejectDims|"dims"/i;
 const DIM_WORDS = /\b(price|budget|timing|distance|diet)\b/i;
 
-const ANY_WEEKEND = "free all weekend, 30 minutes, no restrictions";
+const ANY_TIME = "free all day, 30 minutes, no restrictions";
 
 describe("a two-person plan shows the outcome only", () => {
   it("stores and renders no tally and no dimension name when one person rejects on budget", async () => {
     // Bob's ceiling rules out most of the seed pool, so the rounds are full of price rejects.
     const { event, users } = await plan({
-      Alice: `${ANY_WEEKEND}, up to $80`,
-      Bob: `${ANY_WEEKEND}, $20 max`,
+      Alice: `${ANY_TIME}, up to $80`,
+      Bob: `${ANY_TIME}, $20 max`,
     });
     const [alice, bob] = users;
     const result = await runNegotiation(event.id, alice.id);
@@ -112,8 +112,8 @@ describe("a two-person plan shows the outcome only", () => {
 
   it("says only that there is no plan when the two cannot agree, not what the sticking point is", async () => {
     const { event, users } = await plan({
-      Alice: `${ANY_WEEKEND}, up to $80`,
-      Bob: `${ANY_WEEKEND}, $5 max`,
+      Alice: `${ANY_TIME}, up to $80`,
+      Bob: `${ANY_TIME}, $5 max`,
     });
     const result = await runNegotiation(event.id, users[0].id);
     expect(result).toMatchObject({ status: "no_deal", detail: "outcome", proposal: null, conflicts: [], places: {} });
@@ -130,10 +130,10 @@ describe("a two-person plan shows the outcome only", () => {
   });
 
   it("hides the details of a two-person result stored before this rule existed", async () => {
-    const { event, users } = await plan({ Alice: `${ANY_WEEKEND}, up to $80`, Bob: `${ANY_WEEKEND}, $20 max` });
+    const { event, users } = await plan({ Alice: `${ANY_TIME}, up to $80`, Bob: `${ANY_TIME}, $20 max` });
     const old = {
       status: "compromise",
-      proposal: { restaurantId: "olive-tree-mezze", slot: "sat_dinner" },
+      proposal: { restaurantId: "olive-tree-mezze", slot: "18:00" },
       tally: { accept: 1, reluctant: 1, reject: 0, dims: { price: 1 }, rejectDims: {} },
       rounds: [
         {
@@ -141,7 +141,7 @@ describe("a two-person plan shows the outcome only", () => {
           level: 0,
           proposals: [
             {
-              proposal: { restaurantId: "sakura-table", slot: "sat_dinner" },
+              proposal: { restaurantId: "sakura-table", slot: "18:00" },
               tally: { accept: 1, reluctant: 0, reject: 1, dims: {}, rejectDims: { price: 1 } },
             },
           ],
@@ -150,7 +150,7 @@ describe("a two-person plan shows the outcome only", () => {
       concessionLevel: 1,
       finalists: [
         {
-          proposal: { restaurantId: "olive-tree-mezze", slot: "sat_dinner" },
+          proposal: { restaurantId: "olive-tree-mezze", slot: "18:00" },
           tally: { accept: 1, reluctant: 1, reject: 0, dims: { price: 1 }, rejectDims: {} },
           buckets: [5, 3],
           nash: 15,
@@ -187,9 +187,9 @@ describe("a two-person plan shows the outcome only", () => {
 describe("plans of three or more are unchanged", () => {
   it("keeps the round log, the counts and the dimension names", async () => {
     const { event, users } = await plan({
-      Alice: `${ANY_WEEKEND}, up to $80`,
-      Bob: `${ANY_WEEKEND}, $20 max`,
-      Cara: `${ANY_WEEKEND}, up to $60`,
+      Alice: `${ANY_TIME}, up to $80`,
+      Bob: `${ANY_TIME}, $20 max`,
+      Cara: `${ANY_TIME}, up to $60`,
     });
     const result = await runNegotiation(event.id, users[0].id);
     expect(result.participants).toBe(MIN_GROUP_FOR_DETAIL);
@@ -231,7 +231,7 @@ describe("plans of three or more are unchanged", () => {
 describe("forGroupSize", () => {
   const full = (participants: number): StoredResult => ({
     status: "agreed",
-    proposal: { restaurantId: "x", slot: "sat_dinner" },
+    proposal: { restaurantId: "x", slot: "18:00" },
     tally: { accept: participants, reluctant: 0, reject: 0, dims: {}, rejectDims: {} },
     rounds: [{ round: 1, level: 0, proposals: [] }],
     concessionLevel: 0,

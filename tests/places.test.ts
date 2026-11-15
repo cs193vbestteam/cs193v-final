@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { SLOTS } from "@/lib/constraints";
 import { CUISINES, type Cuisine } from "@/lib/constraints";
-import { openStartTimes } from "@/lib/opening-hours";
+import { openOn, openStartTimes } from "@/lib/opening-hours";
 import {
   CUISINE_QUERY_TYPES,
   MAX_NEARBY_CALLS,
@@ -16,7 +16,6 @@ import {
   haversineKm,
   inferCuisine,
   mergePools,
-  openSlots,
   resolvePool,
   toPool,
   toRestaurant,
@@ -50,21 +49,37 @@ describe("inferCuisine", () => {
   });
 });
 
-describe("openSlots", () => {
-  it("assumes open when hours are unknown", () => {
-    expect(openSlots(undefined)).toEqual([...SLOTS]);
+describe("opening hours from a Places result", () => {
+  // 2026-11-20 is a Friday, 2026-11-21 a Saturday, 2026-11-22 a Sunday.
+  const openOnDate = (id: string, date: string) => openOn(toRestaurant(byId(id), CENTER)!, date).open;
+
+  it("leaves `open` empty until the plan's date is known", () => {
+    expect(toRestaurant(byId("ChIJ_sushi"), CENTER)!.open).toEqual([]);
   });
-  it("reads dinner-only hours", () => {
-    expect(openSlots(byId("ChIJ_sushi").regularOpeningHours)).toEqual(["fri_dinner", "sat_dinner"]);
+  it("has no start times when hours are unknown: unknown is not open", () => {
+    const noHours = toRestaurant({ ...byId("ChIJ_sushi"), regularOpeningHours: undefined }, CENTER)!;
+    expect(openOn(noHours, "2026-11-21").open).toEqual([]);
+  });
+  it("reads dinner-only hours on the days the place opens, and nothing on the others", () => {
+    // Closes at 23:00, so 22:00 is the last start that leaves an hour.
+    const dinner = ["17:00", "18:00", "19:00", "20:00", "21:00", "22:00"];
+    expect(openOnDate("ChIJ_sushi", "2026-11-20")).toEqual(dinner);
+    expect(openOnDate("ChIJ_sushi", "2026-11-21")).toEqual(dinner);
+    expect(openOnDate("ChIJ_sushi", "2026-11-22")).toEqual([]);
   });
   it("reads lunch and dinner on Fri/Sat/Sun", () => {
-    expect(openSlots(byId("ChIJ_taqueria").regularOpeningHours)).toEqual([...SLOTS]);
+    for (const date of ["2026-11-20", "2026-11-21", "2026-11-22"]) {
+      const open = openOnDate("ChIJ_taqueria", date);
+      expect(open).toEqual(expect.arrayContaining(["12:00", "13:00", "18:00", "19:00", "20:00"]));
+    }
   });
   it("handles a period that wraps past midnight", () => {
-    expect(openSlots(byId("ChIJ_latenight").regularOpeningHours)).toEqual(["sat_dinner"]);
+    const saturday = openOnDate("ChIJ_latenight", "2026-11-21");
+    expect(saturday).toEqual(expect.arrayContaining(["19:00", "22:00", "23:00"]));
+    expect(saturday).not.toContain("12:00");
   });
   it("treats a period with no close as open all week", () => {
-    expect(openSlots(byId("ChIJ_247").regularOpeningHours)).toEqual([...SLOTS]);
+    expect(openOnDate("ChIJ_247", "2026-11-23")).toEqual([...SLOTS]);
   });
 });
 
@@ -82,12 +97,11 @@ describe("toRestaurant", () => {
       spicy: false,
       halal: false,
     });
-    expect(r.open).toEqual(["fri_dinner", "sat_dinner"]);
   });
   it("keeps Google's opening hours, and leaves them out when Google gives none", () => {
     const withHours = toRestaurant(byId("ChIJ_sushi"), CENTER)!;
     expect(withHours.hours?.length).toBeGreaterThan(0);
-    // 2026-11-21 is a Saturday: open for dinner, not lunch, as the old slots above say.
+    // 2026-11-21 is a Saturday: open for dinner, not lunch.
     const saturday = openStartTimes(withHours.hours, "2026-11-21")!;
     expect(saturday).toContain("19:00");
     expect(saturday).not.toContain("12:00");
@@ -433,7 +447,7 @@ describe("ratings, closed places and what the group is shown", () => {
     });
     const pool = candidatePool(
       [twin("plain"), twin("loved", 4.8, 900), twin("meh", 3.6, 900), twin("new", 5, 2)],
-      ["sat_dinner"],
+      ["18:00"],
     );
     const lookup = (id: string) => pool.find((c) => c.r.id === id)?.r;
     const round2 = [{ round: 1, level: 0, proposals: [] }];

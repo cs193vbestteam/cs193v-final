@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS events (
   location    TEXT,                     -- where the plan happens (public)
   pool_json   TEXT,                     -- candidate restaurants for this plan (public)
   pool_source TEXT,                     -- 'places' | 'seed'
-  scenario    TEXT NOT NULL DEFAULT 'meal' -- what the group is deciding (see scenario.ts)
+  scenario    TEXT NOT NULL DEFAULT 'meal', -- what the group is deciding (see scenario.ts)
+  event_date  TEXT                      -- the day of the plan, YYYY-MM-DD (public)
 );
 
 -- Columns added after v1, for databases whose events table already exists.
@@ -48,6 +49,7 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS location TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS pool_json TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS pool_source TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS scenario TEXT NOT NULL DEFAULT 'meal';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS event_date TEXT;
 
 CREATE TABLE IF NOT EXISTS members (
   event_id        TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,

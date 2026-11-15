@@ -108,8 +108,8 @@ describe("privacy & authorization", () => {
 describe("chat → constraints → negotiation", () => {
   it("extracts constraints from chat and replies", async () => {
     const { a, event } = await setup();
-    const { messages, constraints } = await sendMessage(event.id, a.id, "Saturday dinner, under $30, no spicy");
-    expect(constraints.availableSlots).toEqual(["sat_dinner"]);
+    const { messages, constraints } = await sendMessage(event.id, a.id, "Dinner, under $30, no spicy");
+    expect(constraints.availableSlots).toEqual(["17:00", "18:00", "19:00", "20:00"]);
     expect(constraints.budgetMax).toBe(30);
     expect(constraints.dietary).toEqual(["no_spicy"]);
     expect(messages.at(-1)?.role).toBe("assistant");
@@ -170,12 +170,13 @@ describe("chat → constraints → negotiation", () => {
     const { a, b, event } = await setup();
     await sendMessage(event.id, a.id, "Saturday night only, under $40, no spicy, max 20 minutes away");
     await setReady(event.id, a.id, true);
-    await sendMessage(event.id, b.id, "free all weekend, $35 max, 15 minutes, vegetarian");
+    await sendMessage(event.id, b.id, "free all day, $35 max, 15 minutes, vegetarian");
     await setReady(event.id, b.id, true);
 
     const result = await runNegotiation(event.id, b.id);
     expect(result.status).toBe("agreed");
-    expect(result.proposal?.slot).toBe("sat_dinner");
+    // The one person with a limit on time said the evening.
+    expect(["17:00", "18:00", "19:00", "20:00"]).toContain(result.proposal?.slot);
     expect(result.participants).toBe(2);
     expect(await getResult(event.id, a.id)).toEqual(result);
 

@@ -5,14 +5,14 @@ describe("upgradeResult", () => {
   it("maps a pre-protocol yes/meh/no result onto the new shape so old plans still render", () => {
     const legacy = {
       status: "agreed",
-      proposal: { restaurantId: "olive-tree", slot: "sat_dinner" },
+      proposal: { restaurantId: "olive-tree", slot: "18:00" },
       tally: { yes: 2, meh: 0, no: 0, reasons: {} },
       rounds: [
         {
           round: 1,
           proposals: [
             {
-              proposal: { restaurantId: "saffron", slot: "fri_dinner" },
+              proposal: { restaurantId: "saffron", slot: "19:00" },
               tally: { yes: 0, meh: 1, no: 1, reasons: { time: 1, diet: 1 } },
             },
           ],
@@ -48,7 +48,7 @@ describe("upgradeResult", () => {
       concessionLevel: 1,
       finalists: [
         {
-          proposal: { restaurantId: "x", slot: "sat_dinner" },
+          proposal: { restaurantId: "x", slot: "18:00" },
           tally: { accept: 1, reluctant: 1, reject: 0, dims: {}, rejectDims: {} },
           buckets: [5, 3],
           nash: 15,

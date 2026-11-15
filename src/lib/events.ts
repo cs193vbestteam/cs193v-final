@@ -6,6 +6,7 @@ import type { ChatTurn } from "./extract";
 import { configuredExplainer, configuredSelector } from "./mediator-llm";
 import type { Proposal } from "./evaluate";
 import { negotiate, type NegotiationResult } from "./negotiate";
+import { planDateSchema, todayPacific } from "./plan-date";
 import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./pool";
 import { DEFAULT_SCENARIO, parseScenarioId, ScenarioIdSchema, scenarioFor, type ScenarioId } from "./scenario";
 import { agentsForEvent } from "./vault";
@@ -30,6 +31,8 @@ export type EventSummary = {
   scenario: ScenarioId;
   /** Where the plan happens, as typed by the creator. Public. */
   location: string | null;
+  /** The day of the plan, YYYY-MM-DD, chosen by the creator. Public. Null only for plans stored before dates existed. */
+  date: string | null;
   poolSource: PoolSource;
   poolSize: number;
 };
@@ -125,6 +128,7 @@ function rowToEvent(row: Record<string, unknown>): EventSummary {
     decided: row.result_json !== null && row.result_json !== undefined,
     scenario,
     location: row.location ? String(row.location) : null,
+    date: row.event_date ? String(row.event_date) : null,
     poolSource: pool?.length ? ((row.pool_source as PoolSource) ?? "places") : "seed",
     poolSize: pool?.length ?? scenarioFor(scenario).seedPool.length,
   };
@@ -151,11 +155,14 @@ export async function createEvent(
   title: string,
   location: string | null = null,
   scenarioId: ScenarioId = DEFAULT_SCENARIO,
+  /** The day of the plan. The create form always sends one; code that does not care gets today. */
+  date: string = todayPacific(),
 ): Promise<EventSummary> {
   const client = await db();
   const scenario = scenarioFor(ScenarioIdSchema.parse(scenarioId));
   const where = LocationSchema.parse(location ?? "") || null;
-  const pool = await scenario.resolvePool(where);
+  const day = planDateSchema().parse(date);
+  const pool = await scenario.resolvePool(where, day);
   const restaurants = pool.source === "seed" ? null : pool.restaurants;
   const event: EventSummary = {
     id: crypto.randomUUID(),
@@ -165,12 +172,13 @@ export async function createEvent(
     decided: false,
     scenario: scenario.id,
     location: where,
+    date: day,
     poolSource: pool.source,
     poolSize: restaurants?.length ?? scenario.seedPool.length,
   };
   if (pool.source === "seed" && where) console.info(`Plan "${event.title}": using seed pool (${pool.reason})`);
   await client.execute({
-    sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source, scenario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source, scenario, event_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     args: [
       event.id,
       event.title,
@@ -181,6 +189,7 @@ export async function createEvent(
       restaurants ? JSON.stringify(restaurants) : null,
       pool.source,
       scenario.id,
+      day,
     ],
   });
   await addMember(event, userId);

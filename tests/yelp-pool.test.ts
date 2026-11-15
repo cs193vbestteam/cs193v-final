@@ -31,7 +31,9 @@ const business = (over: Partial<YelpBusiness> & { business_id: string }): YelpBu
   is_open: 1,
   attributes: { RestaurantsPriceRange2: "2" },
   categories: "Restaurants, Italian",
-  hours: null,
+  hours: Object.fromEntries(
+    ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((d) => [d, "11:0-22:0"]),
+  ),
   ...over,
 });
 

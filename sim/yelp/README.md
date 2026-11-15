@@ -24,7 +24,7 @@ Writes `sim/out/yelp/report.json` and `report.md` and prints the summary. `--cit
 
 ## What it does
 
-1. **Restaurants** (`businesses.ts`). A business is kept when it is a restaurant with coordinates, a price band and one of the ten cuisines the app models. Categories give the cuisine, the price band gives dollars per person (the same figures `places.ts` uses), opening hours give the weekend slots, and category keywords give the dietary flags.
+1. **Restaurants** (`businesses.ts`). A business is kept when it is a restaurant with coordinates, a price band and one of the ten cuisines the app models. Categories give the cuisine, the price band gives dollars per person (the same figures `places.ts` uses), opening hours give the start times a place can take on the evaluation's date (a Saturday), and category keywords give the dietary flags.
 2. **Personas** (`personas.ts`). A reviewer needs 20 or more reviews of those restaurants. From the earlier 80% of their reviews:
    - liked cuisines: ones they return to (3+ reviews) and rate at least as well as their own average; disliked: tried twice or more and rated 2.5 or lower
    - budget: the 75th percentile price of places they rated 3 or more; the gap to the 95th percentile is "a stretch"
@@ -38,7 +38,7 @@ Writes `sim/out/yelp/report.json` and `report.md` and prints the summary. `--cit
 
 ## What is still synthetic, and other limits
 
-- **Availability.** Reviews do not say when someone is free, so weekend slots are drawn from the same distribution as the synthetic people.
+- **Availability.** Reviews do not say when someone is free, so the times each person can make are drawn from the same distribution as the synthetic people.
 - **Travel is measured from the middle of the group** for everyone, as the app does for a plan without start points. Per-person start points (#8) are not used here, because the oracle scores a candidate once per group.
 - **Personas are less constrained than the synthetic people.** Prices take only four values and the budget is a high percentile of what someone already paid, so price rarely rules anything out; the 60% bar means dietary rules almost never apply (no Philadelphia persona has one); and people rarely go back to a cuisine they dislike, so few personas carry a disliked cuisine. Groups of such personas agree more easily for that reason alone. `docs/evaluation.md` has the measured figures.
 - **Dietary flags are keyword guesses** from categories, as they are for live Google results.

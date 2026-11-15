@@ -157,13 +157,11 @@ describe("LLM no-privacy baseline", () => {
   it("returns null for a pick that is not a real candidate", async () => {
     const g = group();
     // 1. a restaurant that does not exist
-    vi.stubGlobal("fetch", fakeFetch(() => ({ restaurantId: "nope", slot: "sat_dinner" })).fn);
+    vi.stubGlobal("fetch", fakeFetch(() => ({ restaurantId: "nope", slot: "18:00" })).fn);
     expect(await llmBaselinePick(g, { apiKey: "k" })).toBeNull();
     // 2. a real restaurant at a slot it is not open for
     const closed = g.restaurants.find((r) => r.open.length < 5)!;
-    const closedSlot = (["fri_dinner", "sat_lunch", "sat_dinner", "sun_lunch", "sun_dinner"] as const).find(
-      (s) => !closed.open.includes(s),
-    )!;
+    const closedSlot = (["19:00", "12:00", "18:00", "13:00", "20:00"] as const).find((s) => !closed.open.includes(s))!;
     vi.stubGlobal("fetch", fakeFetch(() => ({ restaurantId: closed.id, slot: closedSlot })).fn);
     expect(await llmBaselinePick(g, { apiKey: "k" })).toBeNull();
     // 3. malformed input
@@ -201,7 +199,7 @@ describe("LLM no-privacy baseline", () => {
     const { fn } = fakeFetch((body) => {
       const shown = JSON.parse(body.messages[0].content) as { members: { preferences: unknown }[] };
       const best = optimum.get(JSON.stringify(shown.members.map((m) => m.preferences)));
-      return best ?? { restaurantId: "none", slot: "sat_dinner" };
+      return best ?? { restaurantId: "none", slot: "18:00" };
     });
     vi.stubGlobal("fetch", fn);
 

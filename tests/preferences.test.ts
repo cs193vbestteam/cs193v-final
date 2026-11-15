@@ -7,12 +7,12 @@ const c = (o: Parameters<typeof mergeConstraints>[1]) => mergeConstraints(emptyC
 describe("compile", () => {
   it("produces a schema-valid hard/soft/concession_order document", () => {
     const p = compile(
-      c({ budgetMax: 40, budgetFlex: 10, maxTravelMin: 15, availableSlots: ["sat_dinner"], dietary: ["no_spicy"] }),
+      c({ budgetMax: 40, budgetFlex: 10, maxTravelMin: 15, availableSlots: ["18:00"], dietary: ["no_spicy"] }),
     );
     expect(PreferencesSchema.parse(p)).toEqual(p);
     expect(p.hard).toEqual(
       expect.arrayContaining([
-        { dim: "time", op: "in", val: ["sat_dinner"] },
+        { dim: "time", op: "in", val: ["18:00"] },
         { dim: "diet", op: "requires", val: ["no_spicy"] },
         { dim: "price", op: "<=", val: 50 },
         { dim: "distance", op: "<=", val: 15 + TRAVEL_GRACE_MIN },

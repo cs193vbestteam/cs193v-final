@@ -106,6 +106,7 @@ export function cityPool(
     seafoodHeavy: r.seafoodHeavy,
     halal: r.halal,
     open: r.open,
+    hours: r.hours,
   });
   const byCuisine = CUISINES.map((c) => near.filter((x) => x.r.cuisine === c).map(asRestaurant));
   return { center, restaurants: mergePools([], byCuisine, cap) };

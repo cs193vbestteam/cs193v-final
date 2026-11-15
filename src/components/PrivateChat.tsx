@@ -162,7 +162,7 @@ export function PrivateChat({
           className="input"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder='Try: "Saturday night only, under $40, no spicy"'
+          placeholder='Try: "dinner after 7, under $40, no spicy"'
           maxLength={1000}
           aria-label="Message your assistant"
           autoComplete="off"

@@ -3,7 +3,8 @@
 import { useActionState } from "react";
 import { createEventAction } from "@/app/actions";
 
-export function CreateEventForm() {
+/** `minDate` and `maxDate` (YYYY-MM-DD) come from the server, which checks the date again on submit. */
+export function CreateEventForm({ minDate, maxDate }: { minDate: string; maxDate: string }) {
   const [state, action, pending] = useActionState(createEventAction, {});
   return (
     <form action={action} className="space-y-2">
@@ -33,6 +34,21 @@ export function CreateEventForm() {
             placeholder="e.g. Palo Alto"
             maxLength={120}
             autoComplete="off"
+          />
+        </div>
+        <div className="sm:w-[11rem]">
+          <label htmlFor="plan-date" className="label">
+            Date
+          </label>
+          <input
+            id="plan-date"
+            className="input"
+            type="date"
+            name="date"
+            required
+            min={minDate}
+            max={maxDate}
+            defaultValue={minDate}
           />
         </div>
         <button className="btn shrink-0" disabled={pending}>

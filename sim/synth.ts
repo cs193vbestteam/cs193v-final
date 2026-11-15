@@ -1,7 +1,6 @@
 import {
   CUISINES,
   DIETARY,
-  SLOTS,
   SOFT_DIMS,
   emptyConstraints,
   mergeConstraints,
@@ -21,9 +20,16 @@ import type { Rng } from "./rng";
  * works for everyone (see sim/README.md for the measured rate).
  */
 
-const ALL: Slot[] = [...SLOTS];
-const DINNER_ONLY: Slot[] = ["fri_dinner", "sat_dinner", "sun_dinner"];
-const LUNCH_ONLY: Slot[] = ["sat_lunch", "sun_lunch"];
+/**
+ * The start times the synthetic world uses. Five of them, as there were five weekend slots
+ * when the distributions were tuned, and a place is open for all five, for three of them or
+ * for the other two, in the same positions as before. That keeps every scenario, and so every
+ * published number, exactly what it was; only the labels changed.
+ */
+export const SIM_SLOTS: Slot[] = ["12:00", "13:00", "18:00", "19:00", "20:00"];
+const ALL: Slot[] = [...SIM_SLOTS];
+const THREE_OF_FIVE: Slot[] = [SIM_SLOTS[0], SIM_SLOTS[2], SIM_SLOTS[4]];
+const OTHER_TWO: Slot[] = [SIM_SLOTS[1], SIM_SLOTS[3]];
 
 const SPICY_CUISINES: ReadonlySet<Cuisine> = new Set<Cuisine>(["thai", "indian", "korean", "chinese", "mexican"]);
 const HALAL_LEANING: ReadonlySet<Cuisine> = new Set<Cuisine>(["mediterranean", "indian"]);
@@ -38,7 +44,7 @@ export function synthRestaurants(rng: Rng, n = 30): Restaurant[] {
     const pricePerPerson = rng.chance(0.6) ? Math.min(p1, p2) : p1;
     const travelMin = rng.int(4, 35);
     const openRoll = rng.next();
-    const open = openRoll < 0.6 ? ALL : openRoll < 0.85 ? DINNER_ONLY : LUNCH_ONLY;
+    const open = openRoll < 0.6 ? ALL : openRoll < 0.85 ? THREE_OF_FIVE : OTHER_TWO;
     out.push({
       id: `r${i}`,
       name: `Restaurant ${i}`,
@@ -56,8 +62,8 @@ export function synthRestaurants(rng: Rng, n = 30): Restaurant[] {
 }
 
 export function synthPerson(rng: Rng): Constraints {
-  // Availability: 45% free all weekend, otherwise 2..4 of the 5 slots.
-  const availableSlots: Slot[] = rng.chance(0.45) ? [...SLOTS] : rng.sample(SLOTS, rng.int(2, 4));
+  // Availability: 45% free at any of the times, otherwise 2..4 of the 5.
+  const availableSlots: Slot[] = rng.chance(0.45) ? [...SIM_SLOTS] : rng.sample(SIM_SLOTS, rng.int(2, 4));
 
   const budgetMax = rng.int(18, 65);
   const budgetFlex = rng.int(0, 15);

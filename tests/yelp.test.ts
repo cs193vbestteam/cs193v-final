@@ -137,8 +137,15 @@ describe("businesses → restaurants", () => {
     expect(toRestaurant(business({ business_id: "d", attributes: { RestaurantsPriceRange2: "None" } }))).toBeNull();
     expect(toRestaurant(business({ business_id: "e", latitude: null }))).toBeNull();
     expect(toRestaurant(business({ business_id: "f", categories: null }))).toBeNull();
-    // Open on weekdays only: none of the weekend slots.
-    expect(toRestaurant(business({ business_id: "g", hours: { Monday: "11:0-22:0" } }))).toBeNull();
+    // No hours at all: we cannot say when it is open, so it is never a candidate.
+    expect(toRestaurant(business({ business_id: "g", hours: null }))).toBeNull();
+    expect(toRestaurant(business({ business_id: "h", hours: {} }))).toBeNull();
+  });
+
+  it("keeps a place that is closed on the plan's day, with no start times for it", () => {
+    const weekdays = business({ business_id: "w", hours: { Monday: "11:0-22:0" } });
+    expect(toRestaurant(weekdays, "2026-11-21")!.open).toEqual([]); // a Saturday
+    expect(toRestaurant(weekdays, "2026-11-23")!.open).toContain("12:00"); // a Monday
   });
 
   it("reads the price band only when it is 1..4", () => {
@@ -147,17 +154,25 @@ describe("businesses → restaurants", () => {
     expect(priceBand({ attributes: {} })).toBeNull();
   });
 
-  it("turns opening hours into weekend slots", () => {
-    expect(openSlots(null)).toEqual([...SLOTS]);
-    expect(openSlots({ Friday: "17:0-23:0", Saturday: "11:0-15:0", Sunday: "0:0-0:0" })).toEqual([
-      "fri_dinner",
-      "sat_lunch",
-      "sun_lunch",
-      "sun_dinner",
-    ]);
+  it("turns opening hours into the start times of a day", () => {
+    const hours = { Friday: "17:0-23:0", Saturday: "11:0-15:0", Sunday: "0:0-0:0" };
+    // A start time needs the place open for the hour after it.
+    expect(openSlots(hours, "2026-11-20")).toEqual(["17:00", "18:00", "19:00", "20:00", "21:00", "22:00"]);
+    expect(openSlots(hours, "2026-11-21")).toEqual(["11:00", "12:00", "13:00", "14:00"]);
+    // "0:0-0:0" is the dataset's way of writing open all day.
+    expect(openSlots(hours, "2026-11-22")).toEqual([...SLOTS]);
+    // Unknown hours are not open hours.
+    expect(openSlots(null)).toEqual([]);
     // Closes after midnight.
-    expect(openSlots({ Saturday: "18:0-2:0" })).toEqual(["sat_dinner"]);
-    expect(openSlots({ Saturday: "not hours" })).toEqual([]);
+    expect(openSlots({ Saturday: "18:0-2:0" }, "2026-11-21")).toEqual([
+      "18:00",
+      "19:00",
+      "20:00",
+      "21:00",
+      "22:00",
+      "23:00",
+    ]);
+    expect(openSlots({ Saturday: "not hours" }, "2026-11-21")).toEqual([]);
   });
 
   it("keeps one city and remembers closed places", () => {

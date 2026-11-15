@@ -24,9 +24,9 @@ describe("negotiate", () => {
 
   it("finds a plan everyone accepts (the 5-friends example)", async () => {
     const people = [
-      c({ availableSlots: ["sat_dinner", "sun_dinner"] }), // A: "whatever", but busy daytime
+      c({ availableSlots: ["18:00", "20:00"] }), // A: "whatever", but busy daytime
       c({ budgetMax: 30 }), // B: not too expensive
-      c({ availableSlots: ["fri_dinner", "sat_dinner", "sun_lunch", "sun_dinner"] }), // C: busy Sat afternoon
+      c({ availableSlots: ["19:00", "18:00", "13:00", "20:00"] }), // C: busy Sat afternoon
       c({ dietary: ["no_spicy"], maxTravelMin: 15 }), // D
       c({ dislikedCuisines: ["american"] }), // E
     ];
@@ -42,7 +42,7 @@ describe("negotiate", () => {
   });
 
   it("adapts across rounds instead of proposing the same things", async () => {
-    const people = [c({ budgetMax: 16, availableSlots: ["sun_dinner"] }), c({ maxTravelMin: 6 })];
+    const people = [c({ budgetMax: 16, availableSlots: ["20:00"] }), c({ maxTravelMin: 6 })];
     const result = await negotiate(group(people), { maxRounds: 10 });
     expect(result.status).toBe("agreed");
     const keys = result.rounds.flatMap((r) => r.proposals.map((p) => `${p.proposal.restaurantId}@${p.proposal.slot}`));
@@ -106,7 +106,7 @@ describe("negotiate", () => {
   });
 
   it("reports no_deal with the conflicting dimensions for impossible constraints", async () => {
-    const people = [c({ availableSlots: ["sat_lunch"] }), c({ availableSlots: ["sun_dinner"] })];
+    const people = [c({ availableSlots: ["12:00"] }), c({ availableSlots: ["20:00"] })];
     const result = await negotiate(group(people), { maxRounds: 3 });
     expect(result.status).toBe("no_deal");
     expect(result.proposal).toBeNull();
@@ -175,7 +175,7 @@ describe("negotiate", () => {
 
   it("lets a selector re-rank the shortlist but never widen it", async () => {
     const people = group([c({ budgetMax: 40 })]);
-    const rogue = { r: RESTAURANTS[0], slot: "sat_dinner" as const };
+    const rogue = { r: RESTAURANTS[0], slot: "18:00" as const };
     const result = await negotiate(people, {
       maxRounds: 1,
       selector: (list) => [rogue, rogue, ...list.slice().reverse()],
@@ -330,34 +330,36 @@ describe("times first, and no pointless re-asks (#64)", () => {
 
   it("a group free at one time only is never proposed another", async () => {
     const people = [
-      c({ availableSlots: ["fri_dinner"], budgetMax: 40 }),
-      c({ availableSlots: ["fri_dinner", "sat_dinner"], budgetMax: 60 }),
-      c({ availableSlots: ["fri_dinner", "sun_lunch"], budgetMax: 50 }),
+      c({ availableSlots: ["19:00"], budgetMax: 40 }),
+      c({ availableSlots: ["19:00", "18:00"], budgetMax: 60 }),
+      c({ availableSlots: ["19:00", "13:00"], budgetMax: 50 }),
     ];
     const result = await negotiate(group(people));
     expect(result.rounds.length).toBeGreaterThan(0);
     expect(result.rounds[0].proposals).toHaveLength(5);
     for (const round of result.rounds)
       for (const p of round.proposals) {
-        expect(p.proposal.slot).toBe("fri_dinner");
+        expect(p.proposal.slot).toBe("19:00");
         expect(p.tally.rejectDims.time).toBeUndefined();
       }
-    expect(result.proposal?.slot).toBe("fri_dinner");
+    expect(result.proposal?.slot).toBe("19:00");
   });
 
   it("with no time everyone can make, nobody is asked about any restaurant", async () => {
-    const people = [c({ availableSlots: ["sat_lunch"] }), c({ availableSlots: ["sun_dinner"] })];
+    const people = [c({ availableSlots: ["12:00"] }), c({ availableSlots: ["20:00"] })];
     const counter = { dims: 0, calls: 0 };
     const agents = maskGroup(people.map(agentFor)).map((a) => ({ ...countingAgent(a, counter), freeAt: a.freeAt }));
     const result = await negotiate(agents);
     expect(result).toMatchObject({ status: "no_deal", conflicts: ["time"], rounds: [] });
     expect(counter.calls).toBe(0);
-    // Each "can't make it" is counted like the time reject it replaces.
-    expect(result.leakedDims).toBe(8);
+    // Each "can't make it" is counted like the time reject it replaces: each of the two people
+    // can make one of the times some seed place is open, and says no to every other one.
+    const offered = new Set(RESTAURANTS.flatMap((r) => r.open)).size;
+    expect(result.leakedDims).toBe(2 * (offered - 1));
   });
 
   it("assistants that cannot be asked about times still work, as before", async () => {
-    const people = [c({ availableSlots: ["fri_dinner"], budgetMax: 40 }), c({ budgetMax: 60 })];
+    const people = [c({ availableSlots: ["19:00"], budgetMax: 40 }), c({ budgetMax: 60 })];
     const agents = group(people).map(({ judge, compare }) => ({ judge, compare }));
     const result = await negotiate(agents);
     expect(result.status).not.toBe("no_deal");

@@ -14,7 +14,7 @@ import { makeRng } from "../sim/rng";
  * the mediator seeing any individual 1..5 bucket.
  */
 
-const P = (restaurantId: string): Proposal => ({ restaurantId, slot: "sat_dinner" });
+const P = (restaurantId: string): Proposal => ({ restaurantId, slot: "18:00" });
 const [X, Y, Z] = [P("x"), P("y"), P("z")];
 
 /** Assistants with fixed buckets: `table[member][restaurantId]`. They accept everything. */

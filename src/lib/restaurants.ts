@@ -1,6 +1,6 @@
 import type { Cuisine, Slot } from "./constraints";
 import type { LatLng } from "./geo";
-import { dailyHours, type WeeklyHours } from "./opening-hours";
+import { dailyHours, openStartTimes, type WeeklyHours } from "./opening-hours";
 
 /**
  * Hard-coded, fictional restaurant data: the seed pool, used when a plan has no
@@ -22,12 +22,13 @@ export type Restaurant = {
   /** Menu is mostly seafood. */
   seafoodHeavy: boolean;
   halal: boolean;
-  /** Slots the restaurant is open for. */
-  open: Slot[];
   /**
-   * Opening hours through the week (see opening-hours.ts). Absent when unknown, which is
-   * not the same as open. Will replace `open` when plans move to hourly start times (#81).
+   * The start times the restaurant can take on the plan's date: worked out from `hours`
+   * when the plan's pool is built (see `openOn` in opening-hours.ts). Empty when the place
+   * is closed that day or its hours are unknown, and then it is never proposed.
    */
+  open: Slot[];
+  /** Opening hours through the week. Absent when unknown, which is not the same as open. */
   hours?: WeeklyHours;
   /** Google's public rating, 1 to 5, and how many reviews it rests on. Places results only. */
   rating?: number;
@@ -37,13 +38,11 @@ export type Restaurant = {
   mapsUrl?: string;
 };
 
-const ALL: Slot[] = ["fri_dinner", "sat_lunch", "sat_dinner", "sun_lunch", "sun_dinner"];
-const DINNER_ONLY: Slot[] = ["fri_dinner", "sat_dinner", "sun_dinner"];
-
-/** Made-up hours for the seed places, the same every day. */
-const LUNCH_AND_DINNER_HOURS = dailyHours([11, 15], [17, 22]);
-const DINNER_HOURS = dailyHours([17, 23]);
-const LUNCH_HOURS = dailyHours([10, 16]);
+/** Made-up hours for the seed places, the same every day, so `open` does not depend on the date. */
+const hoursAndOpen = (hours: WeeklyHours) => ({ hours, open: openStartTimes(hours, "2026-01-01") ?? [] });
+const LUNCH_AND_DINNER = hoursAndOpen(dailyHours([11, 15], [17, 22]));
+const DINNER_ONLY = hoursAndOpen(dailyHours([17, 23]));
+const LUNCH_ONLY = hoursAndOpen(dailyHours([10, 16]));
 
 export const RESTAURANTS: Restaurant[] = [
   {
@@ -56,8 +55,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: false,
     seafoodHeavy: true,
     halal: false,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "noodle-lab",
@@ -69,8 +67,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: false,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "red-lantern",
@@ -82,8 +79,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: false,
-    open: DINNER_ONLY,
-    hours: DINNER_HOURS,
+    ...DINNER_ONLY,
   },
   {
     id: "jade-garden",
@@ -95,8 +91,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: false,
-    open: ["sat_lunch", "sun_lunch"],
-    hours: LUNCH_HOURS,
+    ...LUNCH_ONLY,
   },
   {
     id: "seoul-grill",
@@ -108,8 +103,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: false,
     seafoodHeavy: false,
     halal: false,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "bibim-bowl",
@@ -121,8 +115,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: false,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "lemongrass",
@@ -134,8 +127,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: false,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "pho-corner",
@@ -147,8 +139,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: false,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "saffron",
@@ -160,8 +151,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: true,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "taqueria-sol",
@@ -173,8 +163,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: false,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "trattoria-luce",
@@ -186,8 +175,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: false,
-    open: DINNER_ONLY,
-    hours: DINNER_HOURS,
+    ...DINNER_ONLY,
   },
   {
     id: "slice-society",
@@ -199,8 +187,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: false,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "patty-shack",
@@ -212,8 +199,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: false,
     seafoodHeavy: false,
     halal: false,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "harbor-oyster",
@@ -225,8 +211,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: false,
     seafoodHeavy: true,
     halal: false,
-    open: DINNER_ONLY,
-    hours: DINNER_HOURS,
+    ...DINNER_ONLY,
   },
   {
     id: "olive-tree",
@@ -238,8 +223,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: true,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
   {
     id: "kebab-house",
@@ -251,8 +235,7 @@ export const RESTAURANTS: Restaurant[] = [
     vegetarianFriendly: true,
     seafoodHeavy: false,
     halal: true,
-    open: ALL,
-    hours: LUNCH_AND_DINNER_HOURS,
+    ...LUNCH_AND_DINNER,
   },
 ];
 

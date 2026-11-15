@@ -165,7 +165,7 @@ describe("the rule-based extractor on the suite", () => {
 
   it("holds its measured accuracy (a regression check, not a target)", async () => {
     const report = await runSuite("rules", cases, rulesExtractor);
-    // Measured: clear 94%, vague 96%, corrections 100%, multi-turn 96%, other languages 30%, overall 84%.
+    // Measured: clear 93%, vague 96%, corrections 100%, multi-turn 96%, other languages 30%, overall 84%.
     expect(report.byCategory.clear.accuracy!).toBeGreaterThanOrEqual(0.9);
     expect(report.byCategory.multi_turn.accuracy!).toBeGreaterThanOrEqual(0.9);
     expect(report.byCategory.correction.accuracy!).toBeGreaterThanOrEqual(0.8);
@@ -229,7 +229,7 @@ describe("the LLM path with a stubbed model", () => {
 
   it.each(TALKED_INTO)("survives %s", async (_name, output) => {
     stubModel(() => (typeof output === "function" ? (output as () => Response)() : output));
-    const start = { availableSlots: ["sat_dinner"], budgetMax: 40, maxTravelMin: 20 } as Partial<Constraints>;
+    const start = { availableSlots: ["18:00"], budgetMax: 40, maxTravelMin: 20 } as Partial<Constraints>;
     const c: Case = {
       id: "talked-into",
       category: "adversarial",
@@ -255,7 +255,7 @@ describe("the LLM path with a stubbed model", () => {
     it("sends the same rubric every time, and a state block naming the question asked and what is left", async () => {
       const fetchMock = stubModel((message) =>
         message === "Friday"
-          ? { reply: "Friday dinner. What's your budget?", update: { availableSlots: ["fri_dinner"] } }
+          ? { reply: "Friday dinner. What's your budget?", update: { availableSlots: ["19:00"] } }
           : { reply: "$40. How far?", update: { budgetMax: 40 } },
       );
       const first = { role: "assistant" as const, content: "Hi! When are you free?" };
@@ -287,7 +287,7 @@ describe("the LLM path with a stubbed model", () => {
     it("a bare number the model files under the wrong question is read by the rules instead", async () => {
       // What the real model did: "20" in answer to the distance question, recorded as the budget.
       stubModel(() => ({ reply: "I'll keep your budget at $20 per person.", update: { budgetMax: 20 } }));
-      const asked = { ...emptyConstraints(), availableSlots: ["fri_dinner" as const], budgetMax: 40 };
+      const asked = { ...emptyConstraints(), availableSlots: ["19:00" as const], budgetMax: 40 };
       const history = [
         { role: "user" as const, content: "Friday, $40" },
         { role: "assistant" as const, content: "How many minutes one way are you willing to travel?" },
@@ -299,7 +299,7 @@ describe("the LLM path with a stubbed model", () => {
     });
 
     it("a bare number the model files correctly is kept, and so is a full sentence about another field", async () => {
-      const asked = { ...emptyConstraints(), availableSlots: ["fri_dinner" as const], budgetMax: 40 };
+      const asked = { ...emptyConstraints(), availableSlots: ["19:00" as const], budgetMax: 40 };
       const question = { role: "assistant" as const, content: "How many minutes one way?" };
       const start = { role: "user" as const, content: "Friday, $40" };
       stubModel(() => ({ reply: "20 minutes, noted.", update: { maxTravelMin: 20 } }));
@@ -343,7 +343,7 @@ describe("the LLM path with a stubbed model", () => {
       stubModel(() => ({
         reply: "Friday dinner, $35, 20 minutes, Asian food: noted.",
         update: {
-          availableSlots: ["fri_dinner"],
+          availableSlots: ["19:00"],
           budgetMax: 35,
           maxTravelMin: 20,
           dietaryConfirmed: true,
@@ -352,7 +352,7 @@ describe("the LLM path with a stubbed model", () => {
       }));
       const r = await runCase(byId("clear-11"), llmExtractor);
       expect(r.sources).toEqual(["llm"]); // not a fallback to the rules
-      expect(r.final).toMatchObject({ availableSlots: ["fri_dinner"], budgetMax: 35, maxTravelMin: 20 });
+      expect(r.final).toMatchObject({ availableSlots: ["19:00"], budgetMax: 35, maxTravelMin: 20 });
       expect(r.final.likedCuisines).toEqual([]);
       expect(r.replies[0]).toMatch(
         /^Friday dinner, \$35, 20 minutes, Asian food: noted\. \(I couldn't match "asian" to a cuisine/,
@@ -394,11 +394,11 @@ describe("the LLM path with a stubbed model", () => {
   });
 
   it("keeps the valid part of a model's update when one number is out of range", async () => {
-    stubModel(() => ({ reply: "Noted.", update: { budgetMax: 1_000_000, availableSlots: ["sat_dinner"] } }));
+    stubModel(() => ({ reply: "Noted.", update: { budgetMax: 1_000_000, availableSlots: ["18:00"] } }));
     const r = await runCase({ ...byId("adversarial-06"), mayChange: ["budgetMax", "availableSlots"] }, llmExtractor);
     expect(r.sources).toEqual(["llm"]);
     expect(r.final.budgetMax).toBeNull();
-    expect(r.final.availableSlots).toEqual(["sat_dinner"]);
+    expect(r.final.availableSlots).toEqual(["18:00"]);
     expect(r.replies[0]).toContain("I couldn't use that");
   });
 

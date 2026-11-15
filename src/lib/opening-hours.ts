@@ -82,3 +82,11 @@ export function openStartTimes(
     );
   });
 }
+
+/**
+ * A restaurant as it is for a plan on `date`: `open` is the start times it can take that day.
+ * A place whose hours are unknown gets none, so it is never proposed.
+ */
+export function openOn<T extends { hours?: WeeklyHours }>(restaurant: T, date: string): T & { open: StartTime[] } {
+  return { ...restaurant, open: openStartTimes(restaurant.hours, date) ?? [] };
+}
