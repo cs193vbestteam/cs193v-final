@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+export const metadata = { title: "Page not found — Settle" };
+
 export default function NotFound() {
   return (
     <div className="mx-auto mt-20 max-w-md text-center">

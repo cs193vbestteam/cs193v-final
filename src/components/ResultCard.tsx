@@ -72,7 +72,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
   return (
     <div className={`relative overflow-hidden rounded-2xl border bg-surface ${tone.border}`}>
       <div className="px-4 pt-4">
-        <div className={`font-mono text-[0.6875rem] uppercase tracking-[0.14em] ${tone.text}`}>{headline}</div>
+        <div className={`font-mono text-[0.75rem] uppercase tracking-[0.14em] ${tone.text}`}>{headline}</div>
         {showPlan ? (
           <div className="mt-2">
             <div className="font-serif text-[1.75rem] leading-tight">{r.name}</div>
@@ -112,7 +112,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
         )}
         {result.status === "agreed" && (
           <div
-            className={`stamp pointer-events-none absolute right-3 top-3 rounded-md border-2 px-2 py-0.5 font-mono text-[0.625rem] font-medium uppercase tracking-[0.18em] ${tone.stamp}`}
+            className={`stamp pointer-events-none absolute right-3 top-3 rounded-md border-2 px-2 py-0.5 font-mono text-[0.75rem] font-medium uppercase tracking-[0.18em] ${tone.stamp}`}
             aria-hidden
           >
             sealed
@@ -124,7 +124,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
 
       {outcomeOnly ? (
         <div className="px-4 pb-4 text-xs text-ink-2">
-          <p className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
+          <p className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
             {roundCount} round{roundCount === 1 ? "" : "s"}, {result.participants} people
           </p>
           <p className="mt-2 text-ink-3">
@@ -134,7 +134,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
         </div>
       ) : (
         <details className="group px-4 pb-4 text-xs text-ink-2">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3 marker:hidden [&::-webkit-details-marker]:hidden">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 font-mono text-[0.75rem] uppercase tracking-wider text-ink-3 marker:hidden [&::-webkit-details-marker]:hidden">
             <span>
               How they decided: {result.rounds.length} round{result.rounds.length === 1 ? "" : "s"}, {tried} options,{" "}
               {result.participants} people
@@ -147,7 +147,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
           <ol className="mt-3 space-y-3">
             {result.rounds.map((round) => (
               <li key={round.round}>
-                <div className="flex items-baseline justify-between font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
+                <div className="flex items-baseline justify-between font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
                   <span>Round {round.round}</span>
                   {round.level > 0 && <span className="text-amber-ink">concession step {round.level}</span>}
                 </div>
@@ -181,7 +181,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
 
           {result.finalists?.length > 0 && (
             <div className="mt-4">
-              <div className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
+              <div className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
                 Final pick · group score relative to the pick
               </div>
               <ul className="mt-1.5 space-y-1">
@@ -199,7 +199,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
                         {chosen ? "★ " : ""}
                         {place(f.proposal.restaurantId)?.name ?? "?"} · {SLOT_LABELS[f.proposal.slot]}
                       </span>
-                      <span className="flex items-center gap-2 font-mono text-[0.6875rem] text-ink-3">
+                      <span className="flex items-center gap-2 font-mono text-[0.75rem] text-ink-3">
                         <span className="text-ink" aria-label={`${Math.round(f.relative * 100)}% of the pick's score`}>
                           {chosen ? "pick" : `×${f.relative.toFixed(2)}`}
                         </span>

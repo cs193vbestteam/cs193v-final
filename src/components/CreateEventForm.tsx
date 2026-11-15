@@ -7,30 +7,34 @@ export function CreateEventForm() {
   const [state, action, pending] = useActionState(createEventAction, {});
   return (
     <form action={action} className="space-y-2">
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <label htmlFor="plan-title" className="sr-only">
-          Plan name
-        </label>
-        <input
-          id="plan-title"
-          className="input sm:text-base"
-          name="title"
-          placeholder="Saturday dinner with the crew"
-          required
-          maxLength={80}
-          autoComplete="off"
-        />
-        <label htmlFor="plan-location" className="sr-only">
-          Near where (optional)
-        </label>
-        <input
-          id="plan-location"
-          className="input sm:max-w-[14rem]"
-          name="location"
-          placeholder="Near… (e.g. Palo Alto)"
-          maxLength={120}
-          autoComplete="off"
-        />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="min-w-0 flex-1">
+          <label htmlFor="plan-title" className="label">
+            Plan name
+          </label>
+          <input
+            id="plan-title"
+            className="input sm:text-base"
+            name="title"
+            placeholder="Saturday dinner with the crew"
+            required
+            maxLength={80}
+            autoComplete="off"
+          />
+        </div>
+        <div className="sm:w-[14rem]">
+          <label htmlFor="plan-location" className="label">
+            Near where (optional)
+          </label>
+          <input
+            id="plan-location"
+            className="input"
+            name="location"
+            placeholder="e.g. Palo Alto"
+            maxLength={120}
+            autoComplete="off"
+          />
+        </div>
         <button className="btn shrink-0" disabled={pending}>
           {pending ? "Creating…" : "Start a plan"}
           {!pending && <Arrow />}

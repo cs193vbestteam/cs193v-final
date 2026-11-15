@@ -7,12 +7,19 @@ import { ResultCard } from "@/components/ResultCard";
 import { joinEventAction } from "@/app/actions";
 import { getEventByCode, getMyConstraints, getMyMessages, getResult, isMember, listMembers } from "@/lib/events";
 import { scenarioFor } from "@/lib/scenario";
-import { requireUser } from "@/lib/session";
+import { currentUser, requireUser } from "@/lib/session";
 
 // Finding a plan can make a few LLM calls per round (agents + mediator); give it room on Vercel.
 export const maxDuration = 60;
 
 const POOL_LABEL = { places: "real places", yelp: "places from the Yelp Open Dataset", seed: "sample places" } as const;
+
+/** The tab is named after the plan, for people who are signed in; the plan's name is on the invitation anyway. */
+export async function generateMetadata({ params }: { params: Promise<{ code: string }> }) {
+  const { code } = await params;
+  const event = (await currentUser()) ? await getEventByCode(code) : null;
+  return { title: event ? `${event.title} — Settle` : "Plan — Settle" };
+}
 
 export default async function EventPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -76,7 +83,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             {event.location ? ` · near ${event.location}` : ""}
             {` · ${event.poolSize} ${POOL_LABEL[event.poolSource]}`}
           </p>
-          <h1 className="display mt-2 truncate text-4xl sm:text-5xl">{event.title}</h1>
+          <h1 className="display mt-2 break-words text-4xl sm:text-5xl">{event.title}</h1>
           {sample && (
             <p className="mt-2 max-w-xl text-sm text-ink-2">
               <span className="pill pill-amber mr-2">Sample data</span>
@@ -110,7 +117,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           <section className="card rise" style={{ "--d": "0.18s" } as React.CSSProperties}>
             <div className="flex items-baseline justify-between">
               <h2 className="font-serif text-xl">The group</h2>
-              <span className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
+              <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
                 {members.length} joined
               </span>
             </div>
@@ -128,7 +135,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
                     </span>
                   </span>
                   <span
-                    className={`font-mono text-[0.6875rem] uppercase tracking-wider ${m.ready ? "text-moss" : "text-ink-3"}`}
+                    className={`font-mono text-[0.75rem] uppercase tracking-wider ${m.ready ? "text-moss" : "text-ink-3"}`}
                   >
                     {m.ready ? "done" : "chatting…"}
                   </span>

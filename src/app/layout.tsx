@@ -58,6 +58,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" data-scroll-behavior="smooth" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
       <body className="flex min-h-dvh flex-col">
+        <a href="#main" className="skip-link">
+          Skip to content
+        </a>
         <header className="sticky top-0 z-40 border-b border-line/0 bg-paper/70 backdrop-blur-md">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 sm:px-8">
             <Wordmark />
@@ -78,7 +81,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             )}
           </div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-5 pb-20 sm:px-8">{children}</main>
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-5 pb-20 outline-none sm:px-8">
+          {children}
+        </main>
         <footer className="mx-auto w-full max-w-6xl px-5 pb-8 sm:px-8">
           <div className="flex flex-col gap-2 border-t border-line pt-5 text-xs text-ink-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="font-mono tracking-wider">SETTLE · PRIVATE BY CONSTRUCTION</span>
