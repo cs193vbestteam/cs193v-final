@@ -64,8 +64,15 @@ describe("openStartTimes", () => {
   it("offers the hours a place is open on that weekday", () => {
     const hours = weeklyHoursFromGoogle([period(6, [11, 0], 6, [15, 0]), period(6, [17, 0], 6, [22, 0])]);
     expect(openStartTimes(hours, SAT)).toEqual([
-      "11:00", "12:00", "13:00", "14:00",
-      "17:00", "18:00", "19:00", "20:00", "21:00",
+      "11:00",
+      "12:00",
+      "13:00",
+      "14:00",
+      "17:00",
+      "18:00",
+      "19:00",
+      "20:00",
+      "21:00",
     ]);
   });
 
@@ -113,14 +120,29 @@ describe("dailyHours", () => {
     expect(hours).toHaveLength(14);
     for (const date of [SAT, SUN, MON]) {
       expect(openStartTimes(hours, date)).toEqual([
-        "11:00", "12:00", "13:00", "14:00",
-        "17:00", "18:00", "19:00", "20:00", "21:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
       ]);
     }
   });
 
   it("lets a close hour above 24 run past midnight", () => {
-    expect(openStartTimes(dailyHours([17, 26]), SAT)).toEqual(["17:00", "18:00", "19:00", "20:00", "21:00", "22:00", "23:00"]);
+    expect(openStartTimes(dailyHours([17, 26]), SAT)).toEqual([
+      "17:00",
+      "18:00",
+      "19:00",
+      "20:00",
+      "21:00",
+      "22:00",
+      "23:00",
+    ]);
   });
 });
 
