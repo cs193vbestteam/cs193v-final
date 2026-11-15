@@ -70,6 +70,7 @@ async function main() {
     const model = process.env.ANTHROPIC_MODEL || "claude-haiku-5-5";
     const own = loadAssistantCases();
     console.log(`Assistant: ${model}, ${own.length} cases of its own, then the rule reader's cases`);
+    process.env.SETTLE_EVAL_REAL_MODEL = "1";
     assistant = await runAssistantSuite(model, own);
     onRuleCases = await runRuleCasesThroughAssistant(cases);
     markdown += "\n" + assistantMarkdown(assistant);

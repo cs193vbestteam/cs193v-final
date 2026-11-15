@@ -906,6 +906,25 @@ describe("when the model's answer is unusable, the safety net takes the turn", (
   });
 });
 
+describe("an update the model wrapped in a string", () => {
+  it("is unwrapped and used, not handed to the rule-based reader", async () => {
+    stubModel(() => ({
+      reply: "At most $40, noted.",
+      asks: "none",
+      update: JSON.stringify({ budget: { max: 40, strength: "must" } }),
+    }));
+    const turn = await assistantTurn([{ role: "user", content: "40 max" }], emptyMemberState(), RESTAURANTS);
+    expect(turn.source).toBe("llm");
+    expect(turn.state.prefs.budget).toEqual({ max: 40, strength: "must" });
+  });
+
+  it("still falls back when the string is not JSON", async () => {
+    stubModel(() => ({ reply: "Noted.", asks: "none", update: "budget is 40" }));
+    const turn = await assistantTurn([{ role: "user", content: "40 max" }], emptyMemberState(), RESTAURANTS);
+    expect(turn.source).toBe("rules");
+  });
+});
+
 describe("where they are coming from", () => {
   it("is only ever text from the model; without a way to place it, nothing is stored and the reply says so", async () => {
     stubModel(() => ({ reply: "From Mountain View, got it.", asks: "none", update: { startText: "Mountain View" } }));
