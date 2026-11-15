@@ -142,7 +142,7 @@ describe("the summary shown to its owner", () => {
       "Kind of place: fine dining",
       "Not this kind of place: fast food",
       "Would like to go to: Ramen Nagi",
-      "Would rather not go to: Sizzler (not among this plan's places)",
+      "Would rather not go to: Sizzler",
       "Matters most: the budget, then the food",
       "Allergy note (only you see this): peanuts",
     ]);

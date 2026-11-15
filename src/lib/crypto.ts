@@ -46,8 +46,9 @@ export const scope = {
   constraints: (eventId: string, userId: string) => make("member", eventId, userId, "constraints"),
   /** One member's private chat in one plan (messages.content_enc). */
   chat: (eventId: string, userId: string) => make("member", eventId, userId, "chat"),
-  /** A plan's shared fields, visible to its members (events.title, location, event_date, pool_json, result_json). */
-  plan: (eventId: string, field: "title" | "location" | "date" | "pool" | "result") => make("plan", eventId, field),
+  /** A plan's shared fields, visible to its members (events.title, location, event_date, pool_json, pool_meta, result_json). */
+  plan: (eventId: string, field: "title" | "location" | "date" | "pool" | "pool_meta" | "result") =>
+    make("plan", eventId, field),
 };
 
 function masterKey(): Buffer {

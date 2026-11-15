@@ -9,6 +9,8 @@ import type { Proposal } from "./evaluate";
 import { negotiate, type NegotiationResult } from "./negotiate";
 import { planDateSchema, todayPacific } from "./plan-date";
 import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./pool";
+import { newPoolMeta } from "./pool-extend";
+import { refreshPool } from "./pool-refresh";
 import { DEFAULT_SCENARIO, parseScenarioId, ScenarioIdSchema, scenarioFor, type ScenarioId } from "./scenario";
 import { agentsForEvent } from "./vault";
 import { clearRateKey, hit, LIMITS, rateKey, waitText } from "./ratelimit";
@@ -129,9 +131,11 @@ function newInviteCode(): string {
 /** A plan's shared fields are encrypted with that plan's own keys. */
 function rowToEvent(row: Record<string, unknown>): EventSummary {
   const id = String(row.id);
-  const pool = row.pool_json
-    ? (JSON.parse(decryptOrPlain(String(row.pool_json), scope.plan(id, "pool"))) as unknown[])
+  // Counted as the current engine sees it: places it has no cuisine for are stored but not offered yet.
+  const stored = row.pool_json
+    ? (JSON.parse(decryptOrPlain(String(row.pool_json), scope.plan(id, "pool"))) as { cuisine?: unknown }[])
     : null;
+  const pool = stored?.filter((p) => p.cuisine !== null) ?? null;
   const scenario = parseScenarioId(row.scenario);
   return {
     id,
@@ -187,11 +191,11 @@ export async function createEvent(
     location: where,
     date: day,
     poolSource: pool.source,
-    poolSize: restaurants?.length ?? scenario.seedPool.length,
+    poolSize: restaurants?.filter((r) => r.cuisine !== null).length ?? scenario.seedPool.length,
   };
   if (pool.source === "seed" && where) console.info(`Plan ${event.id}: using seed pool (${pool.reason})`);
   await client.execute({
-    sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source, scenario, event_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source, scenario, event_date, pool_meta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     args: [
       event.id,
       encrypt(event.title, scope.plan(event.id, "title")),
@@ -203,6 +207,8 @@ export async function createEvent(
       pool.source,
       scenario.id,
       encrypt(day, scope.plan(event.id, "date")),
+      // Only a Places pool can be widened later; it needs to know where it was searched from.
+      pool.source === "places" ? encryptJson(newPoolMeta(pool.center), scope.plan(event.id, "pool_meta")) : null,
     ],
   });
   await addMember(event, userId);
@@ -377,11 +383,16 @@ export function llmGate(eventId: string, deadline: number, now: () => number = D
 export async function runNegotiation(eventId: string, userId: string): Promise<StoredResult> {
   await requireMember(eventId, userId);
   const budget = llmGate(eventId, Date.now() + LLM_NEGOTIATION_MS);
-  const { agents, userIds, readyCount } = await agentsForEvent(eventId, budget);
+  const { agents: firstAgents, userIds, readyCount } = await agentsForEvent(eventId, budget);
   if (readyCount < 2) throw new AccessError("At least 2 people need to be ready first");
-  if (readyCount !== agents.length) {
+  if (readyCount !== firstAgents.length) {
     throw new AccessError("Everyone who joined must be ready before finding a plan");
   }
+  // Everyone is done, so what the group wants is known: fetch the places for it before deciding (#101).
+  // A plan whose pool grew gets its agents again, so they can look up the new places.
+  const grew = await refreshPool(eventId);
+  const ready = grew ? await agentsForEvent(eventId, budget) : null;
+  const agents = ready?.agents ?? firstAgents;
   const members = await listMembers(eventId, userId);
   const memberNames = userIds.map((id) => members.find((m) => m.userId === id)?.displayName ?? "Someone");
   const { restaurants } = await poolForEvent(eventId);

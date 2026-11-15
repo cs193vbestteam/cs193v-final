@@ -208,8 +208,8 @@ export function describeState(state: MemberState): string[] {
   if (prefs.style?.excluded?.length)
     lines.push(`Not this kind of place: ${prefs.style.excluded.map((s) => s.replaceAll("_", " ")).join(", ")}`);
 
-  const named = (r: { name: string; id: string | null }) =>
-    r.id ? r.name : `${r.name} (not among this plan's places)`;
+  // Whether a named place is among the plan's places is not known until its pool is complete.
+  const named = (r: { name: string }) => r.name;
   if (prefs.wantedRestaurants?.length)
     lines.push(`Would like to go to: ${prefs.wantedRestaurants.map(named).join(", ")}`);
   if (prefs.excludedRestaurants?.length)

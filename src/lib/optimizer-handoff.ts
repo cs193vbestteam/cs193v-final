@@ -10,7 +10,7 @@ import {
   type CandidateRestaurant,
   type PersonPreferences,
 } from "./optimizer-input";
-import type { Restaurant } from "./restaurants";
+import type { Place } from "./restaurants";
 
 /**
  * The handoff between the private chats and the optimizer (#107).
@@ -118,7 +118,7 @@ const uniq = <T>(xs: readonly T[]) => Array.from(new Set(xs));
  * not a $30 place, and a place Google says nothing about for vegetarians is not one that
  * serves none. The seed restaurants are made up, so their values are taken as known.
  */
-export function toCandidate(r: Restaurant, travelMin: Record<string, number>): CandidateRestaurant {
+export function toCandidate(r: Place, travelMin: Record<string, number>): CandidateRestaurant {
   const fromGoogle = r.location !== undefined;
   const price = r.price !== undefined ? r.price : fromGoogle ? null : { low: r.pricePerPerson, high: r.pricePerPerson };
   const servesVegetarian =
@@ -130,7 +130,7 @@ export function toCandidate(r: Restaurant, travelMin: Record<string, number>): C
   return {
     id: r.id,
     name: r.name,
-    types: uniq(r.types ?? [LEGACY_CUISINE_TYPE[r.cuisine]]).filter((t) => TYPE_NAME.test(t)),
+    types: uniq(r.types ?? (r.cuisine ? [LEGACY_CUISINE_TYPE[r.cuisine]] : [])).filter((t) => TYPE_NAME.test(t)),
     style: uniq(r.style ?? []),
     price,
     servesVegetarian,
@@ -150,7 +150,7 @@ export function toCandidate(r: Restaurant, travelMin: Record<string, number>): C
 export function assembleOptimizerInput(parts: {
   date: string;
   location: string | null;
-  restaurants: readonly Restaurant[];
+  restaurants: readonly Place[];
   members: readonly HandoffMember[];
 }): OptimizerInput {
   const people = parts.members.map((m, i) => ({ id: `p${i + 1}`, prefs: m.prefs }));

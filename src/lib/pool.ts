@@ -1,6 +1,6 @@
 import { db } from "./db";
 import { decryptOrPlain, scope } from "./crypto";
-import type { Restaurant } from "./restaurants";
+import type { Place, Restaurant } from "./restaurants";
 import { parseScenarioId, scenarioFor, type ScenarioId } from "./scenario";
 
 /**
@@ -11,9 +11,13 @@ import { parseScenarioId, scenarioFor, type ScenarioId } from "./scenario";
  */
 export type PoolSource = "places" | "yelp" | "seed";
 
+/**
+ * `restaurants` is what the current negotiation engine and the chat use: places with one of
+ * the ten older cuisines. `places` is everything stored, for the optimizer.
+ */
 export async function poolForEvent(
   eventId: string,
-): Promise<{ restaurants: Restaurant[]; source: PoolSource; scenario: ScenarioId }> {
+): Promise<{ restaurants: Restaurant[]; places: Place[]; source: PoolSource; scenario: ScenarioId }> {
   const client = await db();
   const { rows } = await client.execute({
     sql: "SELECT pool_json, pool_source, scenario FROM events WHERE id = ?",
@@ -22,11 +26,17 @@ export async function poolForEvent(
   const scenario = parseScenarioId(rows[0]?.scenario);
   const raw = rows[0]?.pool_json;
   if (raw) {
-    const restaurants = JSON.parse(decryptOrPlain(String(raw), scope.plan(eventId, "pool"))) as Restaurant[];
-    if (Array.isArray(restaurants) && restaurants.length)
-      return { restaurants, source: (rows[0].pool_source as PoolSource) ?? "places", scenario };
+    const places = JSON.parse(decryptOrPlain(String(raw), scope.plan(eventId, "pool"))) as Place[];
+    if (Array.isArray(places) && places.length)
+      return {
+        restaurants: places.filter((p): p is Restaurant => p.cuisine !== null),
+        places,
+        source: (rows[0].pool_source as PoolSource) ?? "places",
+        scenario,
+      };
   }
-  return { restaurants: scenarioFor(scenario).seedPool, source: "seed", scenario };
+  const seed = scenarioFor(scenario).seedPool;
+  return { restaurants: seed, places: seed, source: "seed", scenario };
 }
 
 /**
