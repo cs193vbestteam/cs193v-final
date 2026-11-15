@@ -23,6 +23,11 @@ export type Restaurant = {
   style?: Style[];
   /** Typical spend per person, in dollars. */
   pricePerPerson: number;
+  /**
+   * What a meal costs per person, in dollars, as Google gives it; null when Google gives no
+   * price at all (then `pricePerPerson` is only a default). Absent for the seed and Yelp data.
+   */
+  price?: { low: number; high: number } | null;
   /** One-way travel time from the plan's location (campus, for the seed), in minutes. */
   travelMin: number;
   /** Where the place is. Public. Present for Places results, absent for the seed. */
@@ -30,6 +35,8 @@ export type Restaurant = {
   /** Most of the menu is spicy. */
   spicy: boolean;
   vegetarianFriendly: boolean;
+  /** Google's own answer to "serves vegetarian food"; null when it does not say. Places results only. */
+  servesVegetarian?: boolean | null;
   /** Menu is mostly seafood. */
   seafoodHeavy: boolean;
   halal: boolean;
