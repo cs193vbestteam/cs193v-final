@@ -1,6 +1,8 @@
 import type { Cuisine, Slot } from "./constraints";
+import { LEGACY_CUISINE_TYPE, stylesOf } from "./cuisine-table";
 import type { LatLng } from "./geo";
 import { dailyHours, openStartTimes, type WeeklyHours } from "./opening-hours";
+import type { Style } from "./optimizer-input";
 
 /**
  * Hard-coded, fictional restaurant data: the seed pool, used when a plan has no
@@ -9,7 +11,16 @@ import { dailyHours, openStartTimes, type WeeklyHours } from "./opening-hours";
 export type Restaurant = {
   id: string;
   name: string;
+  /** One of the ten cuisines the current negotiation engine knows. Goes away with that engine. */
   cuisine: Cuisine;
+  /**
+   * The place's Google Places types (`ramen_restaurant`, `japanese_restaurant`, …): what the
+   * optimizer matches a person's cuisine wishes against (`matchCuisine` in cuisine-table.ts).
+   * Present for Places results and the seed; absent for the Yelp sample data.
+   */
+  types?: string[];
+  /** The kind of place, worked out from `types` (`stylesOf`). Present whenever `types` is. */
+  style?: Style[];
   /** Typical spend per person, in dollars. */
   pricePerPerson: number;
   /** One-way travel time from the plan's location (campus, for the seed), in minutes. */
@@ -44,7 +55,7 @@ const LUNCH_AND_DINNER = hoursAndOpen(dailyHours([11, 15], [17, 22]));
 const DINNER_ONLY = hoursAndOpen(dailyHours([17, 23]));
 const LUNCH_ONLY = hoursAndOpen(dailyHours([10, 16]));
 
-export const RESTAURANTS: Restaurant[] = [
+const SEED: Restaurant[] = [
   {
     id: "sakura-table",
     name: "Sakura Table",
@@ -238,6 +249,12 @@ export const RESTAURANTS: Restaurant[] = [
     ...LUNCH_AND_DINNER,
   },
 ];
+
+/** The seed places are ordinary sit-down restaurants of one cuisine each, so that is what their types say. */
+export const RESTAURANTS: Restaurant[] = SEED.map((r) => {
+  const types = [LEGACY_CUISINE_TYPE[r.cuisine], "restaurant"];
+  return { ...r, types, style: stylesOf(types, types[0]) };
+});
 
 export function getRestaurant(id: string): Restaurant | undefined {
   return RESTAURANTS.find((r) => r.id === id);

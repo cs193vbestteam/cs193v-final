@@ -1,13 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { emptyConstraints, mergeConstraints } from "@/lib/constraints";
-import {
-  NO_SPICY_NOTE,
-  PLACE_TYPE_OF,
-  SEAFOOD_TYPE,
-  applyLegacyUpdate,
-  toLegacyConstraints,
-  toRulesView,
-} from "@/lib/legacy-adapter";
+import { NO_SPICY_NOTE, SEAFOOD_TYPE, applyLegacyUpdate, toLegacyConstraints, toRulesView } from "@/lib/legacy-adapter";
+import { LEGACY_CUISINE_TYPE } from "@/lib/cuisine-table";
 import {
   MAX_ASSISTANT_TURNS,
   MemberStateSchema,
@@ -144,7 +138,7 @@ describe("the summary shown to its owner", () => {
       "Coming from: Mountain View",
       "Diet: vegetarian",
       "Would like to eat: hot pot",
-      "Not for them: indian",
+      "Not for them: Indian",
       "Kind of place: fine dining",
       "Not this kind of place: fast food",
       "Would like to go to: Ramen Nagi",
@@ -218,8 +212,8 @@ describe("the adapter to the older format the negotiation engine reads", () => {
       withPrefs({
         dietary: ["vegan", "halal"],
         cuisine: {
-          scores: { [PLACE_TYPE_OF.korean]: 1, hot_pot_restaurant: 1 },
-          excluded: [PLACE_TYPE_OF.indian, SEAFOOD_TYPE],
+          scores: { [LEGACY_CUISINE_TYPE.korean]: 1, hot_pot_restaurant: 1 },
+          excluded: [LEGACY_CUISINE_TYPE.indian, SEAFOOD_TYPE],
           strength: "strong",
         },
         style: { excluded: ["fast_food"], strength: "mild" },
@@ -228,7 +222,8 @@ describe("the adapter to the older format the negotiation engine reads", () => {
       }),
     );
     expect(c.dietary.sort()).toEqual(["halal", "no_seafood", "vegetarian"]);
-    expect(c.likedCuisines).toEqual(["korean"]);
+    // Hot pot is Chinese food to the old engine, which has no dishes.
+    expect(c.likedCuisines).toEqual(["chinese", "korean"]);
     expect(c.dislikedCuisines).toEqual(["indian"]);
     expect(c.avoidNotes).toEqual([]);
   });

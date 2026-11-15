@@ -14,6 +14,7 @@ import {
   type Slot,
   type SoftDim,
 } from "./constraints";
+import { LEGACY_CUISINE_TYPE, legacyCuisineOf, matchCuisine } from "./cuisine-table";
 import { availableTimes, toRanges, type MemberState, type Variable } from "./member-state";
 import {
   LIMITS,
@@ -40,28 +41,33 @@ import {
  *                         the old format) → the stored preferences.
  */
 
-/** The ten cuisines the old engine knows, as Google Places type names. The full table is #100. */
-export const PLACE_TYPE_OF: Record<Cuisine, string> = {
-  japanese: "japanese_restaurant",
-  chinese: "chinese_restaurant",
-  korean: "korean_restaurant",
-  thai: "thai_restaurant",
-  vietnamese: "vietnamese_restaurant",
-  indian: "indian_restaurant",
-  mexican: "mexican_restaurant",
-  italian: "italian_restaurant",
-  american: "american_restaurant",
-  mediterranean: "mediterranean_restaurant",
-};
-const CUISINE_OF = new Map<string, Cuisine>(CUISINES.map((c) => [PLACE_TYPE_OF[c], c]));
 /** "No seafood" is a kind of restaurant to leave out, not a diet Google lets us check. */
 export const SEAFOOD_TYPE = "seafood_restaurant";
 /** What the old "no_spicy" flag becomes: a note, because no restaurant data says how spicy a place is. */
 export const NO_SPICY_NOTE = "No spicy food";
 
 const uniq = <T>(xs: readonly T[]) => Array.from(new Set(xs));
-const legacyCuisines = (types: readonly string[]) =>
-  uniq(types.flatMap((t) => (CUISINE_OF.has(t) ? [CUISINE_OF.get(t)!] : [])));
+
+/**
+ * The stored cuisine block as the old engine's two lists of its ten cuisines (cuisine-table.ts
+ * has the mapping). Liked: an old cuisine the person's scores put at 1, or the cuisine of a
+ * dish they asked for ("hot pot" is liking Chinese). Disliked: an old cuisine that is itself
+ * excluded; ruling out one dish does not rule out its cuisine. A cuisine the old list has
+ * nothing for (French) is not passed on: it stays stored for the optimizer.
+ */
+function legacyCuisines(cuisine: PersonPreferences["cuisine"]): { liked: Cuisine[]; disliked: Cuisine[] } {
+  if (!cuisine) return { liked: [], disliked: [] };
+  const asked = Object.entries(cuisine.scores ?? {})
+    .filter(([, score]) => score === 1)
+    .flatMap(([type]) => legacyCuisineOf(type) ?? []);
+  const liked = CUISINES.filter(
+    (c) => asked.includes(c) || matchCuisine([LEGACY_CUISINE_TYPE[c]], cuisine).score === 1,
+  );
+  const disliked = CUISINES.filter(
+    (c) => !liked.includes(c) && matchCuisine([LEGACY_CUISINE_TYPE[c]], cuisine).excluded,
+  );
+  return { liked, disliked };
+}
 
 /**
  * `forRules: false` (the engine): a question nobody answered is no constraint at all.
@@ -100,8 +106,9 @@ function legacyView(state: MemberState, forRules: boolean): Constraints {
   c.dietary = diet;
   c.dietaryConfirmed = settled("diet");
 
-  c.likedCuisines = legacyCuisines(Object.keys(prefs.cuisine?.scores ?? {}));
-  c.dislikedCuisines = legacyCuisines(prefs.cuisine?.excluded ?? []).filter((x) => !c.likedCuisines.includes(x));
+  const { liked, disliked } = legacyCuisines(prefs.cuisine);
+  c.likedCuisines = liked;
+  c.dislikedCuisines = disliked;
 
   const ranked = (prefs.priority ?? []).filter((d): d is SoftDim => (SOFT_DIMS as readonly string[]).includes(d));
   if (ranked.length) {
@@ -186,7 +193,7 @@ export function applyLegacyUpdate(state: MemberState, update: ConstraintsUpdate)
   }
 
   let excluded = prefs.cuisine?.excluded ?? [];
-  let scores = { ...(prefs.cuisine?.scores ?? {}) };
+  const scores = { ...(prefs.cuisine?.scores ?? {}) };
   if (touches(update, ["dietary", "dietaryConfirmed", "avoidNotes"])) {
     const needs = new Set<DietaryNeed>(prefs.dietary ?? []);
     if (after.dietary.includes("vegetarian")) needs.add("vegetarian");
@@ -199,13 +206,19 @@ export function applyLegacyUpdate(state: MemberState, update: ConstraintsUpdate)
   }
 
   if (touches(update, ["likedCuisines", "dislikedCuisines"])) {
-    const liked = after.likedCuisines.map((c) => PLACE_TYPE_OF[c]);
-    const disliked = after.dislikedCuisines.map((c) => PLACE_TYPE_OF[c]);
-    // Keep anything recorded outside the old ten cuisines; replace what the old reader can speak for.
-    const known = new Set(Object.values(PLACE_TYPE_OF));
-    scores = Object.fromEntries(Object.entries(scores).filter(([type]) => !known.has(type)));
-    for (const type of liked) scores[type] = 1;
-    excluded = uniq([...excluded.filter((type) => !known.has(type)), ...disliked]);
+    // Write only what the old reader changed. What the assistant recorded (a dish, a cuisine
+    // outside the old ten, the lower scores around a wish) is left as it is.
+    const was = legacyCuisines(prefs.cuisine);
+    for (const c of was.liked) if (!after.likedCuisines.includes(c)) delete scores[LEGACY_CUISINE_TYPE[c]];
+    for (const c of after.likedCuisines) if (!was.liked.includes(c)) scores[LEGACY_CUISINE_TYPE[c]] = 1;
+    const taken: string[] = was.disliked
+      .filter((c) => !after.dislikedCuisines.includes(c))
+      .map((c) => LEGACY_CUISINE_TYPE[c]);
+    const added: string[] = after.dislikedCuisines
+      .filter((c) => !was.disliked.includes(c))
+      .map((c) => LEGACY_CUISINE_TYPE[c]);
+    excluded = uniq([...excluded.filter((type) => !taken.includes(type)), ...added]);
+    for (const type of excluded) delete scores[type];
   }
   const askedCuisine = after.probesAsked.includes("cuisine") && after.pending !== "cuisine";
   if (after.likedCuisines.length || after.dislikedCuisines.length || askedCuisine) answered.add("cuisine");

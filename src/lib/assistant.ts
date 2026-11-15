@@ -1,10 +1,24 @@
 import { z } from "zod";
 import { RUBRIC, TOOL, stateBlock } from "./assistant-prompt";
 import { MAX_OUTPUT_TOKENS, MAX_REPLY_CHARS } from "./chat-limits";
-import { CUISINES, missingFields, type Cuisine, type Pending, type MissingField } from "./constraints";
+import { missingFields, type Pending, type MissingField } from "./constraints";
+import {
+  compactExcluded,
+  compactScores,
+  describeMatch,
+  excludedFor,
+  findCuisine,
+  findStyle,
+  lowerBroadWish,
+  matchCuisine,
+  mergeScores,
+  parentCuisine,
+  scoresFor,
+  type CuisineMatch,
+} from "./cuisine-table";
 import { enforceLimits, type ChatTurn } from "./extract";
 import { ruleTurn } from "./extract-rules";
-import { PLACE_TYPE_OF, SEAFOOD_TYPE, applyLegacyUpdate, toRulesView } from "./legacy-adapter";
+import { applyLegacyUpdate, toRulesView } from "./legacy-adapter";
 import {
   MAX_ASSISTANT_TURNS,
   VARIABLES,
@@ -27,9 +41,11 @@ import {
   STYLES,
   mealStartTimes,
   type NamedRestaurant,
+  type DietaryNeed,
   type PersonPreferences,
   type StartTime,
   type Strength,
+  type Style,
 } from "./optimizer-input";
 import type { Restaurant } from "./restaurants";
 import { canLocate, resolveStart } from "./start-point";
@@ -90,9 +106,10 @@ const BLOCKS = {
     excluded: z.array(z.string()).optional(),
     strength: StrengthIn,
   }),
+  // Words, like cuisine: code looks them up (cuisine-table.ts), the model does not classify them.
   style: z.object({
-    wanted: z.array(z.enum(STYLES)).optional(),
-    excluded: z.array(z.enum(STYLES)).optional(),
+    wanted: z.array(z.string()).optional(),
+    excluded: z.array(z.string()).optional(),
     strength: StrengthIn,
   }),
   priority: z.array(z.enum(PRIORITY_DIMS)),
@@ -169,16 +186,70 @@ function timeBlock(
   };
 }
 
-/** A cuisine word from the model as a Google Places type name, or null if it is not one we can look for. */
-function cuisineType(word: string): string | null {
+const DIET_WORDS: Record<string, DietaryNeed> = {
+  vegetarian: "vegetarian",
+  veggie: "vegetarian",
+  素食: "vegetarian",
+  吃素: "vegetarian",
+  vegan: "vegan",
+  纯素: "vegan",
+  halal: "halal",
+  清真: "halal",
+};
+/** A diet said as if it were a cuisine ("vegetarian food"): it belongs in `dietary`, where it filters. */
+function dietWord(word: string): DietaryNeed | null {
   const w = word
     .trim()
     .toLowerCase()
-    .replace(/\s+/g, "_")
-    .replace(/_restaurant$/, "");
-  if ((CUISINES as readonly string[]).includes(w)) return PLACE_TYPE_OF[w as Cuisine];
-  return w === "seafood" ? SEAFOOD_TYPE : null;
+    .replace(/\s*(food|cuisine|restaurants?|places?|菜|餐)$/, "");
+  return DIET_WORDS[w] ?? null;
 }
+
+/** The words the model passed on for food and kind of place, as code understands them. */
+type FoodWords = {
+  liked: CuisineMatch[];
+  excluded: CuisineMatch[];
+  styleWanted: Style[];
+  styleExcluded: Style[];
+  dietary: DietaryNeed[];
+  /** Words the table does not have, with whether they were wanted. Kept as notes, never as scores. */
+  unknown: { word: string; wanted: boolean }[];
+};
+
+/**
+ * Look up every food and kind-of-place word in the table (cuisine-table.ts). The model only
+ * passes on what the person said; what "Asian" covers, and whether "fast food" is a cuisine or
+ * a kind of place, is decided here. A word filed under the wrong heading still lands in the
+ * right one.
+ */
+function readFoodWords(cuisine: Blocks["cuisine"], style: Blocks["style"]): FoodWords {
+  const out: FoodWords = { liked: [], excluded: [], styleWanted: [], styleExcluded: [], dietary: [], unknown: [] };
+  // "Somewhere fancy", "a café": the word that matters is the last part.
+  const bare = (w: string) => w.replace(/^(?:somewhere|some ?place|a place that is|an?|the|any)\s+/i, "");
+  const asStyle = (w: string): Style | null =>
+    (STYLES as readonly string[]).includes(w.toLowerCase())
+      ? (w.toLowerCase() as Style)
+      : (findStyle(w) ?? findStyle(bare(w)));
+  const read = (words: readonly string[] | undefined, wanted: boolean, styleFirst: boolean) => {
+    for (const raw of words ?? []) {
+      const word = raw.trim();
+      if (!word) continue;
+      const food = findCuisine(word) ?? findCuisine(bare(word));
+      const kind = asStyle(word);
+      if (kind && (styleFirst || !food)) (wanted ? out.styleWanted : out.styleExcluded).push(kind);
+      else if (food) (wanted ? out.liked : out.excluded).push(food);
+      else if (wanted && dietWord(word)) out.dietary.push(dietWord(word)!);
+      else out.unknown.push({ word, wanted });
+    }
+  };
+  read(cuisine?.liked, true, false);
+  read(cuisine?.excluded, false, false);
+  read(style?.wanted, true, true);
+  read(style?.excluded, false, true);
+  return out;
+}
+
+const isBroad = (m: CuisineMatch) => m.level === "group" || m.level === "region";
 
 const plain = (s: string) =>
   s
@@ -406,51 +477,67 @@ export function applyAssistantOutput(
       answered.add("travel");
   }
 
-  if (blocks.dietary?.length && put("dietary", uniq([...(prefs.dietary ?? []), ...blocks.dietary])))
-    answered.add("diet");
+  // Food and kind-of-place words are looked up before diet, because a diet is sometimes said as
+  // a cuisine ("vegetarian food") and then belongs with the diets.
+  const words = readFoodWords(blocks.cuisine, blocks.style);
+  const diets = uniq([...(blocks.dietary ?? []), ...words.dietary]);
+  if (diets.length && put("dietary", uniq([...(prefs.dietary ?? []), ...diets]))) answered.add("diet");
   // "No pork", said in passing before the question was ever asked, still answers it.
   if (blocks.nothingTheyCannotEat || blocks.saidWhatTheyCannotEat) answered.add("diet");
 
-  const unknownCuisines: string[] = [];
-  if (blocks.cuisine) {
-    const resolve = (words: readonly string[] | undefined) =>
-      (words ?? []).flatMap((w) => {
-        const type = cuisineType(w);
-        if (!type && w.trim()) unknownCuisines.push(w.trim());
-        return type ? [type] : [];
-      });
-    const liked = resolve(blocks.cuisine.liked);
-    const excluded = resolve(blocks.cuisine.excluded).filter((t) => !liked.includes(t));
-    if (liked.length || excluded.length) {
-      const scores = Object.fromEntries(
-        Object.entries(prefs.cuisine?.scores ?? {}).filter(([type]) => !excluded.includes(type)),
-      );
-      for (const type of liked) scores[type] = 1;
-      const out = uniq([...(prefs.cuisine?.excluded ?? []).filter((t) => !liked.includes(t)), ...excluded]);
-      const block = {
-        ...(Object.keys(scores).length ? { scores } : {}),
-        ...(out.length ? { excluded: out } : {}),
-        strength: blocks.cuisine.strength ?? prefs.cuisine?.strength ?? "mild",
-      };
-      // Being told what someone will not eat does not say what they would like.
-      if (put("cuisine", block) && (liked.length || state.chat.lastAsked === "cuisine")) answered.add("cuisine");
-    }
+  if (words.liked.length || words.excluded.length) {
+    const likedScores = mergeScores(...words.liked.map(scoresFor));
+    const top = Object.keys(likedScores).filter((t) => likedScores[t] === 1);
+    // What they say they want now wins over what they ruled out before, and over a ban in the same message.
+    const wantedNow = (t: string) => top.includes(t) || top.some((x) => parentCuisine(x) === t);
+    const banned = compactExcluded([
+      ...(prefs.cuisine?.excluded ?? []).filter((t) => !wantedNow(t)),
+      ...words.excluded.flatMap(excludedFor).filter((t) => !wantedNow(t)),
+    ]);
+    // A favourite named after a broad wish ("Asian", then "Korean most of all") keeps the rest wanted, lower.
+    const narrow = words.liked.filter((m) => !isBroad(m));
+    const before =
+      narrow.length && narrow.length === words.liked.length
+        ? lowerBroadWish(prefs.cuisine?.scores ?? {}, narrow)
+        : (prefs.cuisine?.scores ?? {});
+    const scores = compactScores(
+      Object.fromEntries(
+        Object.entries(mergeScores(before, likedScores)).filter(
+          ([type]) => !matchCuisine([type], { excluded: banned }).excluded,
+        ),
+      ),
+    );
+    const block = {
+      ...(Object.keys(scores).length ? { scores } : {}),
+      ...(banned.length ? { excluded: banned } : {}),
+      strength: blocks.cuisine?.strength ?? prefs.cuisine?.strength ?? "mild",
+    };
+    // Being told what someone will not eat does not say what they would like. And a broad wish
+    // ("Asian") leaves room for one question about a favourite, if cuisine was never asked.
+    const onlyBroad = words.liked.length > 0 && words.liked.every(isBroad);
+    const settles =
+      state.chat.lastAsked === "cuisine" ||
+      (words.liked.length > 0 && !(onlyBroad && !state.chat.asked.includes("cuisine")));
+    if (put("cuisine", block) && settles) answered.add("cuisine");
+  } else if (state.chat.lastAsked === "cuisine" && words.unknown.some((u) => u.wanted)) {
+    // They answered the question, with something that cannot be looked for. It is not asked again.
+    answered.add("cuisine");
   }
 
-  if (blocks.style) {
+  if (words.styleWanted.length || words.styleExcluded.length) {
     const wanted = uniq([
-      ...(prefs.style?.wanted ?? []).filter((s) => !blocks.style!.excluded?.includes(s)),
-      ...(blocks.style.wanted ?? []),
+      ...(prefs.style?.wanted ?? []).filter((x) => !words.styleExcluded.includes(x)),
+      ...words.styleWanted,
     ]);
     const excluded = uniq([
-      ...(prefs.style?.excluded ?? []).filter((s) => !blocks.style!.wanted?.includes(s)),
-      ...(blocks.style.excluded ?? []).filter((s) => !blocks.style!.wanted?.includes(s)),
+      ...(prefs.style?.excluded ?? []).filter((x) => !words.styleWanted.includes(x)),
+      ...words.styleExcluded.filter((x) => !words.styleWanted.includes(x)),
     ]);
     if (wanted.length || excluded.length)
       put("style", {
         ...(wanted.length ? { wanted } : {}),
         ...(excluded.length ? { excluded } : {}),
-        strength: blocks.style.strength ?? prefs.style?.strength ?? "mild",
+        strength: blocks.style?.strength ?? prefs.style?.strength ?? "mild",
       });
   }
 
@@ -479,18 +566,25 @@ export function applyAssistantOutput(
 
   let allergyNoted = false;
   let otherNoted = false;
-  if (blocks.notes?.length) {
+  // A food or kind of place the table does not have is kept in the person's own words, as a note:
+  // it cannot change which places are picked, and the reply says so, but it is not thrown away.
+  const unknownNotes = uniq(
+    words.unknown.map((u) => `${u.wanted ? "Would like" : "Would rather not have"}: ${u.word}`),
+  ).map((text) => ({ type: "other" as const, text: text.slice(0, LIMITS.noteChars) }));
+  if (blocks.notes?.length || unknownNotes.length) {
     const notes = [...(prefs.notes ?? [])];
-    for (const note of blocks.notes) {
+    for (const note of blocks.notes ?? []) {
       if (notes.some((n) => n.text.toLowerCase() === note.text.toLowerCase())) continue;
       notes.push(note);
       if (note.type === "allergy") allergyNoted = true;
       else otherNoted = true;
     }
+    for (const note of unknownNotes)
+      if (!notes.some((n) => n.text.toLowerCase() === note.text.toLowerCase())) notes.push(note);
     put("notes", notes.slice(-LIMITS.notes));
   }
   // An allergy answers "anything you can't eat?". So does a note or an excluded food given in reply to it.
-  const saidWhatTheyAvoid = otherNoted || Boolean(blocks.cuisine?.excluded?.length);
+  const saidWhatTheyAvoid = otherNoted || words.excluded.length > 0 || words.unknown.some((u) => !u.wanted);
   if (allergyNoted || (state.chat.lastAsked === "diet" && saidWhatTheyAvoid)) answered.add("diet");
 
   // "I don't mind" settles a question and changes nothing that is already recorded.
@@ -498,10 +592,19 @@ export function applyAssistantOutput(
 
   // The cap is on the model's own text. The sentences below are written by code and are short.
   let reply = capReply(output.reply);
-  if (unknownCuisines.length)
-    reply += ` (I couldn't match ${uniq(unknownCuisines)
-      .map((w) => `"${w}"`)
-      .join(" or ")} to a cuisine I can look for, so I left that out.)`;
+  // A broad word: say what it was taken to mean, unless the model already listed it.
+  const saidBroad = new Set<string>();
+  for (const match of words.liked.filter(isBroad)) {
+    if (saidBroad.has(match.id)) continue;
+    saidBroad.add(match.id);
+    const meant = describeMatch(match);
+    const named = meant.split(", ").filter((label) => reply.toLowerCase().includes(label.toLowerCase())).length;
+    if (named < 3) reply += ` (By ${match.label} I mean: ${meant}.)`;
+  }
+  if (words.unknown.length)
+    reply += ` (I can't look for ${uniq(words.unknown.map((u) => `"${u.word}"`)).join(
+      " or ",
+    )} as a kind of food or place, so it won't change which places are picked. I've kept it as a note for you.)`;
   if (unmatched.length && !NOT_A_CANDIDATE.test(reply))
     reply += ` (${uniq(unmatched)
       .map((n) => `"${n}"`)
