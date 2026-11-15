@@ -1,5 +1,5 @@
 import "server-only";
-import { decryptJson } from "./crypto";
+import { decryptJson, decryptOrPlain, scope } from "./crypto";
 import { db } from "./db";
 import { assembleOptimizerInput, type OptimizerInput } from "./optimizer-handoff";
 import { todayPacific } from "./plan-date";
@@ -26,21 +26,23 @@ export async function loadOptimizerInput(
   });
   if (event.rows.length === 0) throw new Error("No such plan");
   const { rows } = await client.execute({
-    sql: "SELECT constraints_enc, ready FROM members WHERE event_id = ? ORDER BY joined_at",
+    sql: "SELECT user_id, constraints_enc, ready FROM members WHERE event_id = ? ORDER BY joined_at",
     args: [eventId],
   });
   if (rows.length === 0) throw new Error("The plan has no members");
   const { restaurants, scenario } = await poolForEvent(eventId);
   const parse = scenarioFor(scenario).parseConstraints;
   const members = rows.map((row) => {
-    const state = parse(decryptJson(String(row.constraints_enc)));
+    const state = parse(decryptJson(String(row.constraints_enc), scope.constraints(eventId, String(row.user_id))));
     return { prefs: state.prefs, startPoint: state.startPoint };
   });
-  const location = event.rows[0].location;
-  const date = event.rows[0].event_date;
+  // Each value opens only with this plan's key for that field (crypto.ts).
+  const { location: loc, event_date: day } = event.rows[0];
+  const location = loc ? decryptOrPlain(String(loc), scope.plan(eventId, "location")) : null;
+  const date = day ? decryptOrPlain(String(day), scope.plan(eventId, "date")) : null;
   const input = assembleOptimizerInput({
-    date: date ? String(date) : todayPacific(),
-    location: location ? String(location) : null,
+    date: date ?? todayPacific(),
+    location,
     restaurants,
     members,
   });

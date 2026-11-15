@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, it } from "vitest";
 import { ResultCard } from "@/components/ResultCard";
 import { createUser } from "@/lib/auth";
+import { decryptOrPlain, scope } from "@/lib/crypto";
 import { db, resetDbForTests } from "@/lib/db";
 import {
   MIN_GROUP_FOR_DETAIL,
@@ -49,7 +50,8 @@ async function plan(messages: Record<string, string>) {
 async function storedRow(eventId: string): Promise<string> {
   const client = await db();
   const { rows } = await client.execute({ sql: "SELECT result_json FROM events WHERE id = ?", args: [eventId] });
-  return String(rows[0].result_json);
+  // Stored encrypted with the plan's key (see crypto.ts); what matters here is what is inside.
+  return decryptOrPlain(String(rows[0].result_json), scope.plan(eventId, "result"));
 }
 
 const card = (result: StoredResult) => renderToStaticMarkup(createElement(ResultCard, { result }));

@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "./db";
-import { decryptJson } from "./crypto";
+import { decryptJson, scope } from "./crypto";
 import { makeAgent, maskGroup, resolverFor, type Agent, type PrivateAgent } from "./agent";
 import { llmJudge, type LlmBudget } from "./agent-llm";
 import { anthropicKey, llmNegotiationEnabled } from "./anthropic";
@@ -34,7 +34,9 @@ export async function agentsForEvent(
   let readyCount = 0;
   const apiKey = llmNegotiationEnabled() ? anthropicKey() : undefined;
   for (const row of rows) {
-    const constraints = scenario.parseConstraints(decryptJson(String(row.constraints_enc)));
+    const constraints = scenario.parseConstraints(
+      decryptJson(String(row.constraints_enc), scope.constraints(eventId, String(row.user_id))),
+    );
     const prefs = scenario.compile(constraints);
     const agent = makeAgent(prefs, lookup, constraints.startPoint);
     // LLM mode: this person's agent reasons over their OWN summary only (their words, notes, priorities).

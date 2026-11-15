@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db, isUniqueViolation } from "./db";
-import { blindIndex, decrypt, encrypt, randomToken, sha256 } from "./crypto";
+import { blindIndex, decrypt, decryptOrPlain, encrypt, legacyBlindIndex, randomToken, scope, sha256 } from "./crypto";
 import { hit, LIMITS, rateKey, waitText } from "./ratelimit";
 
 /** bcrypt generates and embeds a random salt per hash. */
@@ -31,6 +31,16 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 export class AuthError extends Error {}
 
+/** Each user's name and email are decrypted with that user's own keys. */
+function userFromRow(row: Record<string, unknown>): User {
+  const id = String(row.id);
+  return {
+    id,
+    displayName: decryptOrPlain(String(row.display_name), scope.displayName(id)),
+    email: decrypt(String(row.email_enc), scope.email(id)),
+  };
+}
+
 export async function createUser(input: z.input<typeof SignupSchema>): Promise<User> {
   const { email, displayName, password } = SignupSchema.parse(input);
   const client = await db();
@@ -38,7 +48,14 @@ export async function createUser(input: z.input<typeof SignupSchema>): Promise<U
   try {
     await client.execute({
       sql: "INSERT INTO users (id, email_index, email_enc, display_name, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-      args: [id, blindIndex(email), encrypt(email), displayName, await hashPassword(password), Date.now()],
+      args: [
+        id,
+        blindIndex(email, "email"),
+        encrypt(email, scope.email(id)),
+        encrypt(displayName, scope.displayName(id)),
+        await hashPassword(password),
+        Date.now(),
+      ],
     });
   } catch (err) {
     if (isUniqueViolation(err)) throw new AuthError("An account with that email already exists");
@@ -59,13 +76,14 @@ export async function authenticate(input: z.input<typeof LoginSchema>): Promise<
   }
   const client = await db();
   const { rows } = await client.execute({
-    sql: "SELECT id, display_name, email_enc, password_hash FROM users WHERE email_index = ?",
-    args: [blindIndex(email)],
+    // The second index finds accounts created before per-purpose keys and not yet migrated.
+    sql: "SELECT id, display_name, email_enc, password_hash FROM users WHERE email_index IN (?, ?)",
+    args: [blindIndex(email, "email"), legacyBlindIndex(email)],
   });
   const row = rows[0];
   const ok = await verifyPassword(password, row ? String(row.password_hash) : DUMMY_HASH);
   if (!row || !ok) throw new AuthError("Wrong email or password");
-  return { id: String(row.id), displayName: String(row.display_name), email: decrypt(String(row.email_enc)) };
+  return userFromRow(row);
 }
 
 /** Returns the raw token for the cookie. Only its hash is stored. */
@@ -94,7 +112,7 @@ export async function getUserBySession(token: string | undefined): Promise<User 
     await deleteSession(token);
     return null;
   }
-  return { id: String(row.id), displayName: String(row.display_name), email: decrypt(String(row.email_enc)) };
+  return userFromRow(row);
 }
 
 export async function deleteSession(token: string): Promise<void> {

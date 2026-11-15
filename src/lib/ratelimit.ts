@@ -38,9 +38,9 @@ export const rateKey = {
   chat: (userId: string) => `chat:${userId}`,
   llm: (eventId: string) => `llm:${eventId}`,
   autoNegotiate: (eventId: string) => `auto-negotiate:${eventId}`,
-  loginEmail: (email: string) => `login-email:${blindIndex(email)}`,
-  loginIp: (ip: string) => `login-ip:${blindIndex(ip)}`,
-  signupIp: (ip: string) => `signup-ip:${blindIndex(ip)}`,
+  loginEmail: (email: string) => `login-email:${blindIndex(email, "ratelimit")}`,
+  loginIp: (ip: string) => `login-ip:${blindIndex(ip, "ratelimit")}`,
+  signupIp: (ip: string) => `signup-ip:${blindIndex(ip, "ratelimit")}`,
 };
 
 export type RateResult = { allowed: boolean; remaining: number; retryAfterMs: number };
