@@ -391,6 +391,18 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
   return result;
 }
 
+/**
+ * Finds the first plan as soon as the last member is done, so nobody has to keep watch
+ * and press the button. It never re-runs a plan that already has a result: after that,
+ * a new run is always somebody's explicit choice. Returns whether it ran.
+ */
+export async function negotiateWhenAllReady(eventId: string, userId: string): Promise<boolean> {
+  const [members, existing] = await Promise.all([listMembers(eventId, userId), getResult(eventId, userId)]);
+  if (existing || members.length < 2 || !members.every((m) => m.ready)) return false;
+  await runNegotiation(eventId, userId);
+  return true;
+}
+
 export async function getResult(eventId: string, userId: string): Promise<StoredResult | null> {
   await requireMember(eventId, userId);
   const client = await db();

@@ -14,6 +14,7 @@ import {
   deletePlan,
   joinEvent,
   leavePlan,
+  negotiateWhenAllReady,
   runNegotiation,
   sendMessage,
   setReady,
@@ -119,6 +120,15 @@ export async function setReadyAction(eventId: string, inviteCode: string, ready:
     await setReady(eventId, user.id, ready);
   } catch (err) {
     return { error: friendly(err) };
+  }
+  // The last person to finish starts the negotiation. If that fails, being done still
+  // stands and the "Find a plan" button is there to try again.
+  if (ready) {
+    try {
+      await negotiateWhenAllReady(eventId, user.id);
+    } catch (err) {
+      console.error("Automatic negotiation failed:", (err as Error).message);
+    }
   }
   revalidatePath(`/e/${inviteCode}`);
   return {};

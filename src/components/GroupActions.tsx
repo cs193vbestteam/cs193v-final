@@ -22,7 +22,7 @@ export function NegotiateButton({
   return (
     <div>
       <button
-        className="btn w-full"
+        className={`${decided ? "btn-ghost" : "btn"} w-full`}
         disabled={pending || readyCount < 2 || readyCount !== memberCount}
         onClick={() =>
           start(async () => {
@@ -101,6 +101,74 @@ export function CopyInvite({ url }: { url: string }) {
             type="text"
             readOnly
             value={url}
+            onFocus={(event) => event.currentTarget.select()}
+          />
+        </label>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Hands a ready-made message to the group chat everyone already reads: the system share
+ * sheet where the browser has one (phones), the clipboard otherwise. The message is built
+ * on the server from what the whole group can already see, so it carries nobody's limits.
+ */
+export function ShareMessage({
+  label,
+  message,
+  primary = false,
+}: {
+  label: string;
+  /** The full text to send, link included. */
+  message: string;
+  primary?: boolean;
+}) {
+  const [feedback, setFeedback] = useState<{ message: string; status: "copied" | "failed" } | null>(null);
+  const status = feedback?.message === message ? feedback.status : null;
+
+  useEffect(() => {
+    if (status !== "copied") return;
+    const timer = setTimeout(() => setFeedback(null), 2500);
+    return () => clearTimeout(timer);
+  }, [status]);
+
+  async function share() {
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ text: message });
+        return;
+      } catch (err) {
+        // Closing the share sheet is a choice, not a failure.
+        if ((err as Error)?.name === "AbortError") return;
+      }
+    }
+    try {
+      if (typeof navigator.clipboard?.writeText !== "function") throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(message);
+      setFeedback({ message, status: "copied" });
+    } catch {
+      setFeedback({ message, status: "failed" });
+    }
+  }
+
+  return (
+    <div className="space-y-2">
+      <button type="button" className={`${primary ? "btn" : "btn-ghost btn-sm"} w-full`} onClick={share}>
+        {status === "copied" ? "Copied!" : label}
+      </button>
+      <div role="status" className="text-xs text-ink-3">
+        {status === "copied" && "Message copied. Paste it in your group chat."}
+        {status === "failed" && "Couldn't copy automatically. Copy the message below."}
+      </div>
+      {status === "failed" && (
+        <label className="block text-xs text-ink-3">
+          Message for the group
+          <textarea
+            className="input mt-1 text-xs"
+            rows={3}
+            readOnly
+            value={message}
             onFocus={(event) => event.currentTarget.select()}
           />
         </label>
