@@ -23,7 +23,16 @@ export type OptionTile = {
  * one tile each, best fit for the group at the top. The window is a native <dialog>, so Escape and
  * the backdrop close it and the page behind it cannot be clicked while it is open.
  */
-export function PlanOptions({ tiles, sentence }: { tiles: OptionTile[]; sentence?: string }) {
+export function PlanOptions({
+  tiles,
+  sentence,
+  sample = false,
+}: {
+  tiles: OptionTile[];
+  sentence?: string;
+  /** The places are made up (no real restaurant data for this plan): say so in the window too. */
+  sample?: boolean;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   if (tiles.length === 0) return null;
   return (
@@ -47,6 +56,11 @@ export function PlanOptions({ tiles, sentence }: { tiles: OptionTile[]; sentence
                   ? "One place works for the group."
                   : `${tiles.length} places that work for the group, best fit first.`}
               </p>
+              {sample && (
+                <p className="mt-2 text-sm text-amber-ink">
+                  Sample data: these are made-up restaurants, not real places.
+                </p>
+              )}
             </div>
             <button type="button" className="btn-ghost btn-sm shrink-0" onClick={() => dialog.current?.close()}>
               Close

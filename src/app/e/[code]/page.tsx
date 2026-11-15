@@ -12,7 +12,7 @@ import { requireUser } from "@/lib/session";
 // Finding a plan can make a few LLM calls per round (agents + mediator); give it room on Vercel.
 export const maxDuration = 60;
 
-const POOL_LABEL = { places: "real places", yelp: "places from the Yelp Open Dataset", seed: "seed places" } as const;
+const POOL_LABEL = { places: "real places", yelp: "places from the Yelp Open Dataset", seed: "sample places" } as const;
 
 export default async function EventPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
@@ -63,6 +63,9 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       ? { label: "Ready to negotiate", cls: "pill-moss" }
       : { label: "Collecting", cls: "pill-amber" };
 
+  // Plans without real restaurant data say so wherever a place is named.
+  const sample = event.poolSource === "seed";
+
   return (
     <div className="mt-6 sm:mt-10">
       <AutoRefresh />
@@ -74,6 +77,15 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             {` · ${event.poolSize} ${POOL_LABEL[event.poolSource]}`}
           </p>
           <h1 className="display mt-2 truncate text-4xl sm:text-5xl">{event.title}</h1>
+          {sample && (
+            <p className="mt-2 max-w-xl text-sm text-ink-2">
+              <span className="pill pill-amber mr-2">Sample data</span>
+              {event.location
+                ? `Real places near ${event.location} could not be loaded, so this plan`
+                : "This plan"}{" "}
+              picks from {event.poolSize} made-up restaurants. They are not real places.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs uppercase tracking-wider text-ink-3">
@@ -141,7 +153,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             <h2 className="font-serif text-xl">The plan</h2>
             <div className="mt-3">
               {result ? (
-                <ResultCard result={result} />
+                <ResultCard result={result} sample={sample} />
               ) : (
                 <p className="rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
                   No plan yet. Once everyone&apos;s done, the assistants will talk it out.
