@@ -18,9 +18,9 @@
       "23:00"
     ],
     "anchor": {
-      "label": "Stanford campus",
-      "lat": 37.4275,
-      "lng": -122.1697
+      "label": "Palo Alto",
+      "lat": 37.43969387755101,
+      "lng": -122.15224489795912
     }
   },
   "people": [
@@ -127,8 +127,8 @@
         },
         "wantedRestaurants": [
           {
-            "name": "Sakura Table",
-            "id": "sakura-table"
+            "name": "Sample Place 01",
+            "id": "sample-01"
           }
         ]
       }
@@ -143,51 +143,24 @@
   ],
   "candidates": [
     {
-      "id": "sakura-table",
-      "name": "Sakura Table",
+      "id": "sample-01",
+      "name": "Sample Place 01",
       "types": [
-        "japanese_restaurant",
-        "restaurant"
+        "pakistani_restaurant",
+        "halal_restaurant",
+        "brunch_restaurant",
+        "indian_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
       ],
       "style": [
         "casual"
       ],
       "price": {
-        "low": 45,
-        "high": 45
-      },
-      "servesVegetarian": false,
-      "openAt": [
-        "11:00",
-        "12:00",
-        "13:00",
-        "14:00",
-        "17:00",
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00"
-      ],
-      "travelMin": {
-        "p1": 10,
-        "p2": 10,
-        "p3": 10,
-        "p4": 10
-      }
-    },
-    {
-      "id": "noodle-lab",
-      "name": "Noodle Lab",
-      "types": [
-        "japanese_restaurant",
-        "restaurant"
-      ],
-      "style": [
-        "casual"
-      ],
-      "price": {
-        "low": 22,
-        "high": 22
+        "low": 20,
+        "high": 30
       },
       "servesVegetarian": true,
       "openAt": [
@@ -195,92 +168,77 @@
         "12:00",
         "13:00",
         "14:00",
-        "17:00",
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00"
-      ],
-      "travelMin": {
-        "p1": 8,
-        "p2": 8,
-        "p3": 8,
-        "p4": 8
-      }
-    },
-    {
-      "id": "red-lantern",
-      "name": "Red Lantern Hotpot",
-      "types": [
-        "chinese_restaurant",
-        "restaurant"
-      ],
-      "style": [
-        "casual"
-      ],
-      "price": {
-        "low": 38,
-        "high": 38
-      },
-      "servesVegetarian": true,
-      "openAt": [
+        "15:00",
+        "16:00",
         "17:00",
         "18:00",
         "19:00",
         "20:00",
         "21:00",
-        "22:00"
+        "22:00",
+        "23:00"
       ],
       "travelMin": {
-        "p1": 18,
-        "p2": 18,
-        "p3": 18,
-        "p4": 18
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
       }
     },
     {
-      "id": "jade-garden",
-      "name": "Jade Garden Dim Sum",
+      "id": "sample-02",
+      "name": "Sample Place 02",
       "types": [
-        "chinese_restaurant",
-        "restaurant"
+        "ramen_restaurant",
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
       ],
       "style": [
         "casual"
       ],
       "price": {
-        "low": 28,
-        "high": 28
+        "low": 20,
+        "high": 30
       },
       "servesVegetarian": true,
       "openAt": [
-        "10:00",
         "11:00",
         "12:00",
         "13:00",
-        "14:00",
-        "15:00"
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
       ],
       "travelMin": {
-        "p1": 15,
-        "p2": 15,
-        "p3": 15,
-        "p4": 15
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
       }
     },
     {
-      "id": "seoul-grill",
-      "name": "Seoul Grill House",
+      "id": "sample-03",
+      "name": "Sample Place 03",
       "types": [
-        "korean_restaurant",
-        "restaurant"
+        "hamburger_restaurant",
+        "diner",
+        "fast_food_restaurant",
+        "american_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
       ],
       "style": [
-        "casual"
+        "fast_food"
       ],
       "price": {
-        "low": 42,
-        "high": 42
+        "low": 10,
+        "high": 20
       },
       "servesVegetarian": false,
       "openAt": [
@@ -288,77 +246,15 @@
         "12:00",
         "13:00",
         "14:00",
+        "15:00",
+        "16:00",
         "17:00",
         "18:00",
         "19:00",
         "20:00",
-        "21:00"
-      ],
-      "travelMin": {
-        "p1": 20,
-        "p2": 20,
-        "p3": 20,
-        "p4": 20
-      }
-    },
-    {
-      "id": "bibim-bowl",
-      "name": "Bibim Bowl",
-      "types": [
-        "korean_restaurant",
-        "restaurant"
-      ],
-      "style": [
-        "casual"
-      ],
-      "price": {
-        "low": 18,
-        "high": 18
-      },
-      "servesVegetarian": true,
-      "openAt": [
-        "11:00",
-        "12:00",
-        "13:00",
-        "14:00",
-        "17:00",
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00"
-      ],
-      "travelMin": {
-        "p1": 6,
-        "p2": 6,
-        "p3": 6,
-        "p4": 6
-      }
-    },
-    {
-      "id": "lemongrass",
-      "name": "Lemongrass Kitchen",
-      "types": [
-        "thai_restaurant",
-        "restaurant"
-      ],
-      "style": [
-        "casual"
-      ],
-      "price": {
-        "low": 26,
-        "high": 26
-      },
-      "servesVegetarian": true,
-      "openAt": [
-        "11:00",
-        "12:00",
-        "13:00",
-        "14:00",
-        "17:00",
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00"
+        "21:00",
+        "22:00",
+        "23:00"
       ],
       "travelMin": {
         "p1": 12,
@@ -368,51 +264,27 @@
       }
     },
     {
-      "id": "pho-corner",
-      "name": "Pho Corner",
+      "id": "sample-04",
+      "name": "Sample Place 04",
       "types": [
-        "vietnamese_restaurant",
-        "restaurant"
-      ],
-      "style": [
-        "casual"
-      ],
-      "price": {
-        "low": 17,
-        "high": 17
-      },
-      "servesVegetarian": true,
-      "openAt": [
-        "11:00",
-        "12:00",
-        "13:00",
-        "14:00",
-        "17:00",
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00"
-      ],
-      "travelMin": {
-        "p1": 9,
-        "p2": 9,
-        "p3": 9,
-        "p4": 9
-      }
-    },
-    {
-      "id": "saffron",
-      "name": "Saffron & Spice",
-      "types": [
-        "indian_restaurant",
-        "restaurant"
+        "spanish_restaurant",
+        "wine_bar",
+        "cocktail_bar",
+        "tapas_restaurant",
+        "mediterranean_restaurant",
+        "european_restaurant",
+        "bar",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
       ],
       "style": [
         "casual"
       ],
       "price": {
         "low": 30,
-        "high": 30
+        "high": 90
       },
       "servesVegetarian": true,
       "openAt": [
@@ -420,6 +292,8 @@
         "12:00",
         "13:00",
         "14:00",
+        "15:00",
+        "16:00",
         "17:00",
         "18:00",
         "19:00",
@@ -427,32 +301,31 @@
         "21:00"
       ],
       "travelMin": {
-        "p1": 14,
-        "p2": 14,
-        "p3": 14,
-        "p4": 14
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
       }
     },
     {
-      "id": "taqueria-sol",
-      "name": "Taqueria Sol",
+      "id": "sample-05",
+      "name": "Sample Place 05",
       "types": [
-        "mexican_restaurant",
-        "restaurant"
+        "indian_restaurant",
+        "fine_dining_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
       ],
       "style": [
-        "casual"
+        "fine_dining"
       ],
-      "price": {
-        "low": 15,
-        "high": 15
-      },
+      "price": null,
       "servesVegetarian": true,
       "openAt": [
-        "11:00",
         "12:00",
         "13:00",
-        "14:00",
         "17:00",
         "18:00",
         "19:00",
@@ -467,48 +340,26 @@
       }
     },
     {
-      "id": "trattoria-luce",
-      "name": "Trattoria Luce",
+      "id": "sample-07",
+      "name": "Sample Place 07",
       "types": [
-        "italian_restaurant",
-        "restaurant"
-      ],
-      "style": [
-        "casual"
-      ],
-      "price": {
-        "low": 55,
-        "high": 55
-      },
-      "servesVegetarian": true,
-      "openAt": [
-        "17:00",
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00",
-        "22:00"
-      ],
-      "travelMin": {
-        "p1": 22,
-        "p2": 22,
-        "p3": 22,
-        "p4": 22
-      }
-    },
-    {
-      "id": "slice-society",
-      "name": "Slice Society",
-      "types": [
-        "italian_restaurant",
-        "restaurant"
+        "cajun_restaurant",
+        "southwestern_us_restaurant",
+        "lounge_bar",
+        "night_club",
+        "american_restaurant",
+        "bar",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
       ],
       "style": [
         "casual"
       ],
       "price": {
         "low": 20,
-        "high": 20
+        "high": 40
       },
       "servesVegetarian": true,
       "openAt": [
@@ -516,6 +367,160 @@
         "12:00",
         "13:00",
         "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-08",
+      "name": "Sample Place 08",
+      "types": [
+        "brunch_restaurant",
+        "breakfast_restaurant",
+        "californian_restaurant",
+        "diner",
+        "american_restaurant",
+        "cafe",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-09",
+      "name": "Sample Place 09",
+      "types": [
+        "hamburger_restaurant",
+        "diner",
+        "american_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-10",
+      "name": "Sample Place 10",
+      "types": [
+        "chinese_restaurant",
+        "asian_fusion_restaurant",
+        "asian_restaurant",
+        "fusion_restaurant",
+        "meal_takeaway",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 70
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-11",
+      "name": "Sample Place 11",
+      "types": [
+        "greek_restaurant",
+        "mediterranean_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 40,
+        "high": 90
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
         "17:00",
         "18:00",
         "19:00",
@@ -523,32 +528,45 @@
         "21:00"
       ],
       "travelMin": {
-        "p1": 7,
-        "p2": 7,
-        "p3": 7,
-        "p4": 7
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
       }
     },
     {
-      "id": "patty-shack",
-      "name": "Patty Shack",
+      "id": "sample-12",
+      "name": "Sample Place 12",
       "types": [
+        "asian_fusion_restaurant",
+        "vegan_restaurant",
+        "vegetarian_restaurant",
+        "mediterranean_restaurant",
+        "asian_restaurant",
         "american_restaurant",
-        "restaurant"
+        "fusion_restaurant",
+        "meal_takeaway",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
       ],
       "style": [
         "casual"
       ],
       "price": {
-        "low": 19,
-        "high": 19
+        "low": 20,
+        "high": 30
       },
-      "servesVegetarian": false,
+      "servesVegetarian": true,
       "openAt": [
+        "10:00",
         "11:00",
         "12:00",
         "13:00",
         "14:00",
+        "15:00",
+        "16:00",
         "17:00",
         "18:00",
         "19:00",
@@ -563,21 +581,612 @@
       }
     },
     {
-      "id": "harbor-oyster",
-      "name": "Harbor Oyster Bar",
+      "id": "sample-13",
+      "name": "Sample Place 13",
       "types": [
+        "fast_food_restaurant",
+        "sandwich_shop",
+        "meal_takeaway",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-14",
+      "name": "Sample Place 14",
+      "types": [
+        "restaurant",
+        "brunch_restaurant",
         "american_restaurant",
-        "restaurant"
+        "food",
+        "point_of_interest",
+        "establishment"
       ],
       "style": [
         "casual"
       ],
       "price": {
-        "low": 60,
+        "low": 100,
+        "high": 100
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-16",
+      "name": "Sample Place 16",
+      "types": [
+        "italian_restaurant",
+        "pizza_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
         "high": 60
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-18",
+      "name": "Sample Place 18",
+      "types": [
+        "korean_restaurant",
+        "barbecue_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 8,
+        "p2": 8,
+        "p3": 8,
+        "p4": 8
+      }
+    },
+    {
+      "id": "sample-19",
+      "name": "Sample Place 19",
+      "types": [
+        "hamburger_restaurant",
+        "catering_service",
+        "dessert_restaurant",
+        "fast_food_restaurant",
+        "sandwich_shop",
+        "food_delivery",
+        "american_restaurant",
+        "chicken_restaurant",
+        "meal_takeaway",
+        "restaurant",
+        "food",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
       },
       "servesVegetarian": false,
       "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-20",
+      "name": "Sample Place 20",
+      "types": [
+        "turkish_restaurant",
+        "night_club",
+        "live_music_venue",
+        "event_venue",
+        "bar",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 100,
+        "high": 100
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-21",
+      "name": "Sample Place 21",
+      "types": [
+        "japanese_restaurant",
+        "peruvian_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 100,
+        "high": 100
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-22",
+      "name": "Sample Place 22",
+      "types": [
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-23",
+      "name": "Sample Place 23",
+      "types": [
+        "sushi_restaurant",
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 50,
+        "high": 100
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-24",
+      "name": "Sample Place 24",
+      "types": [
+        "sushi_restaurant",
+        "catering_service",
+        "fast_food_restaurant",
+        "seafood_restaurant",
+        "hawaiian_restaurant",
+        "food_delivery",
+        "japanese_restaurant",
+        "meal_takeaway",
+        "american_restaurant",
+        "service",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-25",
+      "name": "Sample Place 25",
+      "types": [
+        "seafood_restaurant",
+        "fine_dining_restaurant",
+        "cocktail_bar",
+        "japanese_restaurant",
+        "event_venue",
+        "bar",
+        "steak_house",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fine_dining"
+      ],
+      "price": {
+        "low": 100,
+        "high": 100
+      },
+      "servesVegetarian": false,
+      "openAt": [
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
+      }
+    },
+    {
+      "id": "sample-26",
+      "name": "Sample Place 26",
+      "types": [
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 50
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-27",
+      "name": "Sample Place 27",
+      "types": [
+        "japanese_restaurant",
+        "japanese_izakaya_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 100,
+        "high": 100
+      },
+      "servesVegetarian": false,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 12,
+        "p2": 12,
+        "p3": 12,
+        "p4": 12
+      }
+    },
+    {
+      "id": "sample-28",
+      "name": "Sample Place 28",
+      "types": [
+        "sushi_restaurant",
+        "asian_restaurant",
+        "japanese_restaurant",
+        "bar",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 80
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 8,
+        "p2": 8,
+        "p3": 8,
+        "p4": 8
+      }
+    },
+    {
+      "id": "sample-29",
+      "name": "Sample Place 29",
+      "types": [
+        "taiwanese_restaurant",
+        "tea_house",
+        "seafood_restaurant",
+        "asian_restaurant",
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-30",
+      "name": "Sample Place 30",
+      "types": [
+        "chinese_restaurant",
+        "sushi_restaurant",
+        "dim_sum_restaurant",
+        "cantonese_restaurant",
+        "asian_restaurant",
+        "meal_delivery",
+        "food_delivery",
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
         "17:00",
         "18:00",
         "19:00",
@@ -586,25 +1195,103 @@
         "22:00"
       ],
       "travelMin": {
-        "p1": 30,
-        "p2": 30,
-        "p3": 30,
-        "p4": 30
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
       }
     },
     {
-      "id": "olive-tree",
-      "name": "Olive Tree Mezze",
+      "id": "sample-31",
+      "name": "Sample Place 31",
       "types": [
-        "mediterranean_restaurant",
-        "restaurant"
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
       ],
       "style": [
         "casual"
       ],
       "price": {
-        "low": 27,
-        "high": 27
+        "low": 30,
+        "high": 40
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-32",
+      "name": "Sample Place 32",
+      "types": [
+        "asian_restaurant",
+        "hot_pot_restaurant",
+        "bar_and_grill",
+        "tea_house",
+        "japanese_restaurant",
+        "bar",
+        "meal_takeaway",
+        "brunch_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 40
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-33",
+      "name": "Sample Place 33",
+      "types": [
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 40
       },
       "servesVegetarian": true,
       "openAt": [
@@ -612,6 +1299,2285 @@
         "12:00",
         "13:00",
         "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-34",
+      "name": "Sample Place 34",
+      "types": [
+        "japanese_restaurant",
+        "sushi_restaurant",
+        "asian_restaurant",
+        "performing_arts_theater",
+        "event_venue",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-35",
+      "name": "Sample Place 35",
+      "types": [
+        "ramen_restaurant",
+        "asian_restaurant",
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 10,
+        "p2": 10,
+        "p3": 10,
+        "p4": 10
+      }
+    },
+    {
+      "id": "sample-36",
+      "name": "Sample Place 36",
+      "types": [
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 100,
+        "high": 100
+      },
+      "servesVegetarian": false,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-37",
+      "name": "Sample Place 37",
+      "types": [
+        "sushi_restaurant",
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 100,
+        "high": 100
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-38",
+      "name": "Sample Place 38",
+      "types": [
+        "ramen_restaurant",
+        "asian_restaurant",
+        "japanese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-39",
+      "name": "Sample Place 39",
+      "types": [
+        "japanese_restaurant",
+        "sushi_restaurant",
+        "asian_fusion_restaurant",
+        "fusion_restaurant",
+        "asian_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-40",
+      "name": "Sample Place 40",
+      "types": [
+        "cantonese_restaurant",
+        "chinese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-41",
+      "name": "Sample Place 41",
+      "types": [
+        "dumpling_restaurant",
+        "chinese_noodle_restaurant",
+        "dim_sum_restaurant",
+        "cantonese_restaurant",
+        "meal_takeaway",
+        "chinese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-42",
+      "name": "Sample Place 42",
+      "types": [
+        "chinese_restaurant",
+        "asian_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 40
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-43",
+      "name": "Sample Place 43",
+      "types": [
+        "chinese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-44",
+      "name": "Sample Place 44",
+      "types": [
+        "chinese_restaurant",
+        "chinese_noodle_restaurant",
+        "catering_service",
+        "fast_food_restaurant",
+        "asian_restaurant",
+        "meal_delivery",
+        "food_delivery",
+        "meal_takeaway",
+        "service",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-45",
+      "name": "Sample Place 45",
+      "types": [
+        "chinese_restaurant",
+        "dumpling_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 80
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-47",
+      "name": "Sample Place 47",
+      "types": [
+        "chinese_restaurant",
+        "chinese_noodle_restaurant",
+        "catering_service",
+        "fast_food_restaurant",
+        "asian_restaurant",
+        "meal_delivery",
+        "food_delivery",
+        "meal_takeaway",
+        "service",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00"
+      ],
+      "travelMin": {
+        "p1": 8,
+        "p2": 8,
+        "p3": 8,
+        "p4": 8
+      }
+    },
+    {
+      "id": "sample-48",
+      "name": "Sample Place 48",
+      "types": [
+        "dim_sum_restaurant",
+        "cantonese_restaurant",
+        "asian_restaurant",
+        "chinese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 40
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-49",
+      "name": "Sample Place 49",
+      "types": [
+        "chinese_restaurant",
+        "chinese_noodle_restaurant",
+        "catering_service",
+        "fast_food_restaurant",
+        "asian_restaurant",
+        "meal_delivery",
+        "food_delivery",
+        "meal_takeaway",
+        "service",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-50",
+      "name": "Sample Place 50",
+      "types": [
+        "chinese_restaurant",
+        "meal_delivery",
+        "food_delivery",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 12,
+        "p2": 12,
+        "p3": 12,
+        "p4": 12
+      }
+    },
+    {
+      "id": "sample-51",
+      "name": "Sample Place 51",
+      "types": [
+        "bistro",
+        "chinese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-52",
+      "name": "Sample Place 52",
+      "types": [
+        "noodle_shop",
+        "catering_service",
+        "malaysian_restaurant",
+        "vegetarian_restaurant",
+        "asian_fusion_restaurant",
+        "fusion_restaurant",
+        "asian_restaurant",
+        "family_restaurant",
+        "food_delivery",
+        "korean_restaurant",
+        "chinese_restaurant",
+        "service",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": null,
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
+      }
+    },
+    {
+      "id": "sample-53",
+      "name": "Sample Place 53",
+      "types": [
+        "chinese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
+      }
+    },
+    {
+      "id": "sample-54",
+      "name": "Sample Place 54",
+      "types": [
+        "chinese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 10,
+        "p2": 10,
+        "p3": 10,
+        "p4": 10
+      }
+    },
+    {
+      "id": "sample-55",
+      "name": "Sample Place 55",
+      "types": [
+        "burmese_restaurant",
+        "chinese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 8,
+        "p2": 8,
+        "p3": 8,
+        "p4": 8
+      }
+    },
+    {
+      "id": "sample-56",
+      "name": "Sample Place 56",
+      "types": [
+        "chinese_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 40
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-58",
+      "name": "Sample Place 58",
+      "types": [
+        "indian_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 100,
+        "high": 100
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
+      }
+    },
+    {
+      "id": "sample-59",
+      "name": "Sample Place 59",
+      "types": [
+        "indian_restaurant",
+        "fine_dining_restaurant",
+        "brunch_restaurant",
+        "bar",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fine_dining"
+      ],
+      "price": {
+        "low": 40,
+        "high": 100
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-60",
+      "name": "Sample Place 60",
+      "types": [
+        "indian_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 90
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-61",
+      "name": "Sample Place 61",
+      "types": [
+        "indian_restaurant",
+        "catering_service",
+        "food_delivery",
+        "north_indian_restaurant",
+        "restaurant",
+        "food",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-62",
+      "name": "Sample Place 62",
+      "types": [
+        "indian_restaurant",
+        "vegan_restaurant",
+        "vegetarian_restaurant",
+        "asian_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-63",
+      "name": "Sample Place 63",
+      "types": [
+        "indian_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
+      }
+    },
+    {
+      "id": "sample-64",
+      "name": "Sample Place 64",
+      "types": [
+        "indian_restaurant",
+        "halal_restaurant",
+        "burrito_restaurant",
+        "catering_service",
+        "vegan_restaurant",
+        "vegetarian_restaurant",
+        "food_delivery",
+        "fusion_restaurant",
+        "restaurant",
+        "food",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-65",
+      "name": "Sample Place 65",
+      "types": [
+        "indian_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
+      }
+    },
+    {
+      "id": "sample-67",
+      "name": "Sample Place 67",
+      "types": [
+        "fast_food_restaurant",
+        "burrito_restaurant",
+        "catering_service",
+        "food_delivery",
+        "mexican_restaurant",
+        "meal_takeaway",
+        "taco_restaurant",
+        "shipping_service",
+        "restaurant",
+        "food",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-68",
+      "name": "Sample Place 68",
+      "types": [
+        "mexican_restaurant",
+        "cocktail_bar",
+        "latin_american_restaurant",
+        "bar",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 90
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-69",
+      "name": "Sample Place 69",
+      "types": [
+        "fast_food_restaurant",
+        "burrito_restaurant",
+        "catering_service",
+        "food_delivery",
+        "mexican_restaurant",
+        "meal_takeaway",
+        "taco_restaurant",
+        "shipping_service",
+        "restaurant",
+        "food",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-70",
+      "name": "Sample Place 70",
+      "types": [
+        "fast_food_restaurant",
+        "breakfast_restaurant",
+        "hamburger_restaurant",
+        "dessert_restaurant",
+        "meal_delivery",
+        "food_delivery",
+        "american_restaurant",
+        "chicken_restaurant",
+        "mexican_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": false,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-71",
+      "name": "Sample Place 71",
+      "types": [
+        "mexican_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-72",
+      "name": "Sample Place 72",
+      "types": [
+        "mexican_restaurant",
+        "lounge_bar",
+        "night_club",
+        "bar",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 50
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-73",
+      "name": "Sample Place 73",
+      "types": [
+        "fast_food_restaurant",
+        "burrito_restaurant",
+        "catering_service",
+        "food_delivery",
+        "mexican_restaurant",
+        "meal_takeaway",
+        "taco_restaurant",
+        "shipping_service",
+        "restaurant",
+        "food",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 10,
+        "p2": 10,
+        "p3": 10,
+        "p4": 10
+      }
+    },
+    {
+      "id": "sample-74",
+      "name": "Sample Place 74",
+      "types": [
+        "mexican_restaurant",
+        "californian_restaurant",
+        "brunch_restaurant",
+        "american_restaurant",
+        "fusion_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-75",
+      "name": "Sample Place 75",
+      "types": [
+        "fast_food_restaurant",
+        "burrito_restaurant",
+        "mexican_restaurant",
+        "taco_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-76",
+      "name": "Sample Place 76",
+      "types": [
+        "fast_food_restaurant",
+        "burrito_restaurant",
+        "tex_mex_restaurant",
+        "american_restaurant",
+        "mexican_restaurant",
+        "meal_takeaway",
+        "taco_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "travelMin": {
+        "p1": 10,
+        "p2": 10,
+        "p3": 10,
+        "p4": 10
+      }
+    },
+    {
+      "id": "sample-77",
+      "name": "Sample Place 77",
+      "types": [
+        "mexican_restaurant",
+        "shipping_service",
+        "restaurant",
+        "food",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00"
+      ],
+      "travelMin": {
+        "p1": 12,
+        "p2": 12,
+        "p3": 12,
+        "p4": 12
+      }
+    },
+    {
+      "id": "sample-78",
+      "name": "Sample Place 78",
+      "types": [
+        "mexican_restaurant",
+        "family_restaurant",
+        "seafood_restaurant",
+        "burrito_restaurant",
+        "catering_service",
+        "vegetarian_restaurant",
+        "fast_food_restaurant",
+        "food_delivery",
+        "taco_restaurant",
+        "restaurant",
+        "food",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-79",
+      "name": "Sample Place 79",
+      "types": [
+        "mexican_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-80",
+      "name": "Sample Place 80",
+      "types": [
+        "mexican_restaurant",
+        "family_restaurant",
+        "seafood_restaurant",
+        "burrito_restaurant",
+        "catering_service",
+        "vegetarian_restaurant",
+        "fast_food_restaurant",
+        "food_delivery",
+        "taco_restaurant",
+        "restaurant",
+        "food",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-81",
+      "name": "Sample Place 81",
+      "types": [
+        "mexican_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": null,
+      "servesVegetarian": null,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "travelMin": {
+        "p1": 8,
+        "p2": 8,
+        "p3": 8,
+        "p4": 8
+      }
+    },
+    {
+      "id": "sample-82",
+      "name": "Sample Place 82",
+      "types": [
+        "mexican_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00"
+      ],
+      "travelMin": {
+        "p1": 8,
+        "p2": 8,
+        "p3": 8,
+        "p4": 8
+      }
+    },
+    {
+      "id": "sample-83",
+      "name": "Sample Place 83",
+      "types": [
+        "fast_food_restaurant",
+        "breakfast_restaurant",
+        "hamburger_restaurant",
+        "dessert_restaurant",
+        "meal_delivery",
+        "food_delivery",
+        "american_restaurant",
+        "chicken_restaurant",
+        "mexican_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fast_food"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": false,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "travelMin": {
+        "p1": 11,
+        "p2": 11,
+        "p3": 11,
+        "p4": 11
+      }
+    },
+    {
+      "id": "sample-84",
+      "name": "Sample Place 84",
+      "types": [
+        "mexican_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 12,
+        "p2": 12,
+        "p3": 12,
+        "p4": 12
+      }
+    },
+    {
+      "id": "sample-85",
+      "name": "Sample Place 85",
+      "types": [
+        "mexican_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 40
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-86",
+      "name": "Sample Place 86",
+      "types": [
+        "mexican_restaurant",
+        "catering_service",
+        "food_delivery",
+        "latin_american_restaurant",
+        "meal_takeaway",
+        "taco_restaurant",
+        "restaurant",
+        "food",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-87",
+      "name": "Sample Place 87",
+      "types": [
+        "cafe",
+        "dog_cafe",
+        "soup_restaurant",
+        "brunch_restaurant",
+        "breakfast_restaurant",
+        "american_restaurant",
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "cafe"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
+      }
+    },
+    {
+      "id": "sample-88",
+      "name": "Sample Place 88",
+      "types": [
+        "pizza_restaurant",
+        "bar",
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-89",
+      "name": "Sample Place 89",
+      "types": [
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 70
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-90",
+      "name": "Sample Place 90",
+      "types": [
+        "italian_restaurant",
+        "wine_bar",
+        "catering_service",
+        "wedding_venue",
+        "food_delivery",
+        "association_or_organization",
+        "bar",
+        "event_venue",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "service",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 40,
+        "high": 90
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "sample-91",
+      "name": "Sample Place 91",
+      "types": [
+        "italian_restaurant",
+        "pizza_restaurant",
+        "banquet_hall",
+        "catering_service",
+        "family_restaurant",
+        "food_delivery",
+        "event_venue",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "service",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 60
+      },
+      "servesVegetarian": false,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-92",
+      "name": "Sample Place 92",
+      "types": [
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 70
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-94",
+      "name": "Sample Place 94",
+      "types": [
+        "italian_restaurant",
+        "fine_dining_restaurant",
+        "mediterranean_restaurant",
+        "bar",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "fine_dining"
+      ],
+      "price": {
+        "low": 40,
+        "high": 70
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-95",
+      "name": "Sample Place 95",
+      "types": [
+        "pizza_restaurant",
+        "shipping_service",
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "service",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
         "17:00",
         "18:00",
         "19:00",
@@ -626,25 +3592,223 @@
       }
     },
     {
-      "id": "kebab-house",
-      "name": "Anatolia Kebab House",
+      "id": "sample-96",
+      "name": "Sample Place 96",
       "types": [
-        "mediterranean_restaurant",
-        "restaurant"
+        "italian_restaurant",
+        "family_restaurant",
+        "californian_restaurant",
+        "brunch_restaurant",
+        "breakfast_restaurant",
+        "american_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
       ],
       "style": [
         "casual"
       ],
       "price": {
-        "low": 24,
-        "high": 24
+        "low": 30,
+        "high": 60
       },
       "servesVegetarian": true,
       "openAt": [
         "11:00",
         "12:00",
         "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-97",
+      "name": "Sample Place 97",
+      "types": [
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 40,
+        "high": 50
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
+      }
+    },
+    {
+      "id": "sample-98",
+      "name": "Sample Place 98",
+      "types": [
+        "pizza_restaurant",
+        "pizza_delivery",
+        "meal_delivery",
+        "food_delivery",
+        "meal_takeaway",
+        "shipping_service",
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "service",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
         "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "sample-99",
+      "name": "Sample Place 99",
+      "types": [
+        "pizza_restaurant",
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 4,
+        "p2": 4,
+        "p3": 4,
+        "p4": 4
+      }
+    },
+    {
+      "id": "sample-100",
+      "name": "Sample Place 100",
+      "types": [
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 60
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
+      }
+    },
+    {
+      "id": "sample-101",
+      "name": "Sample Place 101",
+      "types": [
+        "pizza_restaurant",
+        "shipping_service",
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "service",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
         "17:00",
         "18:00",
         "19:00",
@@ -652,10 +3816,180 @@
         "21:00"
       ],
       "travelMin": {
-        "p1": 16,
-        "p2": 16,
-        "p3": 16,
-        "p4": 16
+        "p1": 12,
+        "p2": 12,
+        "p3": 12,
+        "p4": 12
+      }
+    },
+    {
+      "id": "sample-102",
+      "name": "Sample Place 102",
+      "types": [
+        "pizza_restaurant",
+        "wine_bar",
+        "salad_shop",
+        "catering_service",
+        "pizza_delivery",
+        "liquor_store",
+        "meal_delivery",
+        "food_delivery",
+        "meal_takeaway",
+        "chicken_wings_restaurant",
+        "bar",
+        "food_store",
+        "store",
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "service",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-103",
+      "name": "Sample Place 103",
+      "types": [
+        "italian_restaurant",
+        "mediterranean_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 50
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "12:00",
+        "13:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 3,
+        "p2": 3,
+        "p3": 3,
+        "p4": 3
+      }
+    },
+    {
+      "id": "sample-104",
+      "name": "Sample Place 104",
+      "types": [
+        "restaurant",
+        "italian_restaurant",
+        "european_restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 80
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00"
+      ],
+      "travelMin": {
+        "p1": 11,
+        "p2": 11,
+        "p3": 11,
+        "p4": 11
+      }
+    },
+    {
+      "id": "sample-105",
+      "name": "Sample Place 105",
+      "types": [
+        "pizza_restaurant",
+        "meal_delivery",
+        "food_delivery",
+        "italian_restaurant",
+        "european_restaurant",
+        "restaurant",
+        "food",
+        "point_of_interest",
+        "establishment"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 10,
+        "high": 20
+      },
+      "servesVegetarian": null,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00",
+        "16:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
       }
     }
   ]
