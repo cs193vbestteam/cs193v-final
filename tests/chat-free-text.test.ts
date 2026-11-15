@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   type Constraints,
   describeConstraints,
@@ -7,7 +7,6 @@ import {
   missingFields,
   nextProbe,
 } from "@/lib/constraints";
-import { extract } from "@/lib/extract";
 import { extractBudget, extractDietary, extractPriority, extractRules, ruleTurn } from "@/lib/extract-rules";
 
 /** Everything but the diet question answered, so the next question is "anything you can't eat?". */
@@ -201,52 +200,5 @@ describe("C. no trade-off questions", () => {
 
   it("doesn't claim a priority nobody stated", () => {
     expect(describeConstraints(essentials).join()).not.toContain("Cares most about");
-  });
-});
-
-describe("LLM path", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    delete process.env.ANTHROPIC_API_KEY;
-  });
-
-  function fakeAnthropic(input: unknown) {
-    // Typed with the real fetch signature so the test can read the request body back.
-    const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () =>
-      Response.json({ content: [{ type: "tool_use", input }] }),
-    );
-    vi.stubGlobal("fetch", fetchMock);
-    process.env.ANTHROPIC_API_KEY = "test-key-not-real";
-    return fetchMock;
-  }
-  const requestBody = (m: ReturnType<typeof fakeAnthropic>) => JSON.parse(String(m.mock.calls[0][1].body));
-
-  it("tells the model about free text, ranges and no trade-offs, and lets it record avoidNotes", async () => {
-    const fetchMock = fakeAnthropic({
-      reply: "Got it, no seafood. I'll keep your note in mind.",
-      update: {
-        dietary: ["no_seafood"],
-        avoidNotes: ["clams and crabs, anything with shells"],
-        dietaryConfirmed: true,
-      },
-    });
-    const r = await extract([{ role: "user", content: "clams and crabs, anything with shells" }], askingDiet);
-    expect(r.source).toBe("llm");
-    expect(r.update.avoidNotes).toEqual(["clams and crabs, anything with shells"]);
-
-    const body = requestBody(fetchMock);
-    expect(body.system).toMatch(/clams, crabs/);
-    expect(body.system).toMatch(/"50-100"/);
-    expect(body.system).toMatch(/Never ask trade-off questions/);
-    const props = body.tools[0].input_schema.properties.update.properties;
-    expect(props.avoidNotes).toBeDefined();
-    expect(props.probesAsked.items.enum).not.toContain("tradeoff_budget_travel");
-    expect(props.pending.enum).not.toContain("tradeoff_cuisine_travel");
-  });
-
-  it("tells the model which follow-ups are left, never a trade-off", async () => {
-    const fetchMock = fakeAnthropic({ reply: "Noted.", update: {} });
-    await extract([{ role: "user", content: "nothing" }], { ...askingDiet, dietaryConfirmed: true });
-    expect(requestBody(fetchMock).system).toMatch(/Still to ask, in order: cuisine, concession/);
   });
 });

@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthError, authenticate, checkIpLimit, createUser } from "@/lib/auth";
 import { db, resetDbForTests } from "@/lib/db";
 import { createEvent, deleteAccount, getMyMessages, RateLimitError, sendMessage } from "@/lib/events";
+import { assistantTurn } from "@/lib/assistant";
 import { extract } from "@/lib/extract";
+import { emptyMemberState } from "@/lib/member-state";
+import { RESTAURANTS } from "@/lib/restaurants";
 import { emptyConstraints } from "@/lib/constraints";
 import { hit, LIMITS, prune, rateKey, waitText } from "@/lib/ratelimit";
 
@@ -133,7 +136,7 @@ describe("LLM budget per plan", () => {
   function fakeAnthropic() {
     const fetchMock = vi.fn(async () =>
       Response.json({
-        content: [{ type: "tool_use", input: { reply: "Got it, Saturday dinner.", update: {} } }],
+        content: [{ type: "tool_use", input: { reply: "Got it, Saturday dinner.", asks: "none", update: {} } }],
       }),
     );
     vi.stubGlobal("fetch", fetchMock);
@@ -161,9 +164,18 @@ describe("LLM budget per plan", () => {
     expect(messages.at(-1)?.content).not.toBe("Got it, Saturday dinner.");
   });
 
-  it("extract() never calls the LLM when it isn't allowed to", async () => {
+  it("the assistant never calls the model when it isn't allowed to", async () => {
     const fetchMock = fakeAnthropic();
-    const r = await extract([{ role: "user", content: "Saturday dinner" }], emptyConstraints(), {}, false);
+    const turn = await assistantTurn([{ role: "user", content: "Saturday dinner" }], emptyMemberState(), RESTAURANTS, {
+      allowLLM: false,
+    });
+    expect(turn.source).toBe("rules");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("the rule-based reader has no way to reach a model at all", async () => {
+    const fetchMock = fakeAnthropic();
+    const r = await extract([{ role: "user", content: "Saturday dinner" }], emptyConstraints());
     expect(r.source).toBe("rules");
     expect(fetchMock).not.toHaveBeenCalled();
   });

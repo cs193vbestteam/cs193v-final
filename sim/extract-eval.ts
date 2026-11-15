@@ -11,8 +11,10 @@ import { extract, type ChatTurn, type ExtractResult } from "../src/lib/extract";
 import { OPENING_MESSAGE } from "../src/lib/extract-rules";
 
 /**
- * The extractor evaluation: replay short private chats through an extractor
- * and compare what it recorded with what a careful person would have.
+ * The RULE-BASED reader's evaluation: replay short private chats through the safety net
+ * (extract-rules.ts) and compare what it recorded with what a careful person would have.
+ * This says nothing about the assistant itself, which is Claude: that is measured by
+ * sim/assistant-eval.ts on tests/fixtures/assistant-cases.json.
  *
  *   for each case: start from empty constraints (or the case's `start`)
  *                  feed the user's messages one at a time, exactly as the app does
@@ -71,10 +73,8 @@ export function loadCases(file = join(process.cwd(), "tests/fixtures/extract-cas
 /** One assistant turn: what the app calls for every message. */
 export type TurnExtractor = (history: ChatTurn[], current: Constraints) => Promise<ExtractResult>;
 
-/** The rule-based extractor, through the same entry point and limits as production. */
-export const rulesExtractor: TurnExtractor = (history, current) => extract(history, current, {}, false);
-/** The LLM path (needs ANTHROPIC_API_KEY); a failed call falls back to rules, and `source` says so. */
-export const llmExtractor: TurnExtractor = (history, current) => extract(history, current, {}, true);
+/** The rule-based reader, through the same entry point and limits as production. */
+export const rulesExtractor: TurnExtractor = (history, current) => extract(history, current, {});
 
 export type FieldResult = { field: CheckedField; ok: boolean; expected: unknown; got: unknown };
 

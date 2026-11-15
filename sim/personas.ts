@@ -123,7 +123,18 @@ async function settle() {
   const preferences = await import("../src/lib/preferences");
   const evaluate = await import("../src/lib/evaluate");
   const restaurants = await import("../src/lib/restaurants");
-  return { ...constraints, ...events, ...auth, ...preferences, ...evaluate, ...restaurants };
+  const memberState = await import("../src/lib/member-state");
+  const legacy = await import("../src/lib/legacy-adapter");
+  return {
+    ...constraints,
+    ...events,
+    ...auth,
+    ...preferences,
+    ...evaluate,
+    ...restaurants,
+    ...memberState,
+    ...legacy,
+  };
 }
 
 // ── Personas ──
@@ -230,14 +241,25 @@ async function runPersonaChat(p: Persona, userId: string, eventId: string, T: Aw
     transcript.push({ who: "assistant", text: last.content });
     history.push({ role: "user", content: last.content });
   }
-  const constraints = await T.getMyConstraints(eventId, userId);
-  const missing = T.missingFields(constraints);
+  // What was stored (the new template), and the same thing as the negotiation engine reads it,
+  // which is what the persona's hidden truth is compared against.
+  const state = await T.getMyConstraints(eventId, userId);
+  const constraints = T.toLegacyConstraints(state);
+  const missing = T.missingRequired(state);
   let ready = false;
   if (missing.length === 0) {
     await T.setReady(eventId, userId, true);
     ready = true;
   }
-  return { transcript, constraints, missing, ready, done, turns: transcript.filter((t) => t.who === "persona").length };
+  return {
+    transcript,
+    constraints,
+    state,
+    missing,
+    ready,
+    done,
+    turns: transcript.filter((t) => t.who === "persona").length,
+  };
 }
 
 // ── Elicitation accuracy: what the assistant wrote down vs the ground truth ──
@@ -489,7 +511,7 @@ async function main() {
     md.push(`### ${c.persona.name}`, ``);
     for (const t of c.run.transcript)
       md.push(`- **${t.who === "assistant" ? "assistant" : c.persona.name}:** ${t.text.replace(/\n/g, " ")}`);
-    md.push(``, `Assistant's summary: ${T.describeConstraints(c.run.constraints).join(" · ") || "(nothing)"}`, ``);
+    md.push(``, `Assistant's summary: ${T.describeState(c.run.state).join(" · ") || "(nothing)"}`, ``);
   }
 
   const outMd = path.join(OUT_DIR, "personas-report.md");

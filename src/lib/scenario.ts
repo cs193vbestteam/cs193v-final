@@ -1,5 +1,6 @@
 import { z } from "zod";
-import type { Constraints, MissingField } from "./constraints";
+import type { MissingField } from "./constraints";
+import type { MemberState } from "./member-state";
 import type { ChatTurn } from "./extract";
 import type { ResolvedPool } from "./places";
 import type { Preferences } from "./preferences";
@@ -17,9 +18,10 @@ import { meal } from "./scenario-meal";
  * never import a scenario's modules directly, so a second scenario is added
  * here and nowhere else.
  *
- * The types are still the meal's (`Constraints`, `Restaurant`): with one
+ * The types are still the meal's (`MemberState`, `Restaurant`): with one
  * scenario there is nothing to generalise against yet. They widen when the
- * second scenario lands.
+ * second scenario lands. The methods keep the word "constraints" for what is
+ * stored per member; since #83 that is the member's state (member-state.ts).
  */
 
 export const SCENARIOS = ["meal"] as const;
@@ -35,21 +37,22 @@ export type Scenario = {
   /** The assistant's first message in every private chat. */
   openingMessage: string;
   /** What a member's constraints look like before they have said anything. */
-  emptyConstraints(): Constraints;
+  emptyConstraints(): MemberState;
   /** Validate constraints read back from storage. */
-  parseConstraints(raw: unknown): Constraints;
-  /** Essentials still unknown; a member cannot be "done" while any remain. */
-  missingFields(c: Constraints): MissingField[];
+  parseConstraints(raw: unknown): MemberState;
+  /** What still has to be settled; a member cannot be "done" while any remain. */
+  missingFields(c: MemberState): MissingField[];
   /** Human-readable summary, shown ONLY to the owner of these constraints. */
-  describeConstraints(c: Constraints): string[];
+  describeConstraints(c: MemberState): string[];
   /** One turn of the private chat: the assistant's reply and the constraints after it. */
   chatTurn(
     history: ChatTurn[],
-    current: Constraints,
+    current: MemberState,
     pool: readonly Restaurant[],
     /** `allowLLM: false` once the plan has used up its LLM budget: answer with the rule-based extractor. */
     options?: { allowLLM?: boolean },
-  ): Promise<{ reply: string; constraints: Constraints }>;
+    /** `changed`: what the member wants is different now, not just the chat's bookkeeping. */
+  ): Promise<{ reply: string; constraints: MemberState; changed: boolean }>;
 
   /** Candidates for a plan with no location, or when live data is unavailable. */
   seedPool: Restaurant[];
@@ -57,7 +60,7 @@ export type Scenario = {
   resolvePool(location: string | null, date: string): Promise<ResolvedPool>;
 
   /** One person's constraints as the negotiation contract. */
-  compile(c: Constraints): Preferences;
+  compile(c: MemberState): Preferences;
 };
 
 const REGISTRY: Record<ScenarioId, Scenario> = { meal };
