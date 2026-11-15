@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createUser } from "@/lib/auth";
 import { db, resetDbForTests } from "@/lib/db";
 import {
@@ -253,5 +253,33 @@ describe("candidate pool per plan", () => {
     expect(JSON.stringify(result.places)).not.toMatch(/budget|constraints|weight/);
     const stored = await getResult(event.id, b.id);
     expect(stored?.places).toEqual(result.places);
+  });
+});
+
+describe("the automatic run is claimed by one caller", () => {
+  async function allReady() {
+    const { a, b, event } = await setup();
+    for (const u of [a, b]) {
+      await sendMessage(event.id, u.id, "Saturday dinner, $40, 20 minutes, no restrictions");
+      await setReady(event.id, u.id, true);
+    }
+    return { a, b, event };
+  }
+
+  it("two people finishing in the same instant start one negotiation, not two", async () => {
+    const { a, b, event } = await allReady();
+    const ran = await Promise.all([negotiateWhenAllReady(event.id, a.id), negotiateWhenAllReady(event.id, b.id)]);
+    expect(ran.filter(Boolean)).toHaveLength(1);
+    expect((await getResult(event.id, a.id))?.status).toBe("agreed");
+  });
+
+  it("a run that fails gives the claim back, so the next person done can try", async () => {
+    const { a, b, event } = await allReady();
+    const pool = await import("@/lib/pool");
+    const broken = vi.spyOn(pool, "poolForEvent").mockRejectedValueOnce(new Error("pool unavailable"));
+    await expect(negotiateWhenAllReady(event.id, a.id)).rejects.toThrow("pool unavailable");
+    expect(await getResult(event.id, a.id)).toBeNull();
+    broken.mockRestore();
+    expect(await negotiateWhenAllReady(event.id, b.id)).toBe(true);
   });
 });

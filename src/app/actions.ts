@@ -114,7 +114,15 @@ export async function sendMessageAction(
   }
 }
 
-export async function setReadyAction(eventId: string, inviteCode: string, ready: boolean): Promise<{ error?: string }> {
+/** Shown to the person whose "I'm done" should have started the negotiation, when it could not. */
+const AUTO_FAILED =
+  "You're marked done, but the plan couldn't be found automatically. Press \"Find a plan\" to try again.";
+
+export async function setReadyAction(
+  eventId: string,
+  inviteCode: string,
+  ready: boolean,
+): Promise<{ error?: string; notice?: string }> {
   const user = await requireUser(`/e/${inviteCode}`);
   try {
     await setReady(eventId, user.id, ready);
@@ -122,16 +130,18 @@ export async function setReadyAction(eventId: string, inviteCode: string, ready:
     return { error: friendly(err) };
   }
   // The last person to finish starts the negotiation. If that fails, being done still
-  // stands and the "Find a plan" button is there to try again.
+  // stands, and the person is told to use the "Find a plan" button.
+  let notice: string | undefined;
   if (ready) {
     try {
       await negotiateWhenAllReady(eventId, user.id);
     } catch (err) {
       console.error("Automatic negotiation failed:", (err as Error).message);
+      notice = AUTO_FAILED;
     }
   }
   revalidatePath(`/e/${inviteCode}`);
-  return {};
+  return notice ? { notice } : {};
 }
 
 export async function runNegotiationAction(eventId: string, inviteCode: string): Promise<{ error?: string }> {

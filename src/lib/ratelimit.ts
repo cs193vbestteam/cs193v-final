@@ -27,11 +27,17 @@ export const LIMITS = {
   loginPerIp: { max: 50, windowMs: 15 * MINUTE },
   /** New accounts per IP address. */
   signupPerIp: { max: 10, windowMs: HOUR },
+  /**
+   * The claim on a plan's automatic negotiation: one at a time. Two people can press "I'm done" in
+   * the same instant; only the one who takes the claim starts the run. Longer than a run can last.
+   */
+  autoNegotiate: { max: 1, windowMs: 2 * MINUTE },
 } satisfies Record<string, Limit>;
 
 export const rateKey = {
   chat: (userId: string) => `chat:${userId}`,
   llm: (eventId: string) => `llm:${eventId}`,
+  autoNegotiate: (eventId: string) => `auto-negotiate:${eventId}`,
   loginEmail: (email: string) => `login-email:${blindIndex(email)}`,
   loginIp: (ip: string) => `login-ip:${blindIndex(ip)}`,
   signupIp: (ip: string) => `signup-ip:${blindIndex(ip)}`,
