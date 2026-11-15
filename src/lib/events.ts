@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_MESSAGE_CHARS } from "./chat-limits";
 import { db } from "./db";
 import { decrypt, decryptJson, encrypt, encryptJson } from "./crypto";
 import type { MemberState } from "./member-state";
@@ -109,7 +110,15 @@ export function forGroupSize(result: StoredResult): StoredResult {
 
 export const TitleSchema = z.string().trim().min(1, "Give your plan a name").max(80, "Name is too long");
 export const LocationSchema = z.string().trim().max(120, "Location is too long");
-export const MessageSchema = z.string().trim().min(1).max(1000, "Message is too long");
+// The cap keeps the chat to what it is for: a paragraph about a meal fits, an essay prompt does not (#84).
+export const MessageSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(
+    MAX_MESSAGE_CHARS,
+    `That message is too long for me (${MAX_MESSAGE_CHARS} characters at most). Could you say it more briefly?`,
+  );
 
 const INVITE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"; // no look-alikes (l/1, o/0)
 function newInviteCode(): string {
