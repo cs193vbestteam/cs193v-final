@@ -1,5 +1,6 @@
 import { CUISINES, SLOTS, type Cuisine, type Slot } from "./constraints";
 import { travelMinutes, type LatLng } from "./geo";
+import { weeklyHoursFromGoogle } from "./opening-hours";
 import type { Restaurant } from "./restaurants";
 
 export { KM_PER_MIN, haversineKm, type LatLng } from "./geo";
@@ -167,6 +168,7 @@ export function toRestaurant(p: PlaceResult, center: LatLng): Restaurant | null 
   if (!cuisine) return null;
   const location = { lat: p.location.latitude, lng: p.location.longitude };
   const joined = types.join(" ") + " " + name.toLowerCase();
+  const hours = weeklyHoursFromGoogle(p.regularOpeningHours?.periods);
   return {
     id: p.id,
     name,
@@ -179,6 +181,7 @@ export function toRestaurant(p: PlaceResult, center: LatLng): Restaurant | null 
     seafoodHeavy: /seafood|sushi|fish|oyster|crab/.test(joined),
     halal: /halal/.test(joined),
     open: openSlots(p.regularOpeningHours),
+    ...(hours ? { hours } : {}),
     ...(p.rating !== undefined ? { rating: p.rating, ratingCount: reviews } : {}),
     ...(p.formattedAddress ? { address: p.formattedAddress } : {}),
     ...(p.googleMapsUri ? { mapsUrl: p.googleMapsUri } : {}),

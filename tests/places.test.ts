@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { SLOTS } from "@/lib/constraints";
 import { CUISINES, type Cuisine } from "@/lib/constraints";
+import { openStartTimes } from "@/lib/opening-hours";
 import {
   CUISINE_QUERY_TYPES,
   MAX_NEARBY_CALLS,
@@ -82,6 +83,18 @@ describe("toRestaurant", () => {
       halal: false,
     });
     expect(r.open).toEqual(["fri_dinner", "sat_dinner"]);
+  });
+  it("keeps Google's opening hours, and leaves them out when Google gives none", () => {
+    const withHours = toRestaurant(byId("ChIJ_sushi"), CENTER)!;
+    expect(withHours.hours?.length).toBeGreaterThan(0);
+    // 2026-11-21 is a Saturday: open for dinner, not lunch, as the old slots above say.
+    const saturday = openStartTimes(withHours.hours, "2026-11-21")!;
+    expect(saturday).toContain("19:00");
+    expect(saturday).not.toContain("12:00");
+
+    const noHours = toRestaurant({ ...byId("ChIJ_sushi"), regularOpeningHours: undefined }, CENTER)!;
+    expect(noHours.hours).toBeUndefined();
+    expect(openStartTimes(noHours.hours, "2026-11-21")).toBeNull();
   });
   it("estimates travel from distance at city speed", () => {
     const r = toRestaurant(byId("ChIJ_thai"), CENTER)!;
