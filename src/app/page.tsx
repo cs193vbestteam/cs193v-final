@@ -13,7 +13,9 @@ export default async function Home() {
   return (
     <div className="mx-auto mt-10 max-w-3xl sm:mt-16">
       <div className="rise" style={{ "--d": "0.05s" } as React.CSSProperties}>
-        <p className="eyebrow">Welcome back, {user.displayName}</p>
+        <p className="eyebrow">
+          {events.length ? "Welcome back" : "Welcome"}, {user.displayName}
+        </p>
         <h1 className="display mt-3 text-5xl sm:text-6xl">
           What are we <em>actually</em> doing?
         </h1>
@@ -93,7 +95,7 @@ const STEPS = [
   {
     n: "02",
     title: "Assistants answer, never explain",
-    body: "The mediator proposes five options and asks every assistant the same question. Each one says accept, reluctant or reject, and at most which dimension. Never a number.",
+    body: "The mediator proposes a few options each round and asks every assistant the same question. Each one says accept, reluctant or reject, and at most which dimension. Never a number.",
     demo: (
       <div className="flex flex-wrap gap-2 font-mono text-xs">
         <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">accept</span>
@@ -107,8 +109,8 @@ const STEPS = [
   },
   {
     n: "03",
-    title: "One line to the group",
-    body: "A few rounds later, with small concessions nobody else sees, there's a plan everyone can live with. The group chat gets the answer and nothing else.",
+    title: "A short list for the group",
+    body: "A few rounds later, with small concessions nobody else sees, there's a best fit and up to five more places that work. The group gets the answer and nothing else.",
     demo: (
       <div className="rounded-xl border border-ink bg-ink px-3 py-2 text-paper">
         <div className="font-serif text-lg leading-tight">Sat 7pm · Olive Tree Mezze</div>
@@ -185,7 +187,7 @@ function Landing() {
         <Reveal className="flex items-end justify-between border-t border-line pt-10">
           <h2 className="display text-4xl sm:text-5xl">How it works</h2>
           <span className="hidden font-mono text-xs uppercase tracking-[0.14em] text-ink-3 sm:inline">
-            three steps · one line
+            three steps · one answer
           </span>
         </Reveal>
         <ol className="mt-10 grid gap-5 md:grid-cols-3">

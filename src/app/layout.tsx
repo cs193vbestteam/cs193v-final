@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import Link from "next/link";
+import { Suspense } from "react";
 import { logoutAction } from "./actions";
+import { AuthNav } from "@/components/AuthNav";
 import { Wordmark } from "@/components/Wordmark";
 import { currentUser } from "@/lib/session";
 import "./globals.css";
@@ -37,6 +39,20 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/** Shown while the client nav reads the URL: the same links, without a `next`. */
+function AuthNavFallback() {
+  return (
+    <nav className="flex items-center gap-2">
+      <Link href="/login" className="btn-ghost btn-sm">
+        Log in
+      </Link>
+      <Link href="/signup" className="btn btn-sm">
+        Sign up
+      </Link>
+    </nav>
+  );
+}
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser();
   return (
@@ -56,14 +72,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <button className="btn-ghost btn-sm">Log out</button>
               </form>
             ) : (
-              <nav className="flex items-center gap-2">
-                <Link href="/login" className="btn-ghost btn-sm">
-                  Log in
-                </Link>
-                <Link href="/signup" className="btn btn-sm">
-                  Sign up
-                </Link>
-              </nav>
+              <Suspense fallback={<AuthNavFallback />}>
+                <AuthNav />
+              </Suspense>
             )}
           </div>
         </header>

@@ -17,7 +17,7 @@ export function AuthForm({ mode, action, next }: Props) {
   return (
     <div className="mx-auto mt-8 grid max-w-4xl items-start gap-10 sm:mt-16 lg:grid-cols-[1fr_minmax(0,24rem)]">
       <div className="rise max-w-md" style={{ "--d": "0s" } as React.CSSProperties}>
-        <p className="eyebrow">{signup ? "New account" : "Welcome back"}</p>
+        <p className="eyebrow">{joining ? "You're invited" : signup ? "New account" : "Welcome back"}</p>
         <h1 className="display mt-4 text-5xl sm:text-6xl">
           {signup ? (
             <>
@@ -87,9 +87,9 @@ export function AuthForm({ mode, action, next }: Props) {
           </button>
         </form>
         <p className="mt-5 text-center text-sm text-ink-2">
-          {signup ? "Already have an account? " : "New here? "}
+          {signup ? "Already have an account? " : joining ? "No account yet? " : "New here? "}
           <Link className="link text-ink" href={`/${signup ? "login" : "signup"}?next=${encodeURIComponent(next)}`}>
-            {signup ? "Log in" : "Sign up"}
+            {signup ? "Log in" : joining ? "Sign up to join" : "Sign up"}
           </Link>
         </p>
       </div>
