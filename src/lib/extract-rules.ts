@@ -16,24 +16,14 @@ import {
   missingFields,
   nextProbe,
 } from "./constraints";
+import { mealStartTimes, type Meal } from "./optimizer-input";
 
 /**
  * Rule-based extractor (English). Used when no LLM key is configured,
  * and as the fallback if the LLM call fails. Deliberately simple and well-tested.
  */
 
-const NEGATIVE = /\b(busy|not free|can'?t|cannot|unavailable|no time|working)\b/i;
 const DISLIKE = /\b(not|don'?t|no|hate|avoid|rather not|tired of)\b/i;
-
-const DAY_PATTERNS: [RegExp, "fri" | "sat" | "sun"][] = [
-  [/\bfri(day)?\b/i, "fri"],
-  [/\bsat(urday)?\b/i, "sat"],
-  [/\bsun(day)?\b/i, "sun"],
-];
-const LUNCH = /\b(lunch|noon|midday|afternoon)\b/i;
-const DINNER = /\b(dinner|evening|night|tonight)\b/i;
-const WEEKEND = /\bweekend\b/i;
-const ANY_TIME = /\b(any ?time|whenever|all weekend|totally free)\b/i;
 
 const CUISINE_WORDS: Record<Cuisine, RegExp> = {
   japanese: /\b(japanese|sushi|ramen|izakaya)\b/i,
@@ -55,63 +45,179 @@ function splitClauses(text: string): string[] {
     .filter(Boolean);
 }
 
-type Day = "fri" | "sat" | "sun";
+/* ── Time ───────────────────────────────────────────────────────────────
+   The plan is on one day, set by its creator; what a person says here is which
+   start times on that day they can make (10:00 to 23:00, on the hour). */
 
-function mealsIn(text: string): ("lunch" | "dinner")[] {
-  return [...(LUNCH.test(text) ? (["lunch"] as const) : []), ...(DINNER.test(text) ? (["dinner"] as const) : [])];
+/** Words that make a clause about when they are NOT free: "class until 6", "busy at lunch". */
+const TIME_NEGATIVE =
+  /\b(busy|not free|can'?t|cannot|unavailable|no time|not available|working|at work|(?:i|we) work|(?:have|got) work|class|classes|meeting|meetings|shift|lab|practice|rehearsal|occupied|booked)\b/i;
+/** "Not lunch", "no dinner", "anything but brunch": the meal named is the one they cannot make. */
+const NOT_A_MEAL =
+  /\b(?:not|no|except)\s+(?:for\s+|at\s+|a\s+)?(?:brunch|lunch|dinner|afternoon tea|late[- ]night|morning|afternoon|evening|night)\b/i;
+/** "After class at 4", "after work ends at 5": the event only says when they become free. */
+const AFTER_EVENT =
+  /\bafter\s+(?:my\s+)?(?:class|classes|work|meeting|meetings|shift|lab|practice|rehearsal)\s+(?:ends\s+|finishes\s+|is over\s+)?(?:at|around)\s+/gi;
+// "Free all weekend" still means any time: the day is the plan's, and they are free on it.
+const ANY_TIME =
+  /\b(any ?time|whenever|all day|totally free|free all (?:day|weekend|week)|free the whole (?:day|weekend)|flexible on time)\b/i;
+
+/** Meal words, most specific first, so "late night" is not read as "night" and "afternoon tea" not as "afternoon". */
+const MEAL_WORDS: [RegExp, Meal][] = [
+  [/\b(late[- ]night|midnight snack|supper|night ?cap)\b/i, "late_night"],
+  [/\b(afternoon tea|tea ?time|afternoon)\b/i, "afternoon_tea"],
+  [/\b(brunch|morning)\b/i, "brunch"],
+  [/\b(lunch|midday|lunchtime)\b/i, "lunch"],
+  [/\b(dinner|evening|tonight|night)\b/i, "dinner"],
+];
+
+const MINUTES = (slot: Slot) => Number(slot.slice(0, 2)) * 60;
+/** A clause with one of these is about money or distance: bare numbers in it are not clock times. */
+const NOT_A_CLOCK =
+  /\$|\b(budget|spend|spending|per person|a head|dollars?|bucks|usd|price|pay|min|mins|minutes?|miles?|km|drive|walk|away|far|travel)\b/i;
+
+const CLOCK = String.raw`(\d{1,2})(?::(\d{2}))?\s*(am|pm|a\.m\.|p\.m\.)?`;
+
+/**
+ * A clock time as minutes since midnight. With no am/pm, 1 to 9 is the afternoon or evening
+ * ("after 7" is 19:00), 10 and 11 are the morning, 12 is noon. `bare` times (no am/pm, no
+ * minutes) are only trusted up to 12, so "around 20" is never read as 20:00.
+ */
+function clockMinutes(hour: string, minute: string | undefined, meridiem: string | undefined): number | null {
+  let h = parseInt(hour, 10);
+  const m = minute ? parseInt(minute, 10) : 0;
+  if (m > 59) return null;
+  const mer = meridiem?.replace(/\./g, "").toLowerCase();
+  if (mer) {
+    if (h < 1 || h > 12) return null;
+    if (mer === "pm" && h !== 12) h += 12;
+    if (mer === "am" && h === 12) h = 0;
+  } else if (minute !== undefined) {
+    if (h > 23) return null;
+    if (h >= 1 && h <= 9) h += 12;
+  } else {
+    if (h < 1 || h > 12) return null;
+    if (h <= 9) h += 12;
+  }
+  return h * 60 + m;
 }
 
-function toSlots(days: readonly Day[], meals: ("lunch" | "dinner")[]): Slot[] {
-  const ms = meals.length ? meals : (["lunch", "dinner"] as const);
-  const out: Slot[] = [];
-  for (const d of days)
-    for (const m of ms) {
-      const s = `${d}_${m}` as Slot;
-      if ((SLOTS as readonly string[]).includes(s)) out.push(s);
-    }
-  return out;
+type TimeRead = { explicit: Slot[] | null; notBefore: number | null; notAfter: number | null };
+
+/** Start times named by clock in one clause: ranges and single times, plus "after" and "before" bounds. */
+function clocksIn(clause: string, busy: boolean, trustBare: boolean): TimeRead {
+  const read: TimeRead = { explicit: null, notBefore: null, notAfter: null };
+  const bareOk = trustBare && !NOT_A_CLOCK.test(clause);
+  let rest = clause.replace(/\bnoon\b/gi, "12pm");
+  const usable = (m: RegExpMatchArray, h: number, min: number, mer: number) =>
+    m[mer] || m[min] || bareOk ? clockMinutes(m[h], m[min], m[mer]) : null;
+  const add = (slots: Slot[]) => (read.explicit = [...(read.explicit ?? []), ...slots]);
+  const take = (re: RegExp, on: (m: RegExpMatchArray) => boolean) => {
+    rest = rest.replace(re, (...args) => (on(args as unknown as RegExpMatchArray) ? " " : args[0]));
+  };
+
+  // "6 to 8", "6-8pm", "between 6 and 8": both ends are start times they can make.
+  take(
+    new RegExp(String.raw`(?:\bbetween\s+|\bfrom\s+)?${CLOCK}\s*(?:-|–|—|to|and|until|till)\s*${CLOCK}`, "gi"),
+    (m) => {
+      // An am/pm on the second time covers the first: "6-8pm".
+      const from = clockMinutes(
+        m[1],
+        m[2],
+        m[3] ?? (m[6] && parseInt(m[1], 10) <= parseInt(m[4], 10) ? m[6] : undefined),
+      );
+      const to = usable(m, 4, 5, 6);
+      if (from === null || to === null || from > to) return false;
+      if (!(m[3] || m[6] || m[2] || m[5] || bareOk)) return false;
+      add(SLOTS.filter((s) => MINUTES(s) >= from && MINUTES(s) <= to));
+      return true;
+    },
+  );
+  // "after 7", "from 7pm", "not before 6:30", "7 onwards", "7 or later".
+  take(
+    new RegExp(String.raw`\b(?:after|from|since|past|not before|no earlier than|starting at)\s+${CLOCK}`, "gi"),
+    (m) => {
+      const t = usable(m, 1, 2, 3);
+      if (t === null) return false;
+      read.notBefore = Math.max(read.notBefore ?? 0, t);
+      return true;
+    },
+  );
+  take(new RegExp(String.raw`${CLOCK}\s*(?:onwards?|or later|and later|at the earliest)`, "gi"), (m) => {
+    const t = usable(m, 1, 2, 3);
+    if (t === null) return false;
+    read.notBefore = Math.max(read.notBefore ?? 0, t);
+    return true;
+  });
+  // "before 2", "until 9", "by 8": the meal has to start at least an hour ahead of that.
+  // Said of being busy ("class until 6:30"), it is every start time before then.
+  take(new RegExp(String.raw`\b(?:before|until|till|by|no later than|not after)\s+${CLOCK}`, "gi"), (m) => {
+    const t = usable(m, 1, 2, 3);
+    if (t === null) return false;
+    read.notAfter = Math.min(read.notAfter ?? Infinity, busy ? t - 1 : t - 60);
+    return true;
+  });
+  // A single time: "7pm", "at 7", "around 6:30".
+  take(new RegExp(String.raw`\b(?:(at|around|about)\s+)?${CLOCK}`, "gi"), (m) => {
+    if (!m[1] && !m[4] && !m[3]) return false; // a bare number with no cue is not a time
+    const t = m[4] || m[3] || bareOk ? clockMinutes(m[2], m[3], m[4]) : null;
+    if (t === null) return false;
+    // Half past rounds to the hour before: someone free "at 6:30" is asked about 18:00 and 19:00 by the clauses around it.
+    add(SLOTS.filter((s) => MINUTES(s) === Math.floor(t / 60) * 60));
+    return true;
+  });
+  return read;
+}
+
+/** The start times one clause is about, or none if it says nothing about time. `busy`: the clause is about when they are not free. */
+function slotsIn(clause: string, busy: boolean, trustBare: boolean): Slot[] {
+  // "Any time after 7" is about 7, not about any time.
+  const anyTime = ANY_TIME.test(clause);
+  let rest = clause.replace(new RegExp(ANY_TIME.source, "gi"), " ");
+  let meals: Slot[] | null = null;
+  for (const [re, meal] of MEAL_WORDS) {
+    if (!re.test(rest)) continue;
+    meals = [...(meals ?? []), ...mealStartTimes(meal)];
+    rest = rest.replace(new RegExp(re.source, "gi"), " ");
+  }
+  const { explicit, notBefore, notAfter } = clocksIn(rest, busy, trustBare);
+  const bounded = notBefore !== null || notAfter !== null;
+  if (!meals && !explicit && !bounded) return anyTime ? [...SLOTS] : [];
+  // "dinner after 7" is the dinner times from 19:00; "7pm" alone is just that time.
+  const base = explicit ?? meals ?? [...SLOTS];
+  return SLOTS.filter(
+    (s) =>
+      base.includes(s) &&
+      (explicit === null || meals === null || meals.includes(s)) &&
+      (notBefore === null || MINUTES(s) >= notBefore) &&
+      (notAfter === null || MINUTES(s) <= notAfter),
+  );
 }
 
 /**
- * Pair each day with the meals mentioned right after it, so
- * "sat lunch or sun dinner" -> sat_lunch, sun_dinner (not all four combinations).
+ * Which start times a message says the person can make, or undefined if it says nothing
+ * about time. `pending` is the question the message answers, when there is one. "Busy until 6" and "class at noon" take times away from the whole day.
  */
-function slotsIn(clause: string): Slot[] {
-  if (ANY_TIME.test(clause)) return [...SLOTS];
-  const hits: { day: Day; index: number; end: number }[] = [];
-  for (const [re, day] of DAY_PATTERNS) {
-    const g = new RegExp(re.source, "gi");
-    for (const m of clause.matchAll(g)) hits.push({ day, index: m.index!, end: m.index! + m[0].length });
-  }
-  hits.sort((a, b) => a.index - b.index);
-
-  if (hits.length === 0) {
-    const meals = mealsIn(clause);
-    if (!WEEKEND.test(clause) && meals.length === 0) return [];
-    return toSlots(["fri", "sat", "sun"], meals);
-  }
-
-  const prefixMeals = mealsIn(clause.slice(0, hits[0].index)); // "lunch on saturday"
-  const out: Slot[] = [];
-  hits.forEach((h, i) => {
-    let meals = mealsIn(clause.slice(h.end, hits[i + 1]?.index ?? clause.length));
-    if (i === 0 && meals.length === 0) meals = prefixMeals;
-    out.push(...toSlots([h.day], meals));
-  });
-  return out;
-}
-
-export function extractTime(text: string): Slot[] | undefined {
+export function extractTime(text: string, pending?: MissingField): Slot[] | undefined {
+  // "About 10" in answer to the budget or distance question is dollars or minutes, not ten o'clock:
+  // then only a time written as one ("7pm", "6:30") counts.
+  const trustBare = pending !== "budget" && pending !== "distance";
   const available = new Set<Slot>();
   const unavailable = new Set<Slot>();
-  for (const clause of splitClauses(text)) {
-    const slots = slotsIn(clause);
+  let said = false;
+  // "Anything but dinner" would otherwise be split at "but" and read as choosing dinner.
+  for (const raw of splitClauses(text.replace(/\banything but\b/gi, "not"))) {
+    // "Free after class at 4" is about being free from 4, not about being busy.
+    const clause = raw.replace(AFTER_EVENT, "after ");
+    const busy = clause === raw ? TIME_NEGATIVE.test(clause) || NOT_A_MEAL.test(clause) : false;
+    const slots = slotsIn(clause, busy, trustBare);
     if (slots.length === 0) continue;
-    const target = NEGATIVE.test(clause) ? unavailable : available;
+    said = true;
+    const target = busy ? unavailable : available;
     slots.forEach((s) => target.add(s));
   }
-  if (available.size === 0 && unavailable.size === 0) return undefined;
-  const base = available.size ? [...available] : [...SLOTS];
+  if (!said) return undefined;
+  const base = available.size ? SLOTS.filter((s) => available.has(s)) : [...SLOTS];
   return base.filter((s) => !unavailable.has(s));
 }
 
@@ -282,6 +388,13 @@ export function extractBareAnswer(text: string, pending: MissingField | undefine
   for (let i = 0; i < 4 && FILLER.test(bare); i++) bare = bare.replace(FILLER, "").trim();
   if (!bare) return {};
 
+  if (pending === "time") {
+    // A bare hour in answer to "what time works?" is that time: "7" is 7 PM.
+    const m = bare.match(/^(\d{1,2})(?::(\d{2}))?$/);
+    const t = m ? clockMinutes(m[1], m[2], undefined) : null;
+    const slot = t === null ? undefined : SLOTS.find((s) => MINUTES(s) === Math.floor(t / 60) * 60);
+    return slot ? { availableSlots: [slot] } : {};
+  }
   if (pending === "budget") {
     // Any number they give in answer is the budget: "50-100", "50 to 100", "60ish", "100 max", "$$".
     if (/\b(min|mins|minutes?|hours?|hrs?)\b/.test(bare)) return {};
@@ -396,7 +509,7 @@ export function extractRules(text: string, pending?: MissingField): ConstraintsU
   const update: ConstraintsUpdate = {};
   const start = extractStart(text);
   if (start) update.startText = start;
-  const slots = extractTime(text);
+  const slots = extractTime(text, pending);
   if (slots) update.availableSlots = slots;
   Object.assign(update, extractBudget(text));
   const dist = extractDistance(text);
@@ -410,7 +523,7 @@ export function extractRules(text: string, pending?: MissingField): ConstraintsU
 }
 
 const QUESTIONS: Record<ReturnType<typeof missingFields>[number], string> = {
-  time: 'When are you actually free this weekend? (e.g. "Saturday evening only", "busy Sunday")',
+  time: 'What time works for you on the day of the plan? (e.g. "dinner", "any time after 7", "lunch or dinner", "busy until 6")',
   budget: "What's the most you'd want to spend per person? Nobody else will see the number.",
   distance: "How far are you willing to travel, roughly in minutes?",
   diet: "Anything you can't or won't eat? (spicy, vegetarian, seafood, halal... or \"nothing\")",

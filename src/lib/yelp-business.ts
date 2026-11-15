@@ -1,5 +1,6 @@
-import { SLOTS, type Slot } from "./constraints";
+import type { Slot } from "./constraints";
 import type { LatLng } from "./geo";
+import { MINUTES_PER_DAY, openStartTimes, type WeeklyHours } from "./opening-hours";
 import { inferCuisine } from "./places";
 import type { Restaurant } from "./restaurants";
 
@@ -25,7 +26,7 @@ export type YelpBusiness = {
  *
  * The mapping mirrors what places.ts does for Google results, so a Yelp pool
  * and a live pool are judged on the same terms: cuisine from categories, a
- * dollar figure from the price band, weekend slots from opening hours, and
+ * dollar figure from the price band, start times from opening hours, and
  * the same keyword heuristics for the dietary flags. A business is dropped
  * when it is not a restaurant, has no coordinates, has no price band, or
  * falls outside the ten cuisines the app models.
@@ -51,21 +52,13 @@ export function priceBand(b: Pick<YelpBusiness, "attributes">): 1 | 2 | 3 | 4 | 
   return n === 1 || n === 2 || n === 3 || n === 4 ? n : null;
 }
 
-const DAY_OF: Record<Slot, string> = {
-  fri_dinner: "Friday",
-  sat_lunch: "Saturday",
-  sat_dinner: "Saturday",
-  sun_lunch: "Sunday",
-  sun_dinner: "Sunday",
-};
-/** Lunch is probed at 12:30 and dinner at 19:30, as in places.ts. */
-const PROBE_MIN: Record<Slot, number> = {
-  fri_dinner: 19 * 60 + 30,
-  sat_lunch: 12 * 60 + 30,
-  sat_dinner: 19 * 60 + 30,
-  sun_lunch: 12 * 60 + 30,
-  sun_dinner: 19 * 60 + 30,
-};
+const YELP_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+/**
+ * The plan date the evaluation maps the dataset for: a Saturday. A live plan built from the
+ * dataset (yelp-pool.ts) has `open` worked out again for its own date.
+ */
+export const EVAL_DATE = "2026-11-21";
 
 /** "11:0-22:0" → minutes since midnight; a close at or before the open wraps past midnight. */
 function parseRange(range: string): [number, number] | null {
@@ -73,18 +66,24 @@ function parseRange(range: string): [number, number] | null {
   if (!m) return null;
   const start = Number(m[1]) * 60 + Number(m[2]);
   let end = Number(m[3]) * 60 + Number(m[4]);
-  if (end <= start) end += 24 * 60; // also covers "0:0-0:0", which the dataset uses for open all day
+  if (end <= start) end += MINUTES_PER_DAY; // also covers "0:0-0:0", which the dataset uses for open all day
   return [start, end];
 }
 
-/** Which weekend slots a business is open for. No hours at all → assume open, as places.ts does. */
-export function openSlots(hours: YelpBusiness["hours"]): Slot[] {
-  if (!hours || Object.keys(hours).length === 0) return [...SLOTS];
-  return SLOTS.filter((slot) => {
-    const range = hours[DAY_OF[slot]];
-    const parsed = range ? parseRange(range) : null;
-    return parsed !== null && PROBE_MIN[slot] >= parsed[0] && PROBE_MIN[slot] < parsed[1];
+/** Yelp's per-day hours as weekly intervals. Null when the dataset gives no hours: unknown, not open. */
+export function weeklyHoursFromYelp(hours: YelpBusiness["hours"]): WeeklyHours | null {
+  if (!hours || Object.keys(hours).length === 0) return null;
+  const out: WeeklyHours = [];
+  YELP_DAYS.forEach((day, i) => {
+    const parsed = hours[day] ? parseRange(hours[day]) : null;
+    if (parsed) out.push([i * MINUTES_PER_DAY + parsed[0], i * MINUTES_PER_DAY + parsed[1]]);
   });
+  return out;
+}
+
+/** The start times a business can take on `date`. No hours at all means none: we cannot say it is open. */
+export function openSlots(hours: YelpBusiness["hours"], date: string = EVAL_DATE): Slot[] {
+  return openStartTimes(weeklyHoursFromYelp(hours), date) ?? [];
 }
 
 export const categoriesOf = (b: Pick<YelpBusiness, "categories">): string[] =>
@@ -93,7 +92,7 @@ export const categoriesOf = (b: Pick<YelpBusiness, "categories">): string[] =>
     .map((c) => c.trim().toLowerCase())
     .filter(Boolean);
 
-export function toRestaurant(b: YelpBusiness): YelpRestaurant | null {
+export function toRestaurant(b: YelpBusiness, date: string = EVAL_DATE): YelpRestaurant | null {
   const cats = categoriesOf(b);
   if (!cats.includes("restaurants")) return null;
   if (typeof b.latitude !== "number" || typeof b.longitude !== "number") return null;
@@ -102,8 +101,11 @@ export function toRestaurant(b: YelpBusiness): YelpRestaurant | null {
   // inferCuisine matches Google-style tokens ("sushi_bars"), so give it the categories in that form.
   const cuisine = inferCuisine(cats.map((c) => c.replace(/[^a-z]+/g, "_")));
   if (!cuisine) return null;
-  const open = openSlots(b.hours);
-  if (open.length === 0) return null;
+  const hours = weeklyHoursFromYelp(b.hours);
+  // Dropped when it has no hours we can read; kept when it is merely closed on `date`,
+  // because a live plan may fall on another day.
+  if (!hours || hours.length === 0) return null;
+  const open = openStartTimes(hours, date) ?? [];
   const joined = cats.join(" ");
   return {
     id: b.business_id,
@@ -117,6 +119,7 @@ export function toRestaurant(b: YelpBusiness): YelpRestaurant | null {
     seafoodHeavy: /seafood|sushi|fish|oyster|crab/.test(joined),
     halal: /halal/.test(joined),
     open,
+    hours,
     isOpen: b.is_open === 1,
   };
 }

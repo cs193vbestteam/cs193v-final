@@ -53,8 +53,8 @@ export type Scenario = {
 
   /** Candidates for a plan with no location, or when live data is unavailable. */
   seedPool: Restaurant[];
-  /** Candidates near `location`, falling back to the seed pool. */
-  resolvePool(location: string | null): Promise<ResolvedPool>;
+  /** Candidates near `location` that can take the group on `date` (YYYY-MM-DD), falling back to the seed pool. */
+  resolvePool(location: string | null, date: string): Promise<ResolvedPool>;
 
   /** One person's constraints as the negotiation contract. */
   compile(c: Constraints): Preferences;

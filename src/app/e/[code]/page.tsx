@@ -6,7 +6,7 @@ import { PrivateChat } from "@/components/PrivateChat";
 import { ResultCard } from "@/components/ResultCard";
 import { joinEventAction } from "@/app/actions";
 import { getEventByCode, getMyConstraints, getMyMessages, getResult, isMember, listMembers } from "@/lib/events";
-import { SLOT_LABELS } from "@/lib/constraints";
+import { formatPlanDate, formatWhen } from "@/lib/plan-date";
 import { getRestaurant } from "@/lib/restaurants";
 import { scenarioFor } from "@/lib/scenario";
 import { nudgeMessage, resultMessage } from "@/lib/share";
@@ -73,7 +73,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       ? resultMessage({
           title: event.title,
           place: chosen.name,
-          when: SLOT_LABELS[result.proposal.slot],
+          when: formatWhen(event.date, result.proposal.slot),
           options: result.options?.length ?? 1,
           url: planUrl,
         })
@@ -103,6 +103,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         <div className="min-w-0">
           <p className="eyebrow">
             Plan · {code}
+            {event.date ? ` · ${formatPlanDate(event.date)}` : ""}
             {event.location ? ` · near ${event.location}` : ""}
             {` · ${event.poolSize} ${POOL_LABEL[event.poolSource]}`}
           </p>
@@ -189,7 +190,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             <h2 className="font-serif text-xl">The plan</h2>
             <div className="mt-3">
               {result ? (
-                <ResultCard result={result} sample={sample} />
+                <ResultCard result={result} sample={sample} date={event.date} />
               ) : (
                 <p className="rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
                   No plan yet. As soon as everyone&apos;s done, the assistants talk it out. Nobody has to press

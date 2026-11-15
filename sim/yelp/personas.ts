@@ -14,6 +14,7 @@ import { utility } from "../../src/lib/evaluate";
 import { KM_PER_MIN, haversineKm, travelMinutes, type LatLng } from "../../src/lib/geo";
 import { compile } from "../../src/lib/preferences";
 import type { Restaurant } from "../../src/lib/restaurants";
+import { SIM_SLOTS } from "../synth";
 import type { Rng } from "../rng";
 import type { YelpRestaurant } from "./businesses";
 
@@ -80,9 +81,9 @@ export function splitVisits(
   return { train: sorted.slice(0, sorted.length - nTest), test: sorted.slice(sorted.length - nTest) };
 }
 
-/** Same availability model as synthPerson: 45% free all weekend, otherwise 2..4 slots. */
+/** Same availability model as synthPerson: 45% free all day, otherwise 2..4 slots. */
 function drawSlots(rng: Rng): Slot[] {
-  return rng.chance(0.45) ? [...SLOTS] : rng.sample(SLOTS, rng.int(2, 4));
+  return rng.chance(0.45) ? [...SLOTS] : rng.sample(SIM_SLOTS, rng.int(2, 4));
 }
 
 export function derivePersona(userId: string, visits: readonly Visit[], rng: Rng): Persona | null {
@@ -197,7 +198,7 @@ export type Validation = {
  * availability is not something the reviews carry.
  */
 export function validate(personas: readonly Persona[], city: readonly YelpRestaurant[], rng: Rng): Validation {
-  const anySlot: Slot = "sat_dinner";
+  const anySlot: Slot = "18:00";
   let visits = 0;
   let passVisited = 0;
   let passRandom = 0;

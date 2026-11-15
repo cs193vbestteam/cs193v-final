@@ -163,7 +163,10 @@ export function shortlist(
   if (history.length === 0) {
     // Farthest-first: start from the prior's favourite, then keep adding whatever is least like the picks so far.
     picks.push(ranked[0]);
-    const limit = Math.min(ranked.length, Math.max(k * 6, 30));
+    // The window was sized for five times per place. A place now has as many candidates as it has
+    // start times, so widen it in step, or the window holds a handful of places and the spread is lost.
+    const times = new Set(pool.map((c) => c.slot)).size;
+    const limit = Math.min(ranked.length, Math.max(k * 6, 30) * Math.max(1, Math.ceil(times / 5)));
     while (picks.length < k) {
       let best: Candidate | null = null;
       let bestD = -1;

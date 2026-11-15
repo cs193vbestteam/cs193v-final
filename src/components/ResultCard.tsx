@@ -1,8 +1,8 @@
-import { SLOT_LABELS } from "@/lib/constraints";
 import type { Dim, Proposal } from "@/lib/evaluate";
 import { PlanOptions, type OptionTile } from "./PlanOptions";
 import type { StoredResult } from "@/lib/events";
 import type { Tally } from "@/lib/mediator";
+import { formatWhen } from "@/lib/plan-date";
 import { getRestaurant } from "@/lib/restaurants";
 
 export const DIM_LABEL: Record<Dim, string> = {
@@ -21,7 +21,16 @@ function describeDims(t: Tally): string {
   return parts.join(", ");
 }
 
-export function ResultCard({ result, sample = false }: { result: StoredResult; sample?: boolean }) {
+export function ResultCard({
+  result,
+  sample = false,
+  date,
+}: {
+  result: StoredResult;
+  sample?: boolean;
+  date?: string | null;
+}) {
+  const when = (slot: string) => formatWhen(date, slot);
   const place = (id: string) => result.places?.[id] ?? getRestaurant(id);
   const r = result.proposal ? place(result.proposal.restaurantId) : undefined;
   const headline =
@@ -52,7 +61,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
           {
             key: `${o.proposal.restaurantId}-${o.proposal.slot}`,
             name: p.name,
-            when: SLOT_LABELS[o.proposal.slot],
+            when: when(o.proposal.slot),
             cuisine: p.cuisine,
             pricePerPerson: p.pricePerPerson,
             ...(p.travelMin !== undefined ? { travelMin: p.travelMin } : {}),
@@ -77,7 +86,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
           <div className="mt-2">
             <div className="font-serif text-[1.75rem] leading-tight">{r.name}</div>
             <div className="mt-1 text-sm text-ink-2">
-              {SLOT_LABELS[result.proposal!.slot]} · ~${r.pricePerPerson}/person
+              {when(result.proposal!.slot)} · ~${r.pricePerPerson}/person
               {r.travelMin !== undefined ? ` · ${r.travelMin} min away` : ""} · {r.cuisine}
             </div>
             {sample && <p className="mt-1 text-xs text-amber-ink">Sample place, not a real restaurant.</p>}
@@ -167,7 +176,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
                             </span>
                           )}
                           <span className="text-ink">{name}</span>
-                          <span className="text-ink-3"> · {SLOT_LABELS[p.proposal.slot]}</span>
+                          <span className="text-ink-3"> · {when(p.proposal.slot)}</span>
                           {why && <span className="text-ink-3"> · {why}</span>}
                         </span>
                         <TallyBar tally={p.tally} people={result.participants} />
@@ -197,7 +206,7 @@ export function ResultCard({ result, sample = false }: { result: StoredResult; s
                     >
                       <span className={chosen ? "text-ink" : "text-ink-2"}>
                         {chosen ? "★ " : ""}
-                        {place(f.proposal.restaurantId)?.name ?? "?"} · {SLOT_LABELS[f.proposal.slot]}
+                        {place(f.proposal.restaurantId)?.name ?? "?"} · {when(f.proposal.slot)}
                       </span>
                       <span className="flex items-center gap-2 font-mono text-[0.75rem] text-ink-3">
                         <span className="text-ink" aria-label={`${Math.round(f.relative * 100)}% of the pick's score`}>

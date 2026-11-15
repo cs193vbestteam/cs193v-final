@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { describeConstraints, emptyConstraints, mergeConstraints, missingFields } from "@/lib/constraints";
+import { SLOTS, describeConstraints, emptyConstraints, mergeConstraints, missingFields } from "@/lib/constraints";
+import { MEALS, mealStartTimes } from "@/lib/optimizer-input";
 import {
   PENDING_QUESTIONS,
   extractBudget,
@@ -13,23 +14,143 @@ import {
   ruleTurn,
 } from "@/lib/extract-rules";
 
+const LUNCH = ["11:00", "12:00", "13:00"];
+const DINNER = ["17:00", "18:00", "19:00", "20:00"];
+const from = (hour: number) => SLOTS.filter((s) => Number(s.slice(0, 2)) >= hour);
+const upTo = (hour: number) => SLOTS.filter((s) => Number(s.slice(0, 2)) <= hour);
+
 describe("extractTime", () => {
-  it.each([
-    ["Saturday evening only", ["sat_dinner"]],
-    ["only free sunday lunch", ["sun_lunch"]],
-    ["sat lunch or sun dinner", ["sat_lunch", "sun_dinner"]],
-    ["Saturday lunch and dinner", ["sat_lunch", "sat_dinner"]],
-  ])("%s", (text, expected) => {
-    expect(extractTime(text)?.sort()).toEqual([...expected].sort());
+  it('reads "work" as fitting, not as being at work', () => {
+    expect(extractTime("7pm would work")).toEqual(["19:00"]);
+    expect(extractTime("anything after 6 would work")).toEqual(SLOTS.filter((s) => s >= "18:00"));
+    // Being at work is still time they are not free.
+    expect(extractTime("I work until 5")).toEqual(SLOTS.filter((s) => s >= "17:00"));
+    expect(extractTime("at work until 5")).toEqual(SLOTS.filter((s) => s >= "17:00"));
   });
 
-  it("handles being busy (negation)", () => {
-    expect(extractTime("I'm busy Saturday afternoon")).toEqual(["fri_dinner", "sat_dinner", "sun_lunch", "sun_dinner"]);
-    expect(extractTime("can't do saturday lunch")).toEqual(["fri_dinner", "sat_dinner", "sun_lunch", "sun_dinner"]);
+  it("takes a refused meal away instead of choosing it", () => {
+    expect(extractTime("not lunch")).toEqual(SLOTS.filter((s) => !LUNCH.includes(s)));
+    expect(extractTime("anything but dinner")).toEqual(SLOTS.filter((s) => !DINNER.includes(s)));
+    expect(extractTime("not before 6")).toEqual(SLOTS.filter((s) => s >= "18:00"));
+  });
+
+  it("reads an event they are free after as the start of their free time", () => {
+    expect(extractTime("free after class at 4")).toEqual(SLOTS.filter((s) => s >= "16:00"));
+    expect(extractTime("after work ends at 5")).toEqual(SLOTS.filter((s) => s >= "17:00"));
+  });
+
+  it.each([
+    ["brunch", ["10:00", "11:00"]],
+    ["lunch works", LUNCH],
+    ["afternoon tea would be nice", ["14:00", "15:00", "16:00"]],
+    ["dinner only", DINNER],
+    ["free in the evening", DINNER],
+    ["late night is best", ["21:00", "22:00", "23:00"]],
+    ["lunch or dinner", [...LUNCH, ...DINNER]],
+  ])("meal words mean the start times in the table: %s", (text, expected) => {
+    expect(extractTime(text)).toEqual(expected);
+  });
+
+  it("takes the meal's times from the shared table, not from its own copy", () => {
+    for (const meal of MEALS) expect(extractTime(meal.replace("_", " "))).toEqual(mealStartTimes(meal));
+  });
+
+  it("ignores the day of the week: the plan's date is already set", () => {
+    expect(extractTime("Saturday evening only")).toEqual(DINNER);
+    expect(extractTime("only free sunday lunch")).toEqual(LUNCH);
+  });
+
+  it.each([
+    ["any time after 7", from(19)],
+    ["from 7pm", from(19)],
+    ["not before 6", from(18)],
+    ["7 or later", from(19)],
+    ["after 6:30", from(19)],
+    ["after 11am", from(11)],
+  ])("reads an earliest time: %s", (text, expected) => {
+    expect(extractTime(text)).toEqual(expected);
+  });
+
+  it.each([
+    ["before 2", upTo(13)],
+    ["I need to be done by 8", upTo(19)],
+    ["until 9pm", upTo(20)],
+  ])("reads a latest time, leaving an hour for the meal: %s", (text, expected) => {
+    expect(extractTime(text)).toEqual(expected);
+  });
+
+  it.each([
+    ["6 to 8", ["18:00", "19:00", "20:00"]],
+    ["between 6 and 8", ["18:00", "19:00", "20:00"]],
+    ["6-8pm", ["18:00", "19:00", "20:00"]],
+    ["11am to 1pm", ["11:00", "12:00", "13:00"]],
+    ["after 6 and before 9", ["18:00", "19:00", "20:00"]],
+  ])("reads a range with both ends included: %s", (text, expected) => {
+    expect(extractTime(text)).toEqual(expected);
+  });
+
+  it.each([
+    ["7pm", ["19:00"]],
+    ["at 7", ["19:00"]],
+    ["noon", ["12:00"]],
+    ["around 12:30", ["12:00"]],
+    ["7pm or 8pm", ["19:00", "20:00"]],
+  ])("reads a single time: %s", (text, expected) => {
+    expect(extractTime(text)).toEqual(expected);
+  });
+
+  it("reads a bare hour from 1 to 9 as the afternoon or evening, 10 and 11 as the morning", () => {
+    expect(extractTime("at 2")).toEqual(["14:00"]);
+    expect(extractTime("at 11")).toEqual(["11:00"]);
+    expect(extractTime("at 12")).toEqual(["12:00"]);
+  });
+
+  it("narrows a meal by a clock time in the same clause", () => {
+    expect(extractTime("dinner after 7")).toEqual(["19:00", "20:00"]);
+    expect(extractTime("lunch before 1")).toEqual(["11:00", "12:00"]);
+  });
+
+  it.each([["any time"], ["whenever"], ["I'm free all day"], ["free all weekend"]])(
+    "%s is every start time",
+    (text) => {
+      expect(extractTime(text)).toEqual([...SLOTS]);
+    },
+  );
+
+  it("takes times away when the person says they are busy", () => {
+    expect(extractTime("I'm busy at lunch")).toEqual(SLOTS.filter((s) => !LUNCH.includes(s)));
+    expect(extractTime("busy until 6")).toEqual(from(18));
+    expect(extractTime("I have class until 6:30")).toEqual(from(18).filter((s) => s !== "18:00"));
+    expect(extractTime("can't do after 9")).toEqual(upTo(20));
   });
 
   it("combines free and busy clauses", () => {
-    expect(extractTime("free all weekend, but busy sunday")).toEqual(["fri_dinner", "sat_lunch", "sat_dinner"]);
+    expect(extractTime("free all day, but busy at lunch")).toEqual(SLOTS.filter((s) => !LUNCH.includes(s)));
+    expect(extractTime("dinner works, but I can't do 8pm")).toEqual(["17:00", "18:00", "19:00"]);
+  });
+
+  it("does not read money or distance as a time", () => {
+    expect(extractTime("under $40")).toBeUndefined();
+    expect(extractTime("around 20")).toBeUndefined();
+    expect(extractTime("budget is 8 to 10 dollars")).toBeUndefined();
+    expect(extractTime("at most 9 minutes away")).toBeUndefined();
+    expect(extractTime("up to 30 minutes")).toBeUndefined();
+    expect(extractTime("a table for 6")).toBeUndefined();
+  });
+
+  it("does not read a bare number as a time when the question was about money or distance", () => {
+    expect(extractTime("about 10", "distance")).toBeUndefined();
+    expect(extractTime("around 9", "budget")).toBeUndefined();
+    expect(extractTime("5 to 9", "budget")).toBeUndefined();
+    // A time written as a time still counts, whatever was asked.
+    expect(extractTime("oh and I can only do 7pm", "budget")).toEqual(["19:00"]);
+    expect(extractRules("about 10", "distance")).toEqual({ maxTravelMin: 10 });
+  });
+
+  it("takes a bare hour as the time when time was the question", () => {
+    expect(extractRules("7", "time")).toEqual({ availableSlots: ["19:00"] });
+    expect(extractRules("around 12:30", "time")).toEqual({ availableSlots: ["12:00"] });
+    expect(extractRules("7", "budget")).toEqual({ budgetMax: 7 });
   });
 
   it("returns undefined when no time is mentioned", () => {
@@ -102,31 +223,31 @@ describe("extractCuisines", () => {
 
 describe("extractRules (full message)", () => {
   it("pulls several constraints from one casual message", () => {
-    const u = extractRules("Saturday night works, budget around $40 max 40, not too far, no spicy please");
-    expect(u.availableSlots).toEqual(["sat_dinner"]);
+    const u = extractRules("Dinner works, budget around $40 max 40, not too far, no spicy please");
+    expect(u.availableSlots).toEqual(DINNER);
     expect(u.budgetMax).toBe(40);
     expect(u.maxTravelMin).toBe(20);
     expect(u.dietary).toEqual(["no_spicy"]);
   });
 
   it("handles the example from the proposal", () => {
-    const u = extractRules("Saturday night only. Budget 40. Can't handle spicy. Max 20 minutes away");
+    const u = extractRules("After 7 only. Budget 40. Can't handle spicy. Max 20 minutes away");
     expect(u.budgetMax).toBe(40);
     expect(u.dietary).toEqual(["no_spicy"]);
-    expect(u.availableSlots).toEqual(["sat_dinner"]);
+    expect(u.availableSlots).toEqual(from(19));
     expect(u.maxTravelMin).toBe(20);
   });
 });
 
 describe("ruleReply", () => {
   it("asks about the next missing field", () => {
-    expect(ruleReply(emptyConstraints(), { availableSlots: ["sat_dinner"] })).toMatch(/spend/);
+    expect(ruleReply(emptyConstraints(), { availableSlots: ["18:00"] })).toMatch(/spend/);
   });
   it("says it didn't understand when nothing was extracted", () => {
     expect(ruleReply(emptyConstraints(), {})).toMatch(/didn't catch/);
   });
   it("wraps up when everything is known", () => {
-    const c = mergeConstraints(emptyConstraints(), { availableSlots: ["sat_dinner"], budgetMax: 40, maxTravelMin: 20 });
+    const c = mergeConstraints(emptyConstraints(), { availableSlots: ["18:00"], budgetMax: 40, maxTravelMin: 20 });
     expect(ruleReply(c, { dietaryConfirmed: true })).toMatch(/everything I need/);
   });
 });
@@ -200,7 +321,7 @@ describe("bare answers to the pending question", () => {
 
 describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
   const essentials = {
-    availableSlots: ["sat_dinner" as const],
+    availableSlots: ["18:00" as const],
     budgetMax: 40,
     maxTravelMin: 15,
     dietaryConfirmed: true,
@@ -208,7 +329,7 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
   const start = (o: Parameters<typeof mergeConstraints>[1] = {}) => mergeConstraints(emptyConstraints(), o);
 
   it('takes "I don\'t mind" as the answer: no limit, and the next question', () => {
-    const c0 = start({ availableSlots: ["sat_dinner"] });
+    const c0 = start({ availableSlots: ["18:00"] });
     const t1 = ruleTurn("whatever, I don't really care", c0);
     expect(t1.update).toEqual({ budgetNoLimit: true });
     expect(t1.reply).toMatch(/no budget limit/);
@@ -231,7 +352,7 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
     expect(extractBudget("$50 or more")).toEqual({ budgetMin: 50 });
     expect(extractBudget("at least $50, no more than $90")).toEqual({ budgetMin: 50, budgetMax: 90 });
     expect(extractBudget("at least 20 minutes away")).toEqual({});
-    const c = mergeConstraints(start({ availableSlots: ["sat_dinner"] }), { budgetMin: 50 });
+    const c = mergeConstraints(start({ availableSlots: ["18:00"] }), { budgetMin: 50 });
     expect(missingFields(c)).toEqual(["distance", "diet"]);
     expect(describeConstraints(c)).toEqual(
       expect.arrayContaining(["Budget: no limit", "Would rather spend at least $50/person"]),
@@ -248,7 +369,7 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
   });
 
   it("turns an unsure budget into an either/or and reads the answer", () => {
-    const c0 = start({ availableSlots: ["sat_dinner"] });
+    const c0 = start({ availableSlots: ["18:00"] });
     const t1 = ruleTurn("not sure, it depends", c0);
     expect(t1.update).toEqual({ pending: "vague_budget" });
     expect(t1.reply).toMatch(/\$45 a head.*\$25 a head/);
@@ -260,7 +381,7 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
   });
 
   it("an unsure distance answer gets the distance either/or", () => {
-    const c0 = start({ availableSlots: ["sat_dinner"], budgetMax: 40 });
+    const c0 = start({ availableSlots: ["18:00"], budgetMax: 40 });
     const t1 = ruleTurn("not sure honestly", c0);
     expect(t1.update).toEqual({ pending: "vague_distance" });
     const t2 = ruleTurn("the so-so place nearby would be worse", mergeConstraints(c0, t1.update));
@@ -268,7 +389,7 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
   });
 
   it("a concrete number also clears a pending either/or", () => {
-    const c0 = start({ availableSlots: ["sat_dinner"], pending: "vague_budget" });
+    const c0 = start({ availableSlots: ["18:00"], pending: "vague_budget" });
     const t = ruleTurn("ok, 35", c0);
     expect(t.update).toMatchObject({ budgetMax: 35, pending: null });
   });
@@ -338,7 +459,7 @@ describe("ruleTurn: refusing 'whatever' and asking the follow-ups", () => {
 
 describe("answering an either/or by echoing an option", () => {
   const essentials = {
-    availableSlots: ["sat_dinner" as const],
+    availableSlots: ["18:00" as const],
     budgetMax: 40,
     maxTravelMin: 15,
     dietaryConfirmed: true,
@@ -375,10 +496,10 @@ describe("answering an either/or by echoing an option", () => {
   });
 
   it("vague either/ors accept an echo too", () => {
-    const c = mergeConstraints(emptyConstraints(), { availableSlots: ["sat_dinner"], pending: "vague_budget" });
+    const c = mergeConstraints(emptyConstraints(), { availableSlots: ["18:00"], pending: "vague_budget" });
     expect(ruleTurn("the less exciting one", c).update).toMatchObject({ budgetMax: 60, pending: null });
     const d = mergeConstraints(emptyConstraints(), {
-      availableSlots: ["sat_dinner"],
+      availableSlots: ["18:00"],
       budgetMax: 40,
       pending: "vague_distance",
     });

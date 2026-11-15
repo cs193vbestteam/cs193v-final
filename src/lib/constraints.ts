@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { START_TIMES, type StartTime } from "./optimizer-input";
 
 /**
  * The constraint schema for the "plan a meal" scenario.
@@ -6,16 +7,35 @@ import { z } from "zod";
  * and the negotiation engine (reads it via each member's assistant).
  */
 
-export const SLOTS = ["fri_dinner", "sat_lunch", "sat_dinner", "sun_lunch", "sun_dinner"] as const;
-export type Slot = (typeof SLOTS)[number];
+/**
+ * When the meal can start: on the hour, 10:00 to 23:00, on the plan's date (optimizer-input.ts).
+ * The negotiation still calls these "slots"; it treats them as opaque values.
+ */
+export const SLOTS = START_TIMES;
+export type Slot = StartTime;
 
-export const SLOT_LABELS: Record<Slot, string> = {
-  fri_dinner: "Fri dinner",
-  sat_lunch: "Sat lunch",
-  sat_dinner: "Sat dinner",
-  sun_lunch: "Sun lunch",
-  sun_dinner: "Sun dinner",
-};
+/** "19:00" → "7:00 PM". */
+export function clockLabel(time: string): string {
+  const [h, m] = time.split(":").map(Number);
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
+export const SLOT_LABELS = Object.fromEntries(SLOTS.map((s) => [s, clockLabel(s)])) as Record<Slot, string>;
+
+/** A list of start times as people would say it: "6:00 PM to 8:00 PM, 10:00 PM". */
+export function describeSlots(slots: readonly Slot[]): string {
+  if (slots.length === SLOTS.length) return "any time";
+  const sorted = SLOTS.filter((s) => slots.includes(s));
+  const runs: Slot[][] = [];
+  for (const s of sorted) {
+    const last = runs.at(-1);
+    if (last && SLOTS.indexOf(s) === SLOTS.indexOf(last.at(-1)!) + 1) last.push(s);
+    else runs.push([s]);
+  }
+  return runs
+    .map((r) => (r.length === 1 ? clockLabel(r[0]) : `${clockLabel(r[0])} to ${clockLabel(r.at(-1)!)}`))
+    .join(", ");
+}
 
 export const DIETARY = ["no_spicy", "vegetarian", "no_seafood", "halal"] as const;
 export type Dietary = (typeof DIETARY)[number];
@@ -278,7 +298,8 @@ export function missingFields(c: Constraints): MissingField[] {
 /** Human-readable summary, shown ONLY to the owner of these constraints. */
 export function describeConstraints(c: Constraints): string[] {
   const lines: string[] = [];
-  if (c.availableSlots) lines.push(`Free: ${c.availableSlots.map((s) => SLOT_LABELS[s]).join(", ") || "nothing yet"}`);
+  if (c.availableSlots)
+    lines.push(`Free: ${c.availableSlots.length ? describeSlots(c.availableSlots) : "nothing yet"}`);
   if (c.budgetMax !== null)
     lines.push(
       `Budget: up to $${c.budgetMax}/person${c.budgetFlex ? ` (can stretch to $${c.budgetMax + c.budgetFlex})` : ""}`,

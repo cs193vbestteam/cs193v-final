@@ -51,7 +51,7 @@ describe("the meal scenario is the existing behaviour, unchanged", () => {
   });
 
   it("falls back to the seed pool without a location", async () => {
-    expect(await meal.resolvePool(null)).toMatchObject({ source: "seed" });
+    expect(await meal.resolvePool(null, "2026-11-21")).toMatchObject({ source: "seed" });
   });
 
   it("keeps the current constraints when a chat turn changes nothing", async () => {

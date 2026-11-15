@@ -62,7 +62,7 @@ afterEach(() => {
 
 const person = (over: Partial<Constraints>): Constraints => ({
   ...emptyConstraints(),
-  availableSlots: ["sat_dinner", "sun_dinner", "sat_lunch", "sun_lunch", "fri_dinner"],
+  availableSlots: ["18:00", "20:00", "12:00", "13:00", "19:00"],
   budgetMax: 40,
   budgetFlex: 0,
   maxTravelMin: 30,
@@ -72,11 +72,11 @@ const person = (over: Partial<Constraints>): Constraints => ({
 
 describe("the LLM agent's guardrails (guard)", () => {
   const prefs = compile(person({ budgetMax: 20 }));
-  const cheap = RESTAURANTS.find((r) => r.pricePerPerson <= 20 && r.open.includes("sat_dinner"))!;
-  const pricey = RESTAURANTS.find((r) => r.pricePerPerson > 30 && r.open.includes("sat_dinner"))!;
+  const cheap = RESTAURANTS.find((r) => r.pricePerPerson <= 20 && r.open.includes("18:00"))!;
+  const pricey = RESTAURANTS.find((r) => r.pricePerPerson > 30 && r.open.includes("18:00"))!;
   const proposals = [
-    { restaurantId: cheap.id, slot: "sat_dinner" as const },
-    { restaurantId: pricey.id, slot: "sat_dinner" as const },
+    { restaurantId: cheap.id, slot: "18:00" as const },
+    { restaurantId: pricey.id, slot: "18:00" as const },
   ];
   const rs = [cheap, pricey];
 
@@ -258,7 +258,7 @@ describe("a whole negotiation in LLM mode (runNegotiation)", () => {
   }
 
   const ALEX = "Saturday dinner or Sunday lunch, under $47, up to 29 minutes, no restrictions";
-  const BLAKE = "I'm free all weekend, max $53 per person, 33 minutes, I'm allergic to peanuts";
+  const BLAKE = "I'm free all day, max $53 per person, 33 minutes, I'm allergic to peanuts";
   const CASEY = "Sunday lunch or Saturday dinner, under $41, 25 minutes, I can't eat mushrooms";
 
   it("keeps everyone's words out of everyone else's prompt and out of the mediator's", async () => {
@@ -311,7 +311,7 @@ describe("a whole negotiation in LLM mode (runNegotiation)", () => {
     const place = result.proposal ? RESTAURANTS.find((r) => r.id === result.proposal!.restaurantId) : undefined;
     if (place) {
       expect(place.pricePerPerson).toBeLessThanOrEqual(15);
-      expect(result.proposal!.slot).toBe("sat_dinner");
+      expect(["17:00", "18:00", "19:00", "20:00"]).toContain(result.proposal!.slot);
     } else {
       expect(result.status).toBe("no_deal");
     }

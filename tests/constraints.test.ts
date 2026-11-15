@@ -8,9 +8,9 @@ describe("mergeConstraints", () => {
   });
 
   it("replaces availability rather than appending", () => {
-    let c = mergeConstraints(emptyConstraints(), { availableSlots: ["sat_lunch", "sat_dinner"] });
-    c = mergeConstraints(c, { availableSlots: ["sat_dinner"] });
-    expect(c.availableSlots).toEqual(["sat_dinner"]);
+    let c = mergeConstraints(emptyConstraints(), { availableSlots: ["12:00", "18:00"] });
+    c = mergeConstraints(c, { availableSlots: ["18:00"] });
+    expect(c.availableSlots).toEqual(["18:00"]);
   });
 
   it("accumulates dietary needs and confirms diet", () => {
@@ -38,7 +38,7 @@ describe("missingFields", () => {
   });
   it("is empty when everything is answered", () => {
     const c = mergeConstraints(emptyConstraints(), {
-      availableSlots: ["sat_dinner"],
+      availableSlots: ["18:00"],
       budgetMax: 40,
       maxTravelMin: 20,
       dietaryConfirmed: true,

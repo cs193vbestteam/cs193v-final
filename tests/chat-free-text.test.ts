@@ -13,14 +13,14 @@ import { extractBudget, extractDietary, extractPriority, extractRules, ruleTurn 
 /** Everything but the diet question answered, so the next question is "anything you can't eat?". */
 const askingDiet: Constraints = {
   ...emptyConstraints(),
-  availableSlots: ["sat_dinner"],
+  availableSlots: ["18:00"],
   budgetMax: 40,
   maxTravelMin: 20,
 };
 /** Everything but the budget answered. */
 const askingBudget: Constraints = {
   ...emptyConstraints(),
-  availableSlots: ["sat_dinner"],
+  availableSlots: ["18:00"],
 };
 
 describe("A. diet answers in the person's own words", () => {

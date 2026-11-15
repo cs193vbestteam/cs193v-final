@@ -25,7 +25,9 @@ import {
 import { PENDING_QUESTIONS, answerPending, extractRules, extractStart, ruleTurn } from "@/lib/extract-rules";
 import { centroid, haversineKm, travelMinutes, type LatLng } from "@/lib/geo";
 import { toPool, type PlaceResult } from "@/lib/places";
+import { addDays, todayPacific } from "@/lib/plan-date";
 import { summarize } from "@/lib/pool";
+import { openOn, weekdayOf } from "@/lib/opening-hours";
 import { compile } from "@/lib/preferences";
 import { RESTAURANTS, type Restaurant } from "@/lib/restaurants";
 import { MAX_START_KM, START_UNAVAILABLE, canLocate, resolveStart, startNotFound } from "@/lib/start-point";
@@ -37,7 +39,13 @@ const fixture = JSON.parse(readFileSync(path.join(__dirname, "fixtures/places-ne
 const STANFORD: LatLng = { lat: 37.4275, lng: -122.1697 };
 const MOUNTAIN_VIEW: LatLng = { lat: 37.3861, lng: -122.0839 };
 const NEW_YORK: LatLng = { lat: 40.7128, lng: -74.006 };
-const POOL = toPool(fixture.places, STANFORD);
+/** A Saturday, when every place in the fixture is open; the plans below are made for the next one. */
+const SATURDAY = "2026-11-21";
+const nextSaturday = () => {
+  const today = todayPacific();
+  return addDays(today, (6 - weekdayOf(today) + 7) % 7);
+};
+const POOL = toPool(fixture.places, STANFORD).map((r) => openOn(r, SATURDAY));
 
 const json = (body: unknown) =>
   new Response(JSON.stringify(body), { status: 200, headers: { "content-type": "application/json" } });
@@ -60,7 +68,7 @@ function placesFetch(known: Record<string, LatLng>) {
 
 const essentials: Constraints = {
   ...emptyConstraints(),
-  availableSlots: ["sat_dinner"],
+  availableSlots: ["18:00"],
   budgetMax: 60,
   maxTravelMin: 10,
   dietaryConfirmed: true,
@@ -273,7 +281,7 @@ describe("an assistant judges its own person's trip", () => {
   const sushi = POOL.find((r) => r.id === "ChIJ_sushi")!;
   const lookup = (id: string) => POOL.find((r) => r.id === id);
   const prefs = compile(essentials); // at most 10 min, hard limit 20
-  const proposal = { restaurantId: sushi.id, slot: "sat_dinner" as const };
+  const proposal = { restaurantId: sushi.id, slot: "18:00" as const };
 
   it("two people with the same preferences can disagree because they start in different places", () => {
     expect(sushi.travelMin).toBe(3); // from the plan's location
@@ -333,7 +341,7 @@ describe("end to end with a real-places pool", () => {
   it("a member's own start point changes the outcome and never reaches the group", async () => {
     const a = await makeUser("Alice");
     const b = await makeUser("Bob");
-    const event = await createEvent(a.id, "Saturday dinner", "Stanford, CA");
+    const event = await createEvent(a.id, "Saturday dinner", "Stanford, CA", "meal", nextSaturday());
     expect(event.poolSource).toBe("places");
     await joinEvent(event.inviteCode, b.id);
 
@@ -370,7 +378,7 @@ describe("end to end with a real-places pool", () => {
 
   it("tells the person when their start point can't be placed, and keeps the plan's location", async () => {
     const a = await makeUser("Alice");
-    const event = await createEvent(a.id, "Saturday dinner", "Stanford, CA");
+    const event = await createEvent(a.id, "Saturday dinner", "Stanford, CA", "meal", nextSaturday());
     await sendMessage(event.id, a.id, "Saturday dinner only, under $60, max 10 minutes away, no restrictions");
     await sendMessage(event.id, a.id, "no preference"); // the cuisine question
     const { messages, constraints } = await sendMessage(event.id, a.id, "Zzyzx Qwerty");
