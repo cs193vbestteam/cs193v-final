@@ -42,6 +42,7 @@ const state = (
 };
 const out = (update: Record<string, unknown>, extra: Partial<AssistantOutput> = {}): AssistantOutput => ({
   reply: "Noted.",
+  onTopic: true,
   asks: "none",
   update,
   ...extra,
@@ -66,7 +67,11 @@ function stubModel(script: (message: string, call: number) => unknown | Response
     const body = JSON.parse(String(init?.body)) as { messages: { role: string; content: string }[] };
     const message = [...body.messages].reverse().find((m) => m.role === "user")?.content ?? "";
     const answer = script(message, call++);
-    return answer instanceof Response ? answer : Response.json({ content: [{ type: "tool_use", input: answer }] });
+    if (answer instanceof Response) return answer;
+    // These scripts are about on-topic messages; the off-topic path has its own file
+    // (assistant-on-topic.test.ts), which also covers an answer with no onTopic at all.
+    const input = answer !== null && typeof answer === "object" ? { onTopic: true, ...answer } : answer;
+    return Response.json({ content: [{ type: "tool_use", input }] });
   });
   vi.stubGlobal("fetch", fetchMock);
   process.env.ANTHROPIC_API_KEY = "test-key-not-real";

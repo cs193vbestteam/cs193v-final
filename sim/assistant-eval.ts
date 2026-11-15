@@ -1,10 +1,11 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { assistantTurn, type AssistantOutput, type AssistantTurn } from "../src/lib/assistant";
+import { REDIRECT, assistantTurn, type AssistantOutput, type AssistantTurn } from "../src/lib/assistant";
+import { MAX_REPLY_CHARS } from "../src/lib/chat-limits";
 import type { ChatTurn } from "../src/lib/extract";
 import { OPENING_MESSAGE } from "../src/lib/extract-rules";
 import { toLegacyConstraints } from "../src/lib/legacy-adapter";
-import { MemberStateSchema, emptyMemberState, type MemberState } from "../src/lib/member-state";
+import { MemberStateSchema, emptyMemberState, preferencesChanged, type MemberState } from "../src/lib/member-state";
 import { RESTAURANTS, type Restaurant } from "../src/lib/restaurants";
 import type { Case as RuleCase } from "./extract-eval";
 
@@ -43,7 +44,7 @@ export function loadAssistantCases(file = join(process.cwd(), "tests/fixtures/as
 }
 
 /** A fetch that answers each model call with the scripted `model` for the latest user message. */
-export function scriptedFetch(cases: readonly AssistantCase[]): typeof fetch {
+export function scriptedFetch(cases: readonly { turns: { user: string; model: AssistantOutput }[] }[]): typeof fetch {
   const script = new Map(cases.flatMap((c) => c.turns.map((t) => [t.user, t.model] as const)));
   return (async (_url: unknown, init?: { body?: unknown }) => {
     const body = JSON.parse(String(init?.body)) as { messages: { role: string; content: string }[] };
@@ -254,5 +255,159 @@ export function assistantMarkdown(report: AssistantReport): string {
   for (const r of report.results)
     for (const f of r.fields.filter((x) => !x.ok))
       lines.push(`- ${r.id} · ${f.path}: expected ${JSON.stringify(f.expected)}, got ${JSON.stringify(f.got)}`);
+  return lines.join("\n") + "\n";
+}
+
+// ---------------------------------------------------------------------------------------
+// Staying on topic (#84): tests/fixtures/off-topic-cases.json
+// ---------------------------------------------------------------------------------------
+
+export type OffTopicCase = {
+  id: string;
+  category: string;
+  note?: string;
+  user: string;
+  /** refuse: nothing recorded and the fixed redirect shown. answer: handled as a normal turn. */
+  expect: "refuse" | "answer";
+  model: AssistantOutput;
+  expected?: Record<string, unknown>;
+  absent?: string[];
+};
+
+export function loadOffTopicCases(file = join(process.cwd(), "tests/fixtures/off-topic-cases.json")): OffTopicCase[] {
+  return (JSON.parse(readFileSync(file, "utf8")) as { cases: OffTopicCase[] }).cases;
+}
+
+/** The off-topic cases in the shape `scriptedFetch` replays. */
+export const asScript = (cases: readonly OffTopicCase[]) =>
+  cases.map((c) => ({ turns: [{ user: c.user, model: c.model }] }));
+
+/** Room for the sentences code may add after the model's capped text (a place that is not a candidate, a note that cannot be checked, the closing line). */
+const CODE_SENTENCES_ROOM = 500;
+
+export type OffTopicResult = {
+  id: string;
+  category: string;
+  expect: OffTopicCase["expect"];
+  /** Code sent the fixed redirect and used nothing the model returned. */
+  refused: boolean;
+  source: AssistantTurn["source"];
+  ok: boolean;
+  misses: string[];
+  violations: string[];
+  reply: string;
+};
+
+export async function runOffTopicCase(c: OffTopicCase): Promise<OffTopicResult> {
+  const before = emptyMemberState();
+  const history: ChatTurn[] = [
+    { role: "assistant", content: OPENING_MESSAGE },
+    { role: "user", content: c.user },
+  ];
+  const out = await assistantTurn(history, before, RESTAURANTS);
+  const refused = out.offTopic === true;
+  const recorded = preferencesChanged(before, out.state) || out.state.chat.answered.length > 0;
+  const misses: string[] = [];
+  const violations: string[] = [];
+
+  // Whoever answers, these must never happen.
+  if (refused && recorded) violations.push("something was recorded on a refused turn");
+  if (refused && !out.reply.startsWith(REDIRECT)) violations.push("a refused turn did not show the fixed line");
+  if (out.reply.length > MAX_REPLY_CHARS + CODE_SENTENCES_ROOM)
+    violations.push("the reply is longer than the cap allows");
+  if (out.state.chat.turns !== 1) violations.push("the reply was not counted towards the cap");
+
+  if (c.expect === "refuse") {
+    // The rule-based reader cannot refuse by flag; it is safe when it recorded nothing.
+    if (!refused && !(out.source === "rules" && !recorded)) misses.push("was not refused");
+    if (!refused && recorded) misses.push("recorded something from an off-topic message");
+  } else {
+    if (refused) misses.push("was refused although it is about the meal");
+    for (const [path, expected] of Object.entries(c.expected ?? {})) {
+      const got = at(out.state, path);
+      if (!matches(expected, got))
+        misses.push(`${path}: expected ${JSON.stringify(expected)}, got ${JSON.stringify(got)}`);
+    }
+  }
+  for (const path of c.absent ?? []) {
+    const got = at(out.state, path);
+    if (got !== undefined) misses.push(`${path}: expected nothing, got ${JSON.stringify(got)}`);
+  }
+  return {
+    id: c.id,
+    category: c.category,
+    expect: c.expect,
+    refused,
+    source: out.source,
+    ok: misses.length === 0,
+    misses,
+    violations,
+    reply: out.reply,
+  };
+}
+
+export type OffTopicReport = {
+  answeredBy: string;
+  cases: number;
+  /** Messages that must be refused, and how many were. */
+  mustRefuse: number;
+  refused: number;
+  /** Messages about the meal (near misses and mixed), and how many were wrongly refused. */
+  mustAnswer: number;
+  falselyRefused: number;
+  /** Cases where everything expected held, including what had to be stored. */
+  casesCorrect: number;
+  ruleTurns: number;
+  byCategory: Record<string, { cases: number; correct: number }>;
+  violations: { id: string; message: string }[];
+  results: OffTopicResult[];
+};
+
+export async function runOffTopicSuite(answeredBy: string, cases: readonly OffTopicCase[]): Promise<OffTopicReport> {
+  const results: OffTopicResult[] = [];
+  for (const c of cases) results.push(await runOffTopicCase(c));
+  const byCategory: OffTopicReport["byCategory"] = {};
+  for (const r of results) {
+    const entry = (byCategory[r.category] ??= { cases: 0, correct: 0 });
+    entry.cases++;
+    if (r.ok) entry.correct++;
+  }
+  const mustRefuse = results.filter((r) => r.expect === "refuse");
+  const mustAnswer = results.filter((r) => r.expect === "answer");
+  return {
+    answeredBy,
+    cases: results.length,
+    mustRefuse: mustRefuse.length,
+    refused: mustRefuse.filter((r) => r.refused).length,
+    mustAnswer: mustAnswer.length,
+    falselyRefused: mustAnswer.filter((r) => r.refused).length,
+    casesCorrect: results.filter((r) => r.ok).length,
+    ruleTurns: results.filter((r) => r.source === "rules").length,
+    byCategory,
+    violations: results.flatMap((r) => r.violations.map((message) => ({ id: r.id, message }))),
+    results,
+  };
+}
+
+export function offTopicMarkdown(report: OffTopicReport): string {
+  const lines = [
+    `# Staying on topic (${report.answeredBy})`,
+    "",
+    `Refusal rate: ${pct(report.refused, report.mustRefuse)} (${report.refused} of ${report.mustRefuse} off-topic messages refused).`,
+    `False refusal rate: ${pct(report.falselyRefused, report.mustAnswer)} (${report.falselyRefused} of ${report.mustAnswer} messages about the meal refused).`,
+    "",
+    "| category | cases | as expected |",
+    "| --- | ---: | ---: |",
+    ...Object.entries(report.byCategory).map(([category, t]) => `| ${category} | ${t.cases} | ${t.correct} |`),
+    `| **all** | ${report.cases} | ${report.casesCorrect} |`,
+    "",
+    `${report.ruleTurns} answered by the rule-based safety net, ` +
+      `${report.violations.length} violation${report.violations.length === 1 ? "" : "s"}.`,
+    "",
+    ...report.violations.map((v) => `- ${v.id}: ${v.message}`),
+    "Misses (case, what went wrong):",
+    "",
+  ];
+  for (const r of report.results) for (const m of r.misses) lines.push(`- ${r.id} (${r.category}) · ${m}`);
   return lines.join("\n") + "\n";
 }

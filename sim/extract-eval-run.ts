@@ -3,9 +3,13 @@ import { join, resolve } from "node:path";
 import {
   assistantMarkdown,
   loadAssistantCases,
+  loadOffTopicCases,
+  offTopicMarkdown,
   runAssistantSuite,
+  runOffTopicSuite,
   runRuleCasesThroughAssistant,
   type AssistantReport,
+  type OffTopicReport,
 } from "./assistant-eval";
 import { loadCases, rulesExtractor, runSuite, toMarkdown, type ExtractorReport } from "./extract-eval";
 
@@ -21,6 +25,9 @@ import { loadCases, rulesExtractor, runSuite, toMarkdown, type ExtractorReport }
  *      (read from the environment or .env.local); the model comes from ANTHROPIC_MODEL, as in
  *      the app. One call per message: about 90 calls in all. Without a key the flag is noted
  *      and ignored.
+ *   3. STAYING ON TOPIC (#84), also only with --llm: tests/fixtures/off-topic-cases.json, one
+ *      call per case (36 more). Reports how many off-topic messages were refused and how many
+ *      messages about the meal were refused by mistake.
  *
  * Writes report.json and report.md into --out and prints the tables. Exits 1 on any violation.
  */
@@ -36,7 +43,9 @@ function parseArgs(argv: string[]): { llm: boolean; out: string } {
       opts.out = v;
     } else if (a === "--help" || a === "-h") {
       console.log("usage: npm run sim:extract [-- --llm] [--out DIR]");
-      console.log("  --llm   also run the assistant (Claude) on its own cases (needs ANTHROPIC_API_KEY)");
+      console.log(
+        "  --llm   also run the assistant (Claude) on its own cases and the off-topic set (needs ANTHROPIC_API_KEY)",
+      );
       process.exit(0);
     } else throw new Error(`unknown argument ${a}`);
   }
@@ -53,6 +62,7 @@ async function main() {
   let markdown = toMarkdown([rules]);
   let assistant: AssistantReport | null = null;
   let onRuleCases: Awaited<ReturnType<typeof runRuleCasesThroughAssistant>> | null = null;
+  let offTopic: OffTopicReport | null = null;
 
   if (opts.llm && !key) {
     console.log("note: --llm ignored, ANTHROPIC_API_KEY is not set; reporting the rule-based reader only");
@@ -70,7 +80,11 @@ async function main() {
       `${onRuleCases.ruleTurns} turns answered by the safety net.\n\n` +
       onRuleCases.misses.map((m) => `- ${m}`).join("\n") +
       "\n";
-    const fellBack = assistant.ruleTurns + onRuleCases.ruleTurns;
+    const off = loadOffTopicCases();
+    console.log(`Staying on topic: ${off.length} cases`);
+    offTopic = await runOffTopicSuite(model, off);
+    markdown += "\n" + offTopicMarkdown(offTopic);
+    const fellBack = assistant.ruleTurns + onRuleCases.ruleTurns + offTopic.ruleTurns;
     if (fellBack > 0)
       console.log(
         `note: ${fellBack} turns fell back to the rule-based reader, so those numbers are not purely the model's`,
@@ -82,7 +96,7 @@ async function main() {
   writeFileSync(
     join(outDir, "report.json"),
     JSON.stringify(
-      { generatedAt: new Date().toISOString(), rules, assistant, assistantOnRuleCases: onRuleCases },
+      { generatedAt: new Date().toISOString(), rules, assistant, assistantOnRuleCases: onRuleCases, offTopic },
       null,
       2,
     ),
@@ -91,7 +105,7 @@ async function main() {
   console.log(markdown);
   console.log(`wrote ${join(outDir, "report.json")}\n      ${join(outDir, "report.md")}`);
 
-  const violations = rules.violations.length + (assistant?.violations.length ?? 0);
+  const violations = rules.violations.length + (assistant?.violations.length ?? 0) + (offTopic?.violations.length ?? 0);
   if (violations > 0) {
     console.error(`${violations} violation${violations === 1 ? "" : "s"}: see above`);
     process.exit(1);

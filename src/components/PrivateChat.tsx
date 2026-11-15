@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { sendMessageAction, setReadyAction } from "@/app/actions";
+import { MAX_MESSAGE_CHARS, MESSAGE_HINT_FROM } from "@/lib/chat-limits";
 import type { MissingField } from "@/lib/constraints";
 import type { ChatTurn } from "@/lib/extract";
 
@@ -161,14 +162,20 @@ export function PrivateChat({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder='Try: "dinner after 7, around $30, vegetarian"'
-          maxLength={1000}
+          maxLength={MAX_MESSAGE_CHARS}
           aria-label="Message your assistant"
+          aria-describedby={text.length >= MESSAGE_HINT_FROM ? "message-room" : undefined}
           autoComplete="off"
         />
         <button className="btn" disabled={pending || !text.trim()}>
           Send
         </button>
       </form>
+      {text.length >= MESSAGE_HINT_FROM && (
+        <p id="message-room" className="px-4 pb-2 text-xs text-ink-3">
+          {MAX_MESSAGE_CHARS - text.length} characters left. Messages are short on purpose.
+        </p>
+      )}
 
       <div className="border-t border-line bg-paper-2/40 px-5 py-4">
         <div className="eyebrow">What your assistant knows</div>

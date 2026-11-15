@@ -136,7 +136,9 @@ describe("LLM budget per plan", () => {
   function fakeAnthropic() {
     const fetchMock = vi.fn(async () =>
       Response.json({
-        content: [{ type: "tool_use", input: { reply: "Got it, Saturday dinner.", asks: "none", update: {} } }],
+        content: [
+          { type: "tool_use", input: { reply: "Got it, Saturday dinner.", onTopic: true, asks: "none", update: {} } },
+        ],
       }),
     );
     vi.stubGlobal("fetch", fetchMock);

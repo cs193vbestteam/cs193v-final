@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RUBRIC, TOOL, stateBlock } from "./assistant-prompt";
+import { MAX_OUTPUT_TOKENS, MAX_REPLY_CHARS } from "./chat-limits";
 import { CUISINES, missingFields, type Cuisine, type Pending, type MissingField } from "./constraints";
 import { enforceLimits, type ChatTurn } from "./extract";
 import { ruleTurn } from "./extract-rules";
@@ -54,6 +55,8 @@ export type AssistantTurn = {
   /** Whether what the person wants changed, as opposed to only the chat's bookkeeping. */
   changed: boolean;
   source: "llm" | "rules";
+  /** The message was not about this plan: nothing was recorded and the reply is the fixed redirect. */
+  offTopic?: true;
 };
 
 // ---------------------------------------------------------------------------------------
@@ -104,6 +107,9 @@ type Blocks = { [K in BlockName]?: z.infer<(typeof BLOCKS)[K]> };
 
 const ToolOutput = z.object({
   reply: z.string().trim().min(1),
+  // Required: an answer that does not say whether the message was about the plan is not used
+  // at all, and the rule-based reader, which cannot run tasks, takes the turn.
+  onTopic: z.boolean(),
   asks: z.string().optional(),
   dontMind: z.array(z.string()).optional(),
   update: z.record(z.string(), z.unknown()).optional(),
@@ -224,13 +230,12 @@ function fileBareNumber(latest: string, lastAsked: Variable | null, blocks: Bloc
 // ---------------------------------------------------------------------------------------
 
 const QUESTION_END = /[?？]\s*["')\]]*$/;
+// Chinese and Japanese sentences are not separated by spaces.
+const SENTENCE_BREAK = /(?<=[.!?])\s+|(?<=[。！？])\s*/;
 
 /** A reply with its questions taken out, for when the assistant has none left to ask. */
 export function withoutQuestions(reply: string): string {
-  const kept = reply
-    // Chinese and Japanese sentences are not separated by spaces.
-    .split(/(?<=[.!?])\s+|(?<=[。！？])\s*/)
-    .filter((sentence) => sentence.trim() && !QUESTION_END.test(sentence.trim()));
+  const kept = reply.split(SENTENCE_BREAK).filter((sentence) => sentence.trim() && !QUESTION_END.test(sentence.trim()));
   return kept.join(" ").trim() || "Got it.";
 }
 
@@ -269,6 +274,56 @@ function finishTurn(
     },
   };
   return { state, reply: capped ? `${withoutQuestions(reply)} ${closingLine(state)}` : reply };
+}
+
+// ---------------------------------------------------------------------------------------
+// Keeping the assistant to its one job (#84). These are enforced here, not asked of the model:
+// the prompt says the same things, but a prompt is not a safeguard.
+// ---------------------------------------------------------------------------------------
+
+/** Shown in place of the model's text when a reply is too long and has no sentence to cut at. */
+export const REPLY_TOO_LONG = "Got it.";
+
+/**
+ * The model's text, cut to MAX_REPLY_CHARS at a sentence boundary. An assistant that can say at
+ * most a few sentences cannot be used to write an essay, whatever it was talked into.
+ */
+export function capReply(text: string): string {
+  const reply = text.trim();
+  if (reply.length <= MAX_REPLY_CHARS) return reply;
+  let kept = "";
+  for (const sentence of reply.split(SENTENCE_BREAK)) {
+    const next = kept ? `${kept} ${sentence.trim()}` : sentence.trim();
+    if (next.length > MAX_REPLY_CHARS) break;
+    kept = next;
+  }
+  return kept || REPLY_TOO_LONG;
+}
+
+/** What the person sees instead of the model's text when their message was not about the plan. */
+export const REDIRECT = "I can only help with this plan.";
+
+/** The assistant's questions as written by code, for when the model's own words are not used. */
+const QUESTION: Record<Variable, string> = {
+  time: "What time on the day works for you?",
+  budget: "What would you like to spend per person, and what is the most you'd go to? The number stays private.",
+  travel: "How long a trip, one way, would you make?",
+  diet: "Is there anything you can't eat?",
+  cuisine: "What kind of food would you like?",
+};
+
+/**
+ * An off-topic turn. Nothing the model returned is used: not its text, not anything it
+ * recorded. The person gets the fixed redirect and the next question code allows, the reply
+ * counts towards the cap like any other, and what they want is unchanged.
+ */
+function offTopicTurn(state: MemberState): AssistantTurn {
+  const capped = state.chat.turns >= MAX_ASSISTANT_TURNS;
+  const next = capped ? undefined : allowedToAsk(state)[0];
+  // At the cap finishTurn adds the closing line itself.
+  const reply = capped ? REDIRECT : `${REDIRECT} ${next ? QUESTION[next] : closingLine(state)}`;
+  const done = finishTurn(state, state, reply, next ?? null);
+  return { ...done, changed: false, source: "llm", offTopic: true };
 }
 
 const CANNOT_CHECK = /can(?:no|')t (?:be )?check|cannot (?:be )?check|not (?:be )?checked|unable to check/i;
@@ -441,7 +496,8 @@ export function applyAssistantOutput(
   // "I don't mind" settles a question and changes nothing that is already recorded.
   for (const v of output.dontMind ?? []) if (isVariable(v)) answered.add(v);
 
-  let reply = output.reply;
+  // The cap is on the model's own text. The sentences below are written by code and are short.
+  let reply = capReply(output.reply);
   if (unknownCuisines.length)
     reply += ` (I couldn't match ${uniq(unknownCuisines)
       .map((w) => `"${w}"`)
@@ -483,7 +539,7 @@ async function callModel(history: ChatTurn[], state: MemberState, apiKey: string
     headers: { "content-type": "application/json", "x-api-key": apiKey, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model,
-      max_tokens: 512,
+      max_tokens: MAX_OUTPUT_TOKENS,
       system: `${RUBRIC}\n\n${stateBlock(state)}`,
       tools: [TOOL],
       tool_choice: { type: "tool", name: TOOL.name },
@@ -518,6 +574,7 @@ async function modelTurn(
 ): Promise<AssistantTurn> {
   const latest = [...history].reverse().find((t) => t.role === "user")?.content ?? "";
   const output = await callModel(history, state, apiKey);
+  if (!output.onTopic) return offTopicTurn(state);
   const applied = applyAssistantOutput(state, output, pool, latest);
   const placed = await withStart(applied.state, applied.reply, applied.startText, pool);
   const done = finishTurn(state, placed.state, placed.reply, applied.asks);
