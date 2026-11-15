@@ -164,3 +164,16 @@ test("the plan page requires an account", async ({ page }) => {
   await page.goto("/e/doesnotexist");
   await expect(page).toHaveURL(/\/login\?next=/);
 });
+
+test("someone invited who signs up from the header still lands on the plan", async ({ page }) => {
+  const dana = person("Dana", "", []);
+  await page.goto("/e/invitedplan");
+  await expect(page).toHaveURL(/\/login\?next=/);
+  // The header link is the one a newcomer reaches for; it must carry the invite along.
+  await page.getByRole("banner").getByRole("link", { name: "Sign up" }).click();
+  await page.getByLabel("Name your friends will see").fill(dana.name);
+  await page.getByLabel("Email").fill(dana.email);
+  await page.getByLabel("Password").fill(dana.password);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL(/\/e\/invitedplan$/);
+});

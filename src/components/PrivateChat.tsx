@@ -106,7 +106,7 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
       </header>
 
       <div
-        className="scroll-quiet max-h-[26rem] min-h-[16rem] flex-1 space-y-3 overflow-y-auto px-5 py-4 lg:max-h-none"
+        className="scroll-quiet max-h-[26rem] min-h-[16rem] flex-1 space-y-3 overflow-y-auto px-5 py-4 lg:max-h-none lg:min-h-[8rem]"
         aria-live="polite"
       >
         {messages.map((m, i) => (
