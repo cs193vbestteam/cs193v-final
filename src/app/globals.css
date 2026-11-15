@@ -94,7 +94,7 @@ body::before {
 }
 .eyebrow {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--color-ink-3);
@@ -215,15 +215,33 @@ summary:focus-visible {
   border-color: var(--color-ink);
   box-shadow: 0 0 0 4px rgb(22 20 15 / 0.07);
 }
+/* The same ring as every other control, so focus looks the same everywhere. */
 .input:focus-visible {
-  outline: none;
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+/* First stop for the keyboard: jump past the header. Off-screen until focused. */
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -4rem;
+  z-index: 50;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.75rem;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-size: 0.875rem;
+}
+.skip-link:focus {
+  top: 1rem;
 }
 
 .label {
   display: block;
   margin-bottom: 0.4rem;
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-ink-2);
@@ -238,7 +256,7 @@ summary:focus-visible {
   border-radius: 999px;
   border: 1px solid var(--color-line);
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-ink-2);
@@ -277,6 +295,9 @@ summary:focus-visible {
   background-size: 100% 1px;
   background-position: 0 100%;
   background-repeat: no-repeat;
+  /* A text link is at least 24px tall to press (WCAG 2.5.8); the underline stays under the words. */
+  padding-block: 0.25rem;
+  background-origin: content-box;
   transition:
     background-size 0.3s var(--ease-out-expo),
     color 0.2s ease;
@@ -330,7 +351,8 @@ summary:focus-visible {
   }
 }
 .dot-live {
-  animation: pulse-dot 1.8s ease-in-out infinite;
+  /* Two pulses, then still: nothing keeps moving for more than five seconds (WCAG 2.2.2). */
+  animation: pulse-dot 1.8s ease-in-out 2;
 }
 
 @keyframes thinking {
@@ -396,6 +418,9 @@ summary:focus-visible {
 /* ── Hero demo: 20 messages become one line ─────────────────── */
 .demo {
   --cycle: 12s;
+}
+.demo[data-paused="true"] * {
+  animation-play-state: paused;
 }
 .demo-msg {
   opacity: 0;
@@ -535,7 +560,7 @@ summary:focus-visible {
 .btn-attention {
   outline: 2px solid var(--color-seal);
   outline-offset: 2px;
-  animation: attention 1.8s var(--ease-in-out-quart) infinite;
+  animation: attention 1.8s var(--ease-in-out-quart) 2;
 }
 
 /* ── Reduced motion: show the resolved state, skip the theatre ─ */
@@ -571,6 +596,10 @@ summary:focus-visible {
   .demo-count {
     animation: none;
     opacity: 0;
+  }
+  /* Nothing moves, so there is nothing to pause. */
+  .demo-toggle {
+    display: none;
   }
   .dot-live,
   .thinking span,

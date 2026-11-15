@@ -107,7 +107,10 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
 
       <div
         className="scroll-quiet max-h-[26rem] min-h-[16rem] flex-1 space-y-3 overflow-y-auto px-5 py-4 lg:max-h-none lg:min-h-[8rem]"
+        role="log"
+        aria-label="Conversation with your assistant"
         aria-live="polite"
+        tabIndex={0}
       >
         {messages.map((m, i) => (
           <div key={i} className={`bubble-in flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
@@ -153,7 +156,11 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
       <div className="border-t border-line bg-paper-2/40 px-5 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="eyebrow">What your assistant knows</div>
-          <div className="flex shrink-0 items-center gap-1" aria-label={`${progress} of 4 essentials covered`}>
+          <div
+            className="flex shrink-0 items-center gap-1"
+            role="img"
+            aria-label={`${progress} of 4 essentials covered`}
+          >
             {Array.from({ length: 4 }, (_, i) => (
               <span
                 key={i}
@@ -177,7 +184,7 @@ export function PrivateChat({ eventId, inviteCode, initialMessages, initialSumma
         )}
         <div className="mt-4 flex items-center justify-between gap-3">
           <span
-            className={`font-mono text-[0.6875rem] uppercase tracking-wider ${missing.length ? "text-ink-3" : "text-moss"}`}
+            className={`font-mono text-[0.75rem] uppercase tracking-wider ${missing.length ? "text-ink-3" : "text-moss"}`}
           >
             {missing.length ? `Still needs: ${missing.map((m) => MISSING_LABEL[m]).join(", ")}` : "All set ✓"}
           </span>

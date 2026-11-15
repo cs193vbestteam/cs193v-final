@@ -73,16 +73,16 @@ export function PlanOptions({
                 className={`rounded-xl border p-4 ${i === 0 ? "border-moss/30 bg-moss-soft" : "border-line"}`}
               >
                 <div className="flex items-baseline justify-between gap-3">
-                  <div className="font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
+                  <div className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
                     {i === 0 ? "1 · Best fit" : `${i + 1}`}
                   </div>
                   {t.everyoneIn === true && (
-                    <div className="font-mono text-[0.6875rem] uppercase tracking-wider text-moss">
+                    <div className="font-mono text-[0.75rem] uppercase tracking-wider text-moss">
                       Everyone&apos;s in
                     </div>
                   )}
                   {t.everyoneIn === false && (
-                    <div className="font-mono text-[0.6875rem] uppercase tracking-wider text-amber-ink">
+                    <div className="font-mono text-[0.75rem] uppercase tracking-wider text-amber-ink">
                       A stretch for some
                     </div>
                   )}

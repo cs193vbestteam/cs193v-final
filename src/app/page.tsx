@@ -166,7 +166,7 @@ function Landing() {
             <Link href="/login" className="btn-ghost">
               Log in
             </Link>
-            <span className="ml-1 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink-3">
+            <span className="ml-1 font-mono text-[0.75rem] uppercase tracking-[0.14em] text-ink-3">
               free · takes a minute
             </span>
           </div>
@@ -222,19 +222,19 @@ function Landing() {
           delay={0.1}
           className="mt-10 overflow-hidden rounded-[1.5rem] border border-line bg-surface shadow-[var(--shadow-card)]"
         >
-          <div className="hidden border-b border-line font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink-3 sm:grid sm:grid-cols-[6rem_1fr_1fr]">
+          <div className="hidden border-b border-line font-mono text-[0.75rem] uppercase tracking-[0.14em] text-ink-3 sm:grid sm:grid-cols-[6rem_1fr_1fr]">
             <div className="px-5 py-3">Field</div>
             <div className="px-5 py-3">What your assistant knows</div>
             <div className="border-l border-line px-5 py-3">What the group ever sees</div>
           </div>
           {LEDGER.map((row) => (
             <div key={row.label} className="grid border-b border-line last:border-b-0 sm:grid-cols-[6rem_1fr_1fr]">
-              <div className="px-5 pt-4 font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink-3 sm:py-4">
+              <div className="px-5 pt-4 font-mono text-[0.75rem] uppercase tracking-[0.14em] text-ink-3 sm:py-4">
                 {row.label}
               </div>
               <div className="px-5 pb-2 pt-1 text-[0.9375rem] sm:py-4">{row.mine}</div>
               <div className="flex items-center gap-2 px-5 pb-4 pt-1 sm:border-l sm:border-line sm:py-4">
-                <span className="font-mono text-[0.625rem] uppercase tracking-[0.14em] text-ink-3 sm:hidden">
+                <span className="font-mono text-[0.75rem] uppercase tracking-[0.14em] text-ink-3 sm:hidden">
                   group sees
                 </span>
                 <span className="redact" style={{ width: `${row.width * 3.5 + 2}rem` }} />

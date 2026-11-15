@@ -1,3 +1,5 @@
+import { DemoToggle } from "./DemoToggle";
+
 /**
  * The hero's one idea: a three-day group thread collapses into one line.
  * Pure CSS keyframes (see globals.css .demo-*), so it costs nothing to run
@@ -18,9 +20,13 @@ export const DEMO_RESULT = { when: "Sat 7pm", where: "Olive Tree Mezze", cost: "
 
 export function HeroDemo() {
   return (
-    <div className="demo relative mx-auto w-full max-w-md" aria-label="A group chat collapsing into one agreed plan">
+    <div
+      className="demo relative mx-auto w-full max-w-md"
+      role="group"
+      aria-label="A group chat collapsing into one agreed plan"
+    >
       <div className="relative overflow-hidden rounded-[1.5rem] border border-line bg-surface shadow-[var(--shadow-lift)]">
-        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3 font-mono text-[0.6875rem] uppercase tracking-[0.14em]">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3 font-mono text-[0.75rem] uppercase tracking-[0.14em]">
           <span className="whitespace-nowrap text-ink-3">the crew · 4</span>
           <span className="demo-count whitespace-nowrap text-seal-ink">day 3 · nothing yet</span>
         </div>
@@ -31,9 +37,7 @@ export function HeroDemo() {
               className="demo-msg flex items-baseline gap-2.5 text-[0.9375rem] leading-snug"
               style={{ "--i": i } as React.CSSProperties}
             >
-              <span className="w-9 shrink-0 font-mono text-[0.6875rem] uppercase tracking-wider text-ink-3">
-                {m.who}
-              </span>
+              <span className="w-9 shrink-0 font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">{m.who}</span>
               <span
                 className={m.link ? "truncate text-ink-3 underline decoration-line underline-offset-2" : "text-ink"}
               >
@@ -46,21 +50,24 @@ export function HeroDemo() {
         {/* The one line everyone actually needed */}
         <div className="demo-result pointer-events-none absolute inset-x-5 top-1/2 -translate-y-1/2">
           <div className="relative rounded-2xl border border-ink bg-ink px-5 py-4 text-paper shadow-[var(--shadow-lift)]">
-            <div className="font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-paper/60">
+            <div className="font-mono text-[0.75rem] uppercase tracking-[0.14em] text-paper/60">
               settle · to the group
             </div>
             <div className="mt-1.5 font-serif text-2xl leading-tight">
               {DEMO_RESULT.when} · {DEMO_RESULT.where}
             </div>
             <div className="mt-1 text-sm text-paper/75">{DEMO_RESULT.cost} · 11 min away · mediterranean</div>
-            <div className="demo-seal absolute -right-2 -top-4 rounded-md border-2 border-seal px-2 py-0.5 font-mono text-[0.625rem] font-medium uppercase tracking-[0.18em] text-seal-ink bg-paper">
+            <div className="demo-seal absolute -right-2 -top-4 rounded-md border-2 border-seal px-2 py-0.5 font-mono text-[0.75rem] font-medium uppercase tracking-[0.18em] text-seal-ink bg-paper">
               everyone&apos;s in
             </div>
           </div>
         </div>
       </div>
-      <p className="mt-3 text-center font-mono text-[0.6875rem] uppercase tracking-[0.14em] text-ink-3">
+      <p className="mt-3 text-center font-mono text-[0.75rem] uppercase tracking-[0.14em] text-ink-3">
         8 messages → 1 line. nobody said a number out loud.
+      </p>
+      <p className="demo-toggle mt-1 text-center">
+        <DemoToggle />
       </p>
     </div>
   );
