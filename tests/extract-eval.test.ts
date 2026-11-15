@@ -180,7 +180,7 @@ describe("the rule-based extractor on the suite", () => {
     const b = await runSuite("rules", cases, rulesExtractor);
     expect(a).toEqual(b);
     const md = toMarkdown([a]);
-    expect(md).toContain("| clear answers | 14 |");
+    expect(md).toContain("| clear answers | 15 |");
     expect(md).toContain("**all except adversarial**");
     expect(md).toContain("0 violations");
   });
