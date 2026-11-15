@@ -1,0 +1,662 @@
+{
+  "plan": {
+    "date": "2026-11-21",
+    "startTimes": [
+      "10:00",
+      "11:00",
+      "12:00",
+      "13:00",
+      "14:00",
+      "15:00",
+      "16:00",
+      "17:00",
+      "18:00",
+      "19:00",
+      "20:00",
+      "21:00",
+      "22:00",
+      "23:00"
+    ],
+    "anchor": {
+      "label": "Stanford campus",
+      "lat": 37.4275,
+      "lng": -122.1697
+    }
+  },
+  "people": [
+    {
+      "id": "p1",
+      "prefs": {
+        "version": 1,
+        "time": {
+          "preferred": [
+            {
+              "from": "18:00",
+              "to": "19:00"
+            }
+          ],
+          "strength": "mild"
+        },
+        "budget": {
+          "ideal": 30,
+          "max": 45,
+          "strength": "must"
+        },
+        "travel": {
+          "idealMin": 10,
+          "maxMin": 20,
+          "strength": "mild"
+        },
+        "dietary": [],
+        "cuisine": {
+          "scores": {
+            "japanese_restaurant": 1,
+            "ramen_restaurant": 1,
+            "korean_restaurant": 0.5
+          },
+          "strength": "strong"
+        },
+        "priority": [
+          "budget",
+          "cuisine"
+        ]
+      }
+    },
+    {
+      "id": "p2",
+      "prefs": {
+        "version": 1,
+        "time": {
+          "unavailable": [
+            {
+              "from": "10:00",
+              "to": "17:00"
+            }
+          ],
+          "strength": "must"
+        },
+        "dietary": [
+          "vegetarian"
+        ],
+        "cuisine": {
+          "scores": {
+            "indian_restaurant": 1
+          },
+          "excluded": [
+            "seafood_restaurant"
+          ],
+          "strength": "mild"
+        },
+        "notes": [
+          {
+            "type": "allergy",
+            "text": "peanuts"
+          }
+        ]
+      }
+    },
+    {
+      "id": "p3",
+      "prefs": {
+        "version": 1,
+        "time": {
+          "unavailable": [
+            {
+              "from": "20:00",
+              "to": "23:00"
+            }
+          ],
+          "strength": "must"
+        },
+        "budget": {
+          "ideal": 60,
+          "strength": "mild"
+        },
+        "travel": {
+          "maxMin": 15,
+          "strength": "must"
+        },
+        "dietary": [
+          "halal"
+        ],
+        "style": {
+          "excluded": [
+            "fast_food"
+          ],
+          "strength": "mild"
+        },
+        "wantedRestaurants": [
+          {
+            "name": "Sakura Table",
+            "id": "sakura-table"
+          }
+        ]
+      }
+    },
+    {
+      "id": "p4",
+      "prefs": {
+        "version": 1,
+        "dietary": []
+      }
+    }
+  ],
+  "candidates": [
+    {
+      "id": "sakura-table",
+      "name": "Sakura Table",
+      "types": [
+        "japanese_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 45,
+        "high": 45
+      },
+      "servesVegetarian": false,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 10,
+        "p2": 10,
+        "p3": 10,
+        "p4": 10
+      }
+    },
+    {
+      "id": "noodle-lab",
+      "name": "Noodle Lab",
+      "types": [
+        "japanese_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 22,
+        "high": 22
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 8,
+        "p2": 8,
+        "p3": 8,
+        "p4": 8
+      }
+    },
+    {
+      "id": "red-lantern",
+      "name": "Red Lantern Hotpot",
+      "types": [
+        "chinese_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 38,
+        "high": 38
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00"
+      ],
+      "travelMin": {
+        "p1": 18,
+        "p2": 18,
+        "p3": 18,
+        "p4": 18
+      }
+    },
+    {
+      "id": "jade-garden",
+      "name": "Jade Garden Dim Sum",
+      "types": [
+        "chinese_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 28,
+        "high": 28
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "10:00",
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "15:00"
+      ],
+      "travelMin": {
+        "p1": 15,
+        "p2": 15,
+        "p3": 15,
+        "p4": 15
+      }
+    },
+    {
+      "id": "seoul-grill",
+      "name": "Seoul Grill House",
+      "types": [
+        "korean_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 42,
+        "high": 42
+      },
+      "servesVegetarian": false,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 20,
+        "p2": 20,
+        "p3": 20,
+        "p4": 20
+      }
+    },
+    {
+      "id": "bibim-bowl",
+      "name": "Bibim Bowl",
+      "types": [
+        "korean_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 18,
+        "high": 18
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "lemongrass",
+      "name": "Lemongrass Kitchen",
+      "types": [
+        "thai_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 26,
+        "high": 26
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 12,
+        "p2": 12,
+        "p3": 12,
+        "p4": 12
+      }
+    },
+    {
+      "id": "pho-corner",
+      "name": "Pho Corner",
+      "types": [
+        "vietnamese_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 17,
+        "high": 17
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 9,
+        "p2": 9,
+        "p3": 9,
+        "p4": 9
+      }
+    },
+    {
+      "id": "saffron",
+      "name": "Saffron & Spice",
+      "types": [
+        "indian_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 30,
+        "high": 30
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 14,
+        "p2": 14,
+        "p3": 14,
+        "p4": 14
+      }
+    },
+    {
+      "id": "taqueria-sol",
+      "name": "Taqueria Sol",
+      "types": [
+        "mexican_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 15,
+        "high": 15
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 5,
+        "p2": 5,
+        "p3": 5,
+        "p4": 5
+      }
+    },
+    {
+      "id": "trattoria-luce",
+      "name": "Trattoria Luce",
+      "types": [
+        "italian_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 55,
+        "high": 55
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00"
+      ],
+      "travelMin": {
+        "p1": 22,
+        "p2": 22,
+        "p3": 22,
+        "p4": 22
+      }
+    },
+    {
+      "id": "slice-society",
+      "name": "Slice Society",
+      "types": [
+        "italian_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 20,
+        "high": 20
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 7,
+        "p2": 7,
+        "p3": 7,
+        "p4": 7
+      }
+    },
+    {
+      "id": "patty-shack",
+      "name": "Patty Shack",
+      "types": [
+        "american_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 19,
+        "high": 19
+      },
+      "servesVegetarian": false,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 6,
+        "p2": 6,
+        "p3": 6,
+        "p4": 6
+      }
+    },
+    {
+      "id": "harbor-oyster",
+      "name": "Harbor Oyster Bar",
+      "types": [
+        "american_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 60,
+        "high": 60
+      },
+      "servesVegetarian": false,
+      "openAt": [
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00",
+        "22:00"
+      ],
+      "travelMin": {
+        "p1": 30,
+        "p2": 30,
+        "p3": 30,
+        "p4": 30
+      }
+    },
+    {
+      "id": "olive-tree",
+      "name": "Olive Tree Mezze",
+      "types": [
+        "mediterranean_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 27,
+        "high": 27
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 11,
+        "p2": 11,
+        "p3": 11,
+        "p4": 11
+      }
+    },
+    {
+      "id": "kebab-house",
+      "name": "Anatolia Kebab House",
+      "types": [
+        "mediterranean_restaurant",
+        "restaurant"
+      ],
+      "style": [
+        "casual"
+      ],
+      "price": {
+        "low": 24,
+        "high": 24
+      },
+      "servesVegetarian": true,
+      "openAt": [
+        "11:00",
+        "12:00",
+        "13:00",
+        "14:00",
+        "17:00",
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+      ],
+      "travelMin": {
+        "p1": 16,
+        "p2": 16,
+        "p3": 16,
+        "p4": 16
+      }
+    }
+  ]
+}

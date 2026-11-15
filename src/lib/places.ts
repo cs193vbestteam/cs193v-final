@@ -32,6 +32,8 @@ export type PlaceResult = {
   primaryType?: string;
   types?: string[];
   priceLevel?: string;
+  /** Whole dollars as strings, the way Google sends money. `endPrice` is missing for "$100 and up". */
+  priceRange?: { startPrice?: { units?: string }; endPrice?: { units?: string } };
   location?: { latitude: number; longitude: number };
   servesVegetarianFood?: boolean;
   rating?: number;
@@ -54,6 +56,7 @@ export const PLACE_FIELDS = [
   "places.primaryType",
   "places.types",
   "places.priceLevel",
+  "places.priceRange",
   "places.location",
   "places.servesVegetarianFood",
   "places.regularOpeningHours",
@@ -80,6 +83,25 @@ export const PRICE_BY_LEVEL: Record<string, number> = {
   PRICE_LEVEL_VERY_EXPENSIVE: 90,
 };
 export const DEFAULT_PRICE = 30;
+
+/** Dollars per person each Google price level stands for, when Google gives a level but no range. */
+export const PRICE_RANGE_BY_LEVEL: Record<string, { low: number; high: number }> = {
+  PRICE_LEVEL_FREE: { low: 0, high: 10 },
+  PRICE_LEVEL_INEXPENSIVE: { low: 0, high: 20 },
+  PRICE_LEVEL_MODERATE: { low: 20, high: 40 },
+  PRICE_LEVEL_EXPENSIVE: { low: 40, high: 70 },
+  PRICE_LEVEL_VERY_EXPENSIVE: { low: 70, high: 120 },
+};
+
+/** What a meal costs per person: Google's own range, else its price level, else null (unknown). */
+export function priceOf(p: Pick<PlaceResult, "priceRange" | "priceLevel">): { low: number; high: number } | null {
+  const low = Number(p.priceRange?.startPrice?.units);
+  if (p.priceRange?.startPrice?.units !== undefined && Number.isFinite(low) && low >= 0) {
+    const high = Number(p.priceRange.endPrice?.units);
+    return { low, high: Number.isFinite(high) && high >= low ? high : low };
+  }
+  return PRICE_RANGE_BY_LEVEL[p.priceLevel ?? ""] ?? null;
+}
 
 /** Nearby Search (New) returns at most this many places per call and cannot page. */
 export const NEARBY_PAGE_SIZE = 20;
@@ -152,10 +174,12 @@ export function toRestaurant(p: PlaceResult, center: LatLng): Restaurant | null 
     types: primaryType && !placeTypes.includes(primaryType) ? [primaryType, ...placeTypes] : placeTypes,
     style: stylesOf(placeTypes, primaryType),
     pricePerPerson: PRICE_BY_LEVEL[p.priceLevel ?? ""] ?? DEFAULT_PRICE,
+    price: priceOf(p),
     travelMin: travelMinutes(center, location),
     location,
     spicy: /thai|indian|sichuan|hot_pot|korean|hot pot/.test(joined),
     vegetarianFriendly: p.servesVegetarianFood === true || /vegetarian|vegan/.test(joined),
+    servesVegetarian: p.servesVegetarianFood ?? null,
     seafoodHeavy: /seafood|sushi|fish|oyster|crab/.test(joined),
     halal: /halal/.test(joined),
     // Filled in for the plan's date once the pool is gathered (openOn in opening-hours.ts).
