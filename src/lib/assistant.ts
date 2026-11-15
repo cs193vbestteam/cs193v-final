@@ -137,7 +137,13 @@ const ToolOutput = z.object({
   // at all, and the rule-based reader, which cannot run tasks, takes the turn.
   onTopic: z.boolean(),
   asks: z.string().optional(),
-  dontMind: z.array(z.string()).optional(),
+  // The same slip as `update` below: a list sent as a string, or one name sent bare.
+  dontMind: z
+    .preprocess((v) => {
+      const x = unwrapJson(v);
+      return typeof x === "string" ? [x] : x;
+    }, z.array(z.string()))
+    .optional(),
   // Now and then the model sends the whole update as a JSON string instead of an object.
   // That is the same answer in a different wrapper, so it is unwrapped, not thrown away.
   update: z.preprocess(unwrapJson, z.record(z.string(), z.unknown())).optional(),
