@@ -31,6 +31,17 @@ Where Settle stands, how that compares with our plan, what is in the way, and wh
 - **A fallback can be worse than a failure.** When a call to Claude failed, the code assistant answered, and it cannot read notes like "allergic to peanuts". One failed call could turn "no plan" into "everyone's in". Found in review and fixed before merging.
 - **The rule-based extractor only understands English:** 30% of fields right in other languages.
 
+### Since Checkpoint 1: frontend requirements 1–3
+
+**What we built.**
+
+- We tested the main flows with real Claude and Google Places. Plans took about 5–10 seconds, and groups with no matching options got a clear message. Each person's chat stayed private.
+- We fixed bugs where Claude missed "no restrictions," showed internal names, or made sample restaurants look real. We also fixed lost invites during signup and chat overflow on phones. These fixes are merged in PRs #92, #94, and #95.
+- We checked 17 screens on desktop and mobile. Added clearer labels, keyboard navigation, focus rings, and better text contrast. These changes are merged in PR #96.
+- We added automatic planning when everyone finishes and a message for inviting or reminding the group. This is merged in PR #93.
+
+**What we learned.** Testing with the real model caught bugs that fake-model tests missed. We also learned that a prompt fix can affect other results: one eval dropped from 160/165 to 159/165. We still need to rerun it to see if that was just normal variation.
+
 ## Changes from our proposal
 
 We did not keep the Week 8 goals in the repository, so this uses the fifteen issues we opened at the start as the record of our plan.
