@@ -119,7 +119,7 @@ export function PrivateChat({
         <span className="pill shrink-0">
           <LockIcon />
           <span className="sm:hidden">private</span>
-          <span className="hidden sm:inline">only you can see this</span>
+          <span className="hidden sm:inline">hidden from your group</span>
         </span>
       </header>
 
