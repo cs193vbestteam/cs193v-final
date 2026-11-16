@@ -136,7 +136,7 @@
     {
       "id": "strength-mild-01",
       "about": "strength levels",
-      "note": "Lunch or dinner are the only times; dinner is a mild preference among them. Meal hours come from code.",
+      "note": "Saying two meals work rules nothing out; dinner is a mild wish. Meal hours come from code.",
       "turns": [
         {
           "user": "Lunch or dinner both work for me, dinner would be a bit nicer",
@@ -146,14 +146,6 @@
             "asks": "diet",
             "update": {
               "time": {
-                "only": [
-                  {
-                    "meal": "lunch"
-                  },
-                  {
-                    "meal": "dinner"
-                  }
-                ],
                 "preferred": [
                   {
                     "meal": "dinner"
@@ -166,30 +158,17 @@
         }
       ],
       "expected": {
-        "prefs.time": {
-          "unavailable": [
-            {
-              "from": "10:00",
-              "to": "10:00"
-            },
-            {
-              "from": "14:00",
-              "to": "16:00"
-            },
-            {
-              "from": "21:00",
-              "to": "23:00"
-            }
-          ],
-          "preferred": [
-            {
-              "from": "17:00",
-              "to": "20:00"
-            }
-          ],
-          "strength": "mild"
-        }
-      }
+        "prefs.time.preferred": [
+          {
+            "from": "17:00",
+            "to": "20:00"
+          }
+        ],
+        "prefs.time.strength": "mild"
+      },
+      "absent": [
+        "prefs.time.unavailable"
+      ]
     },
     {
       "id": "dont-mind-01",
@@ -752,7 +731,7 @@
         {
           "user": "Somewhere nice: at least $50 per person",
           "model": {
-            "reply": "Somewhere nice, around $50 a person or more. That number stays private. What time works for you?",
+            "reply": "Somewhere nice, around $50 a person or more. What time works for you?",
             "onTopic": true,
             "asks": "time",
             "update": {
@@ -788,6 +767,88 @@
       "expected": {},
       "absent": [
         "prefs.dietary"
+      ]
+    },
+    {
+      "id": "works-best-01",
+      "about": "hard versus soft",
+      "note": "Saying a time works best is a wish; the other times are not ruled out.",
+      "turns": [
+        {
+          "user": "Dinner works best for me",
+          "model": {
+            "reply": "Dinner if possible, got it. Is there anything you cannot eat?",
+            "onTopic": true,
+            "asks": "diet",
+            "update": {
+              "time": {
+                "preferred": [
+                  {
+                    "meal": "dinner"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.time.preferred": [
+          {
+            "from": "17:00",
+            "to": "20:00"
+          }
+        ]
+      },
+      "absent": [
+        "prefs.time.unavailable"
+      ]
+    },
+    {
+      "id": "untouched-01",
+      "about": "a field the message is not about",
+      "note": "An allergy says nothing about budget: the budget and how much it matters stay as they were.",
+      "turns": [
+        {
+          "user": "Around $50 a person",
+          "model": {
+            "reply": "Around $50 a person, noted. Is there anything you cannot eat?",
+            "onTopic": true,
+            "asks": "diet",
+            "update": {
+              "budget": {
+                "ideal": 50
+              }
+            }
+          }
+        },
+        {
+          "user": "I'm allergic to shellfish",
+          "model": {
+            "reply": "A shellfish allergy, noted. What time works for you?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "notes": [
+                {
+                  "type": "allergy",
+                  "text": "shellfish"
+                }
+              ],
+              "saidWhatTheyCannotEat": true
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.budget.ideal": 50,
+        "prefs.budget.strength": "mild",
+        "prefs.notes": {
+          "$includes": "shellfish"
+        }
+      },
+      "absent": [
+        "prefs.budget.max"
       ]
     }
   ]

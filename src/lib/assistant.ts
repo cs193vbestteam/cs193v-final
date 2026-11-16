@@ -361,7 +361,15 @@ function finishTurn(
       turns: before.chat.turns + 1,
     },
   };
-  return { state, reply: capped ? `${withoutQuestions(reply)} ${closingLine(state)}` : reply };
+  if (capped) return { state, reply: `${withoutQuestions(reply)} ${closingLine(state)}` };
+  // Said by code, and only with a question about money: a model left to say it says it everywhere.
+  const privately =
+    asked === "budget" && !PRIVATE_ALREADY.test(reply)
+      ? /[\u3400-\u9fff]/.test(reply)
+        ? PRIVATE_NUMBER_ZH
+        : PRIVATE_NUMBER
+      : "";
+  return { state, reply: reply + privately };
 }
 
 // ---------------------------------------------------------------------------------------
@@ -414,6 +422,10 @@ function offTopicTurn(state: MemberState): AssistantTurn {
   return { ...done, changed: false, source: "llm", offTopic: true };
 }
 
+/** Added to a reply that asks about budget, in the one other language the code can tell apart. */
+export const PRIVATE_NUMBER = " (Your number stays private.)";
+export const PRIVATE_NUMBER_ZH = "（这个数字只有你自己能看到。）";
+const PRIVATE_ALREADY = /stays? private|is private|只有你|保密/i;
 const CANNOT_CHECK = /can(?:no|')t (?:be )?check|cannot (?:be )?check|not (?:be )?checked|unable to check/i;
 
 /**
@@ -650,7 +662,10 @@ async function callModel(history: ChatTurn[], state: MemberState, apiKey: string
       max_tokens: MAX_OUTPUT_TOKENS,
       system: `${RUBRIC}\n\n${stateBlock(state)}`,
       tools: [TOOL],
-      tool_choice: { type: "tool", name: TOOL.name },
+      // Forcing the tool is the most reliable way to get structured output, but not every model
+      // accepts it (claude-sonnet-5-5 answers 400). ANTHROPIC_TOOL_CHOICE=auto leaves the choice
+      // to the model; the prompt still tells it to always call the tool.
+      tool_choice: process.env.ANTHROPIC_TOOL_CHOICE === "auto" ? { type: "auto" } : { type: "tool", name: TOOL.name },
       messages,
     }),
     signal: AbortSignal.timeout(15_000),
