@@ -111,6 +111,9 @@ export type AssistantCaseResult = {
 const realModel = () => process.env.SETTLE_EVAL_REAL_MODEL === "1";
 const checked = (path: string) => !(realModel() && path.startsWith("chat."));
 
+const PRIVACY_LINE = /\b(?:number|amount|budget)s? (?:stays?|is|are|will stay|will be) private\b/i;
+const SHARED_NOTE = /(?:saved|noted|shared|kept) (?:that |it |this )?(?:for|with) (?:your|the) group/i;
+
 const asPool = (c: AssistantCase): Restaurant[] =>
   c.pool ? c.pool.map((p) => ({ ...RESTAURANTS[0], id: p.id, name: p.name })) : RESTAURANTS;
 
@@ -132,6 +135,10 @@ export async function runAssistantCase(c: AssistantCase): Promise<AssistantCaseR
     history.push({ role: "assistant", content: out.reply });
     if (!out.reply.trim()) violations.push("an empty reply");
     if (state.chat.turns !== before.chat.turns + 1) violations.push("a reply was not counted");
+    // "Your number stays private" belongs to a question about money and nowhere else.
+    if (PRIVACY_LINE.test(out.reply) && state.chat.lastAsked !== "budget")
+      violations.push("mentioned the private number in a reply that did not ask about budget");
+    if (SHARED_NOTE.test(out.reply)) violations.push("said a note is saved for or shared with the group");
     const again = state.chat.lastAsked;
     if (again && before.chat.asked.includes(again) && again !== "time" && again !== "diet")
       violations.push(`asked about ${again} a second time`);

@@ -31,7 +31,14 @@ import {
 } from "@/lib/optimizer-input";
 import { RESTAURANTS } from "@/lib/restaurants";
 import { START_UNAVAILABLE } from "@/lib/start-point";
-import { loadAssistantCases, matches, runAssistantCase, runAssistantSuite, scriptedFetch } from "../sim/assistant-eval";
+import {
+  loadAssistantCases,
+  matches,
+  runAssistantCase,
+  runAssistantSuite,
+  scriptedFetch,
+  type AssistantCase,
+} from "../sim/assistant-eval";
 
 /**
  * The private assistant (#83): what code does with a model's answer, and how code, not the
@@ -900,6 +907,28 @@ describe("when the model's answer is unusable, the safety net takes the turn", (
   });
 });
 
+describe("the line about the private number", () => {
+  const ask = (asks: string, reply: string) => {
+    stubModel(() => ({ reply, asks, update: {} }));
+    return assistantTurn([{ role: "user", content: "not too expensive" }], emptyMemberState(), RESTAURANTS);
+  };
+
+  it("is added by code to a question about budget, once, in English or Chinese", async () => {
+    expect((await ask("budget", "What would you be comfortable spending?")).reply).toBe(
+      "What would you be comfortable spending? (Your number stays private.)",
+    );
+    expect((await ask("budget", "你大概想花多少？")).reply).toBe("你大概想花多少？（这个数字只有你自己能看到。）");
+    expect((await ask("budget", "How much? Your number stays private.")).reply).toBe(
+      "How much? Your number stays private.",
+    );
+  });
+
+  it("is not added to a question about anything else", async () => {
+    expect((await ask("diet", "Is there anything you cannot eat?")).reply).toBe("Is there anything you cannot eat?");
+    expect((await ask("none", "Got it.")).reply).toBe("Got it.");
+  });
+});
+
 describe("an update the model wrapped in a string", () => {
   it("is unwrapped and used, not handed to the rule-based reader", async () => {
     stubModel(() => ({
@@ -997,6 +1026,45 @@ describe("the assistant's own cases (tests/fixtures/assistant-cases.json)", () =
     vi.unstubAllGlobals();
     delete process.env.ANTHROPIC_API_KEY;
     expect((await runAssistantCase(one)).sources).toEqual(["rules"]);
+  });
+
+  it("flags a reply that mentions the private number without asking about money, or shares a note", async () => {
+    const bad: AssistantCase = {
+      id: "privacy-line",
+      about: "test",
+      turns: [
+        {
+          user: "Dinner works for me",
+          model: {
+            reply: "Dinner, got it. Is there anything you cannot eat? Your number stays private.",
+            onTopic: true,
+            asks: "diet",
+            update: {},
+          },
+        },
+        {
+          user: "I'm allergic to shellfish",
+          model: { reply: "Noted, I've saved that for your group.", onTopic: true, asks: "none", update: {} },
+        },
+        {
+          user: "not too expensive",
+          model: {
+            reply: "What would you be comfortable spending? That amount stays private.",
+            onTopic: true,
+            asks: "budget",
+            update: {},
+          },
+        },
+      ],
+      expected: {},
+    };
+    vi.stubGlobal("fetch", scriptedFetch([bad]));
+    process.env.ANTHROPIC_API_KEY = "test-key-not-real";
+    const r = await runAssistantCase(bad);
+    expect(r.violations).toEqual([
+      "mentioned the private number in a reply that did not ask about budget",
+      "said a note is saved for or shared with the group",
+    ]);
   });
 
   it("compares loosely where a model may legitimately vary, and strictly otherwise", () => {
