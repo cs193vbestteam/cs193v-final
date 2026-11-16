@@ -39,6 +39,8 @@ export type EventSummary = {
   date: string | null;
   poolSource: PoolSource;
   poolSize: number;
+  /** How many people the creator lets into the plan, themselves included. */
+  maxMembers: number;
 };
 export type Member = { userId: string; displayName: string; ready: boolean };
 /**
@@ -123,10 +125,35 @@ export const MessageSchema = z
     `That message is too long for me (${MAX_MESSAGE_CHARS} characters at most). Could you say it more briefly?`,
   );
 
+/**
+ * How many people a plan takes. The creator picks the number when they start the plan and can
+ * change it later; MAX_PLAN_SIZE is the most anyone can pick, so one forwarded link cannot fill a
+ * plan with hundreds of accounts (#119).
+ */
+export const MIN_PLAN_SIZE = 2;
+export const MAX_PLAN_SIZE = 20;
+export const DEFAULT_PLAN_SIZE = 12;
+export const PlanSizeSchema = z.coerce
+  .number({ message: "Choose how many people can join" })
+  .int("Choose a whole number of people")
+  .min(MIN_PLAN_SIZE, `A plan needs room for at least ${MIN_PLAN_SIZE} people`)
+  .max(MAX_PLAN_SIZE, `A plan can have ${MAX_PLAN_SIZE} people at most`);
+
 const INVITE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"; // no look-alikes (l/1, o/0)
-function newInviteCode(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(8));
-  return Array.from(bytes, (b) => INVITE_ALPHABET[b % INVITE_ALPHABET.length]).join("");
+const INVITE_LENGTH = 8;
+/**
+ * A byte has 256 values and the alphabet 31 letters, so `byte % 31` would pick the first eight
+ * letters slightly more often. Bytes past the last whole multiple of 31 are thrown away instead.
+ */
+export function newInviteCode(random: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n))) {
+  const usable = 256 - (256 % INVITE_ALPHABET.length);
+  let code = "";
+  while (code.length < INVITE_LENGTH) {
+    for (const b of random(INVITE_LENGTH * 2)) {
+      if (b < usable && code.length < INVITE_LENGTH) code += INVITE_ALPHABET[b % INVITE_ALPHABET.length];
+    }
+  }
+  return code;
 }
 
 /** A plan's shared fields are encrypted with that plan's own keys. */
@@ -149,18 +176,39 @@ function rowToEvent(row: Record<string, unknown>): EventSummary {
     date: row.event_date ? decryptOrPlain(String(row.event_date), scope.plan(id, "date")) : null,
     poolSource: pool?.length ? ((row.pool_source as PoolSource) ?? "places") : "seed",
     poolSize: pool?.length ?? scenarioFor(scenario).seedPool.length,
+    maxMembers: Number(row.max_members ?? DEFAULT_PLAN_SIZE),
   };
 }
 
-async function addMember(event: Pick<EventSummary, "id" | "scenario">, userId: string) {
+/**
+ * Adds someone to a plan unless it is full. Someone already in it is left as they are. The
+ * count and the insert are one statement, so two people taking the last place cannot both get it.
+ */
+async function addMember(event: Pick<EventSummary, "id" | "scenario" | "maxMembers">, userId: string) {
   const eventId = event.id;
   const scenario = scenarioFor(event.scenario);
   const client = await db();
   const now = Date.now();
-  await client.execute({
-    sql: "INSERT INTO members (event_id, user_id, constraints_enc, ready, joined_at) VALUES (?, ?, ?, 0, ?) ON CONFLICT DO NOTHING",
-    args: [eventId, userId, encryptJson(scenario.emptyConstraints(), scope.constraints(eventId, userId)), now],
-  });
+  if (!(await isMember(eventId, userId))) {
+    await client.execute({
+      sql: `INSERT INTO members (event_id, user_id, constraints_enc, ready, joined_at)
+            SELECT ?, ?, ?, 0, ? WHERE (SELECT COUNT(*) FROM members WHERE event_id = ?) < ?
+            ON CONFLICT DO NOTHING`,
+      args: [
+        eventId,
+        userId,
+        encryptJson(scenario.emptyConstraints(), scope.constraints(eventId, userId)),
+        now,
+        eventId,
+        event.maxMembers,
+      ],
+    });
+    if (!(await isMember(eventId, userId))) {
+      throw new AccessError(
+        `This plan is full: it has room for ${event.maxMembers} people. Whoever created it can make room.`,
+      );
+    }
+  }
   const { rows } = await client.execute({
     sql: "SELECT COUNT(*) AS n FROM messages WHERE event_id = ? AND user_id = ?",
     args: [eventId, userId],
@@ -175,12 +223,15 @@ export async function createEvent(
   scenarioId: ScenarioId = DEFAULT_SCENARIO,
   /** The day of the plan. The create form always sends one; code that does not care gets today. */
   date: string = todayPacific(),
+  /** How many people can join, the creator included. */
+  maxMembers: number = DEFAULT_PLAN_SIZE,
 ): Promise<EventSummary> {
   const client = await db();
   const scenario = scenarioFor(ScenarioIdSchema.parse(scenarioId));
   const where = LocationSchema.parse(location ?? "") || null;
   const day = planDateSchema().parse(date);
   const name = TitleSchema.parse(title);
+  const size = PlanSizeSchema.parse(maxMembers);
   // Counted after the input checks, so a typo in the form doesn't use up one of the day's plans.
   const quota = await hit(rateKey.createPlan(userId), LIMITS.createPlanPerUser);
   if (!quota.allowed) {
@@ -201,10 +252,11 @@ export async function createEvent(
     date: day,
     poolSource: pool.source,
     poolSize: restaurants?.filter((r) => r.cuisine !== null).length ?? scenario.seedPool.length,
+    maxMembers: size,
   };
   if (pool.source === "seed" && where) console.info(`Plan ${event.id}: using seed pool (${pool.reason})`);
   await client.execute({
-    sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source, scenario, event_date, pool_meta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    sql: "INSERT INTO events (id, title, invite_code, creator_id, created_at, location, pool_json, pool_source, scenario, event_date, pool_meta, max_members) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     args: [
       event.id,
       encrypt(event.title, scope.plan(event.id, "title")),
@@ -218,6 +270,7 @@ export async function createEvent(
       encrypt(day, scope.plan(event.id, "date")),
       // Only a Places pool can be widened later; it needs to know where it was searched from.
       pool.source === "places" ? encryptJson(newPoolMeta(pool.center), scope.plan(event.id, "pool_meta")) : null,
+      size,
     ],
   });
   await addMember(event, userId);
@@ -235,6 +288,16 @@ export async function joinEvent(code: string, userId: string): Promise<EventSumm
   if (!event) throw new AccessError("That invite link doesn't exist");
   await addMember(event, userId);
   return event;
+}
+
+/** How many people are in a plan. Shown to someone deciding whether to join, so it needs no membership. */
+export async function countMembers(eventId: string): Promise<number> {
+  const client = await db();
+  const { rows } = await client.execute({
+    sql: "SELECT COUNT(*) AS n FROM members WHERE event_id = ?",
+    args: [eventId],
+  });
+  return Number(rows[0].n);
 }
 
 export async function isMember(eventId: string, userId: string): Promise<boolean> {
@@ -589,17 +652,70 @@ export async function deletePlan(eventId: string, userId: string): Promise<void>
   await clearRateKey(rateKey.autoNegotiate(eventId));
 }
 
-/** Removes one member's constraints and private chat from a plan and un-decides it. */
-export async function leavePlan(eventId: string, userId: string): Promise<void> {
-  await requireMember(eventId, userId);
+/** Takes one member's constraints and private chat out of a plan and un-decides it. */
+async function dropMember(eventId: string, userId: string) {
   const client = await db();
   await client.execute({
     sql: "UPDATE events SET result_json = NULL, decided_at = NULL WHERE id = ?",
     args: [eventId],
   });
-  if ((await creatorOf(eventId)) === userId) await handOverOrDeleteCreated(userId, eventId);
   await client.execute({ sql: "DELETE FROM messages WHERE event_id = ? AND user_id = ?", args: [eventId, userId] });
   await client.execute({ sql: "DELETE FROM members WHERE event_id = ? AND user_id = ?", args: [eventId, userId] });
+  // The plan without them is a different group: let it be found again as soon as everyone left is done.
+  await clearRateKey(rateKey.autoNegotiate(eventId));
+}
+
+/** Removes one member's constraints and private chat from a plan and un-decides it. */
+export async function leavePlan(eventId: string, userId: string): Promise<void> {
+  await requireMember(eventId, userId);
+  if ((await creatorOf(eventId)) === userId) await handOverOrDeleteCreated(userId, eventId);
+  await dropMember(eventId, userId);
+}
+
+// ---------------------------------------------------------------------------
+// What the creator controls (#119). An invite link gets forwarded, so the person who
+// started the plan can take someone out, replace the link, and set how many people fit.
+// ---------------------------------------------------------------------------
+
+async function requireCreator(eventId: string, userId: string, what: string) {
+  const creator = await creatorOf(eventId);
+  if (!creator) throw new AccessError("That plan doesn't exist");
+  if (creator !== userId) throw new AccessError(`Only the person who created this plan can ${what}`);
+}
+
+/**
+ * Removes someone else from the plan, with their constraints and private chat, exactly as if
+ * they had left. They can come back with the invite link, so replace the link too to keep them out.
+ */
+export async function removeMember(eventId: string, creatorId: string, memberId: string): Promise<void> {
+  await requireCreator(eventId, creatorId, "remove someone");
+  if (memberId === creatorId) throw new AccessError("To take yourself out, leave the plan instead");
+  if (!(await isMember(eventId, memberId))) throw new AccessError("That person is not in this plan");
+  await dropMember(eventId, memberId);
+}
+
+/** Replaces the invite link. The old one stops working; everyone already in the plan stays. */
+export async function resetInviteCode(eventId: string, creatorId: string): Promise<string> {
+  await requireCreator(eventId, creatorId, "replace the invite link");
+  const code = newInviteCode();
+  const client = await db();
+  await client.execute({ sql: "UPDATE events SET invite_code = ? WHERE id = ?", args: [code, eventId] });
+  return code;
+}
+
+/** Changes how many people fit. It cannot go below the number already in the plan. */
+export async function setMaxMembers(eventId: string, creatorId: string, maxMembers: number): Promise<number> {
+  await requireCreator(eventId, creatorId, "change how many people can join");
+  const size = PlanSizeSchema.parse(maxMembers);
+  const client = await db();
+  const joined = await countMembers(eventId);
+  if (size < joined) {
+    throw new AccessError(
+      `${joined} people are already in this plan. Remove someone first, or choose ${joined} or more.`,
+    );
+  }
+  await client.execute({ sql: "UPDATE events SET max_members = ? WHERE id = ?", args: [size, eventId] });
+  return size;
 }
 
 /**

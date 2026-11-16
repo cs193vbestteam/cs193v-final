@@ -93,7 +93,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expect(blake.getByText("You've been invited to")).toBeVisible();
     await blake.getByRole("button", { name: "Join plan" }).click();
     await expect(blake.getByRole("heading", { name: "Your private assistant" })).toBeVisible();
-    await expect(blake.getByText("2 joined")).toBeVisible();
+    await expect(blake.getByText("2 of 12 joined")).toBeVisible();
   });
 
   await test.step("a plan cannot be found until everyone is done", async () => {

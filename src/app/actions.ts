@@ -9,14 +9,19 @@ import type { MissingField } from "@/lib/constraints";
 import type { ChatTurn } from "@/lib/extract";
 import {
   AccessError,
+  DEFAULT_PLAN_SIZE,
+  PlanSizeSchema,
   createEvent,
   deleteAccount,
   deletePlan,
   joinEvent,
   leavePlan,
   negotiateWhenAllReady,
+  removeMember,
+  resetInviteCode,
   runNegotiation,
   sendMessage,
+  setMaxMembers,
   setReady,
 } from "@/lib/events";
 import { planDateSchema } from "@/lib/plan-date";
@@ -81,7 +86,14 @@ export async function createEventAction(_: FormState, form: FormData): Promise<F
     // The form always sends a date; a request without one is refused here rather than defaulted.
     const date = planDateSchema().parse(String(form.get("date") ?? ""));
     code = (
-      await createEvent(user.id, String(form.get("title") ?? ""), String(form.get("location") ?? ""), scenario, date)
+      await createEvent(
+        user.id,
+        String(form.get("title") ?? ""),
+        String(form.get("location") ?? ""),
+        scenario,
+        date,
+        PlanSizeSchema.parse(form.get("maxMembers") ?? DEFAULT_PLAN_SIZE),
+      )
     ).inviteCode;
   } catch (err) {
     return { error: friendly(err) };
@@ -91,7 +103,12 @@ export async function createEventAction(_: FormState, form: FormData): Promise<F
 
 export async function joinEventAction(code: string) {
   const user = await requireUser(`/e/${code}`);
-  await joinEvent(code, user.id);
+  try {
+    await joinEvent(code, user.id);
+  } catch (err) {
+    // A full plan or a replaced link: the page itself says which, so show it again rather than an error screen.
+    if (!(err instanceof AccessError)) throw err;
+  }
   revalidatePath(`/e/${code}`);
 }
 
@@ -169,6 +186,51 @@ export async function deletePlanAction(eventId: string, inviteCode: string): Pro
   }
   revalidatePath("/");
   redirect("/");
+}
+
+/** Creator only (checked in removeMember). Takes someone else out of the plan, with their chat and constraints. */
+export async function removeMemberAction(
+  eventId: string,
+  inviteCode: string,
+  memberId: string,
+): Promise<{ error?: string }> {
+  const user = await requireUser(`/e/${inviteCode}`);
+  try {
+    await removeMember(eventId, user.id, memberId);
+  } catch (err) {
+    return { error: friendly(err) };
+  }
+  revalidatePath(`/e/${inviteCode}`);
+  return {};
+}
+
+/** Creator only (checked in resetInviteCode). The old link stops working and the page moves to the new one. */
+export async function resetInviteAction(eventId: string, inviteCode: string): Promise<{ error?: string }> {
+  const user = await requireUser(`/e/${inviteCode}`);
+  let code: string;
+  try {
+    code = await resetInviteCode(eventId, user.id);
+  } catch (err) {
+    return { error: friendly(err) };
+  }
+  revalidatePath("/");
+  redirect(`/e/${code}`);
+}
+
+/** Creator only (checked in setMaxMembers). Changes how many people fit in the plan. */
+export async function setMaxMembersAction(
+  eventId: string,
+  inviteCode: string,
+  maxMembers: number,
+): Promise<{ error?: string }> {
+  const user = await requireUser(`/e/${inviteCode}`);
+  try {
+    await setMaxMembers(eventId, user.id, maxMembers);
+  } catch (err) {
+    return { error: friendly(err) };
+  }
+  revalidatePath(`/e/${inviteCode}`);
+  return {};
 }
 
 /** Removes the caller's own constraints and chat from a plan. */
