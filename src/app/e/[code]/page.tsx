@@ -38,8 +38,8 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           {event.title}
         </h1>
         <p className="lede rise mx-auto mt-5 max-w-md" style={{ "--d": "0.16s" } as React.CSSProperties}>
-          You&apos;ll get a private assistant. Tell it what actually works for you. Nobody else will see it, only the
-          final plan.
+          You&apos;ll get a private assistant. Tell it what actually works for you. Nobody else in the group will see
+          it, only the final plan.
         </p>
         <form
           action={joinEventAction.bind(null, code)}
@@ -107,7 +107,9 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             Plan · {code}
             {event.date ? ` · ${formatPlanDate(event.date)}` : ""}
             {event.location ? ` · near ${event.location}` : ""}
-            {` · ${event.poolSize} ${POOL_LABEL[event.poolSource]}`}
+            {/* Real places arrive in two batches: a first search, then the rest once everyone is done.
+                Until the plan is decided the count is only the first batch, so it is left out. */}
+            {` · ${event.poolSource !== "places" || result ? `${event.poolSize} ` : ""}${POOL_LABEL[event.poolSource]}`}
           </p>
           <h1 className="display mt-2 break-words text-4xl sm:text-5xl">{event.title}</h1>
           {sample && (

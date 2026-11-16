@@ -84,7 +84,7 @@ const STEPS = [
   {
     n: "01",
     title: "Tell your assistant the truth",
-    body: "A one-minute private chat: budget, when you're free, what you won't eat. Nobody else sees it, not even the rest of the system.",
+    body: "A one-minute private chat: budget, when you're free, what you won't eat. Nobody else in your group sees it.",
     demo: (
       <div className="space-y-2 text-sm">
         <div className="flex justify-end">
