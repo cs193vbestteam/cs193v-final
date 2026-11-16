@@ -2,10 +2,21 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { PlanDangerZone } from "@/components/DangerActions";
 import { AutoRefresh, CopyInvite, NegotiateButton, ShareMessage } from "@/components/GroupActions";
+import { CreatorControls } from "@/components/CreatorControls";
 import { PrivateChat } from "@/components/PrivateChat";
 import { ResultCard } from "@/components/ResultCard";
 import { joinEventAction } from "@/app/actions";
-import { getEventByCode, getMyConstraints, getMyMessages, getResult, isMember, listMembers } from "@/lib/events";
+import {
+  MAX_PLAN_SIZE,
+  MIN_PLAN_SIZE,
+  countMembers,
+  getEventByCode,
+  getMyConstraints,
+  getMyMessages,
+  getResult,
+  isMember,
+  listMembers,
+} from "@/lib/events";
 import { formatPlanDate, formatWhen } from "@/lib/plan-date";
 import { getRestaurant } from "@/lib/restaurants";
 import { scenarioFor } from "@/lib/scenario";
@@ -31,6 +42,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
   if (!event) notFound();
 
   if (!(await isMember(event.id, user.id))) {
+    const full = (await countMembers(event.id)) >= event.maxMembers;
     return (
       <div className="mx-auto mt-16 max-w-lg text-center sm:mt-24">
         <p className="eyebrow rise">You&apos;ve been invited to</p>
@@ -41,13 +53,24 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           You&apos;ll get a private assistant. Tell it what actually works for you. Nobody else in the group will see
           it, only the final plan.
         </p>
-        <form
-          action={joinEventAction.bind(null, code)}
-          className="rise mt-8"
-          style={{ "--d": "0.24s" } as React.CSSProperties}
-        >
-          <button className="btn px-8">Join plan</button>
-        </form>
+        {full ? (
+          <p
+            role="status"
+            className="rise mx-auto mt-8 max-w-md rounded-xl border border-line-strong px-4 py-4 text-sm text-ink-2"
+            style={{ "--d": "0.24s" } as React.CSSProperties}
+          >
+            <strong className="font-medium text-ink">This plan is full.</strong> It has room for {event.maxMembers}{" "}
+            people and all the places are taken. Whoever created it can make room; ask them, then open this link again.
+          </p>
+        ) : (
+          <form
+            action={joinEventAction.bind(null, code)}
+            className="rise mt-8"
+            style={{ "--d": "0.24s" } as React.CSSProperties}
+          >
+            <button className="btn px-8">Join plan</button>
+          </form>
+        )}
       </div>
     );
   }
@@ -147,7 +170,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             <div className="flex items-baseline justify-between">
               <h2 className="font-serif text-xl">The group</h2>
               <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
-                {members.length} joined
+                {members.length} of {event.maxMembers} joined
               </span>
             </div>
             <ul className="mt-3 divide-y divide-line">
@@ -177,6 +200,21 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             {nudge && (
               <div className="mt-2">
                 <ShareMessage label="Nudge the group" message={nudge} />
+              </div>
+            )}
+            {event.creatorId === user.id && (
+              <div className="mt-4 border-t border-line pt-3.5">
+                <CreatorControls
+                  eventId={event.id}
+                  inviteCode={code}
+                  others={members
+                    .filter((m) => m.userId !== user.id)
+                    .map((m) => ({ userId: m.userId, displayName: m.displayName }))}
+                  joined={members.length}
+                  maxMembers={event.maxMembers}
+                  minSize={MIN_PLAN_SIZE}
+                  maxSize={MAX_PLAN_SIZE}
+                />
               </div>
             )}
             <div className="mt-4 border-t border-line pt-3.5">

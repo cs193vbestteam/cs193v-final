@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS events (
   pool_source TEXT,                     -- 'places' | 'seed'
   scenario    TEXT NOT NULL DEFAULT 'meal', -- what the group is deciding (see scenario.ts)
   event_date  TEXT,                     -- the day of the plan, YYYY-MM-DD (public)
-  pool_meta   TEXT                      -- where the pool was searched from and what for (see pool-extend.ts)
+  pool_meta   TEXT,                     -- where the pool was searched from and what for (see pool-extend.ts)
+  max_members INTEGER NOT NULL DEFAULT 12 -- how many people the creator lets into the plan (public)
 );
 
 -- Columns added after v1, for databases whose events table already exists.
@@ -52,6 +53,7 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS pool_source TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS scenario TEXT NOT NULL DEFAULT 'meal';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS event_date TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS pool_meta TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS max_members INTEGER NOT NULL DEFAULT 12;
 
 CREATE TABLE IF NOT EXISTS members (
   event_id        TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,

@@ -4,12 +4,23 @@ import { useActionState } from "react";
 import { createEventAction } from "@/app/actions";
 
 /** `minDate` and `maxDate` (YYYY-MM-DD) come from the server, which checks the date again on submit. */
-export function CreateEventForm({ minDate, maxDate }: { minDate: string; maxDate: string }) {
+export function CreateEventForm({
+  minDate,
+  maxDate,
+  sizes,
+  defaultSize,
+}: {
+  minDate: string;
+  maxDate: string;
+  /** How many people the plan may take: the choices, and the one selected to begin with. */
+  sizes: number[];
+  defaultSize: number;
+}) {
   const [state, action, pending] = useActionState(createEventAction, {});
   return (
     <form action={action} className="space-y-2">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+        <div className="min-w-0 flex-1 sm:min-w-[16rem]">
           <label htmlFor="plan-title" className="label">
             Plan name
           </label>
@@ -50,6 +61,18 @@ export function CreateEventForm({ minDate, maxDate }: { minDate: string; maxDate
             max={maxDate}
             defaultValue={minDate}
           />
+        </div>
+        <div className="sm:w-[8.5rem]">
+          <label htmlFor="plan-size" className="label">
+            Up to
+          </label>
+          <select id="plan-size" className="input" name="maxMembers" defaultValue={defaultSize}>
+            {sizes.map((n) => (
+              <option key={n} value={n}>
+                {n} people
+              </option>
+            ))}
+          </select>
         </div>
         <button className="btn shrink-0" disabled={pending}>
           {pending ? "Creating…" : "Start a plan"}
