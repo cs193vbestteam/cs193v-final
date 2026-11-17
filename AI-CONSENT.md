@@ -1,6 +1,6 @@
 # AI Consent
 
-Settle uses Anthropic's Claude API to read private meal-planning chats. We use the standard API without a zero-data-retention agreement. Code chooses the final restaurant and time. This description was checked against main `5cf7951` on November 17, 2026.
+Settle uses Anthropic's Claude API to read private meal-planning chats. We use the standard API without a zero-data-retention agreement. Code chooses the final restaurant and time. 
 
 ## Anthropic's policies
 
