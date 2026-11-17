@@ -62,11 +62,17 @@ export function CreateEventForm({
             defaultValue={minDate}
           />
         </div>
-        <div className="sm:w-[8.5rem]">
+        <div className="sm:w-[11rem]">
           <label htmlFor="plan-size" className="label">
-            Up to
+            Maximum group size
           </label>
-          <select id="plan-size" className="input" name="maxMembers" defaultValue={defaultSize}>
+          <select
+            id="plan-size"
+            className="input"
+            name="maxMembers"
+            defaultValue={defaultSize}
+            aria-describedby="plan-size-hint"
+          >
             {sizes.map((n) => (
               <option key={n} value={n}>
                 {n} people
@@ -79,6 +85,10 @@ export function CreateEventForm({
           {!pending && <Arrow />}
         </button>
       </div>
+      {/* A tester read the size as the number of people a plan needs, and doubted two could finish one (#155). */}
+      <p id="plan-size-hint" className="text-xs text-ink-3">
+        The group size is a limit, not a target. Two people are enough for a plan.
+      </p>
       {state.error && (
         <p role="alert" className="text-sm text-seal-ink">
           {state.error}

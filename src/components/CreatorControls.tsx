@@ -43,7 +43,7 @@ export function CreatorControls({ eventId, inviteCode, others, joined, maxMember
               setNote(
                 res.error
                   ? { text: res.error, error: true }
-                  : { text: `Up to ${size} people can be in this plan.`, error: false },
+                  : { text: `At most ${size} people can join this plan.`, error: false },
               );
             });
           }}

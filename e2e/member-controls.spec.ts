@@ -34,15 +34,15 @@ async function signUp(browser: Browser, who: Person, next = "/"): Promise<Page> 
 test("the creator sets the size, makes room, removes someone and replaces the link", async ({ browser }) => {
   const creator = await signUp(browser, person("Faye"));
   await creator.getByLabel("Plan name").fill("Small table");
-  await creator.getByLabel("Up to").selectOption("2");
+  await creator.getByLabel("Maximum group size").selectOption("2");
   await creator.getByRole("button", { name: "Start a plan" }).click();
   await expect(creator.getByRole("heading", { name: "Small table" })).toBeVisible();
   const planPath = new URL(creator.url()).pathname;
-  await expect(creator.getByText("1 of 2 joined")).toBeVisible();
+  await expect(creator.getByText("1 joined · limit 2")).toBeVisible();
 
   const second = await signUp(browser, person("Gus"), planPath);
   await second.getByRole("button", { name: "Join plan" }).click();
-  await expect(second.getByText("2 of 2 joined")).toBeVisible();
+  await expect(second.getByText("2 joined · limit 2")).toBeVisible();
 
   const third = await signUp(browser, person("Hana"), planPath);
   await test.step("a full plan says so instead of offering to join", async () => {
@@ -59,10 +59,10 @@ test("the creator sets the size, makes room, removes someone and replaces the li
     await creator.getByText("Manage people and the invite link").click();
     await creator.getByLabel("How many people can join").selectOption("3");
     await creator.getByRole("button", { name: "Save" }).click();
-    await expect(creator.getByText("Up to 3 people can be in this plan.")).toBeVisible();
+    await expect(creator.getByText("At most 3 people can join this plan.")).toBeVisible();
     await third.reload();
     await third.getByRole("button", { name: "Join plan" }).click();
-    await expect(third.getByText("3 of 3 joined")).toBeVisible();
+    await expect(third.getByText("3 joined · limit 3")).toBeVisible();
   });
 
   await test.step("removing someone asks first, then takes them out", async () => {
@@ -71,14 +71,14 @@ test("the creator sets the size, makes room, removes someone and replaces the li
     await creator.getByRole("button", { name: "Remove Hana", exact: true }).click();
     await expect(creator.getByText("This cannot be undone.")).toBeVisible();
     await creator.getByRole("button", { name: "Cancel" }).click();
-    await expect(creator.getByText("3 of 3 joined")).toBeVisible();
+    await expect(creator.getByText("3 joined · limit 3")).toBeVisible();
 
     await creator.getByRole("button", { name: "Remove Hana", exact: true }).click();
     await creator
       .getByRole("group", { name: /Remove Hana from this plan/ })
       .getByRole("button", { name: "Remove Hana" })
       .click();
-    await expect(creator.getByText("2 of 3 joined")).toBeVisible();
+    await expect(creator.getByText("2 joined · limit 3")).toBeVisible();
     await third.reload();
     await expect(third.getByRole("button", { name: "Join plan" })).toBeVisible();
   });
@@ -88,13 +88,13 @@ test("the creator sets the size, makes room, removes someone and replaces the li
     await creator.getByRole("button", { name: "Replace link" }).click();
     await expect(creator).not.toHaveURL(new RegExp(`${planPath}$`));
     await expect(creator.getByRole("heading", { name: "Small table" })).toBeVisible();
-    await expect(creator.getByText("2 of 3 joined")).toBeVisible();
+    await expect(creator.getByText("2 joined · limit 3")).toBeVisible();
 
     const old = await third.goto(planPath);
     expect(old?.status()).toBe(404);
     // Someone already in the plan follows it from their own list.
     await second.goto("/");
     await second.getByRole("link", { name: /Small table/ }).click();
-    await expect(second.getByText("2 of 3 joined")).toBeVisible();
+    await expect(second.getByText("2 joined · limit 3")).toBeVisible();
   });
 });
