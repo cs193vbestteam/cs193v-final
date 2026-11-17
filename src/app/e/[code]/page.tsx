@@ -88,7 +88,9 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       ? { label: "Decided", cls: "pill-moss" }
       : result.status === "compromise"
         ? { label: "Compromise", cls: "pill-amber" }
-        : { label: "Stuck", cls: "pill-seal" }
+        : result.status === "partial"
+          ? { label: "Not everyone", cls: "pill-amber" }
+          : { label: "Stuck", cls: "pill-seal" }
     : readyCount === members.length && members.length >= 2
       ? { label: "Ready to negotiate", cls: "pill-moss" }
       : { label: "Collecting", cls: "pill-amber" };

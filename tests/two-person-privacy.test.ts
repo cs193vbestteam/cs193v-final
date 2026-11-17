@@ -63,8 +63,8 @@ const DIM_WORDS = /\b(price|budget|timing|distance|diet)\b/i;
 const ANY_TIME = "free all day, 30 minutes, no restrictions";
 
 describe("a two-person plan shows the outcome only", () => {
-  it("stores and renders no tally and no dimension name when one person rejects on budget", async () => {
-    // Bob's ceiling rules out most of the seed pool, so the rounds are full of price rejects.
+  it("stores and renders the plan and the other places, and nothing about how either person answered", async () => {
+    // Bob's ceiling is far under Alice's. The optimizer weighs that; it shows neither of them.
     const { event, users } = await plan({
       Alice: `${ANY_TIME}, up to $80`,
       Bob: `${ANY_TIME}, $20 max`,
@@ -74,9 +74,8 @@ describe("a two-person plan shows the outcome only", () => {
 
     expect(result.participants).toBe(2);
     expect(result.detail).toBe("outcome");
-    expect(result.status).not.toBe("no_deal");
+    expect(result).toMatchObject({ status: "agreed", engine: "optimizer" });
     expect(result.proposal).not.toBeNull();
-    expect(result.roundCount).toBeGreaterThanOrEqual(1);
     expect(result).toMatchObject({
       tally: null,
       rounds: [],
@@ -87,48 +86,58 @@ describe("a two-person plan shows the outcome only", () => {
       leakedDims: 0,
       concessionLevel: 0,
     });
-    // The places that may be named are the shortlist's, the chosen one first: as places only, with
-    // no counts and no word on who fully accepts which.
+    // In a pair a count of who can come is the other person's answer: it is not stored at all.
+    expect(result).not.toHaveProperty("cannotCome");
+    // The places that may be named are the shortlist's, the chosen one first: as places only.
     const listed = result.options!.map((o) => o.proposal.restaurantId);
     expect(listed[0]).toBe(result.proposal!.restaurantId);
     expect(listed.length).toBeLessThanOrEqual(SHORTLIST);
+    expect(new Set(listed).size).toBe(listed.length);
     expect(Object.keys(result.places).sort()).toEqual([...listed].sort());
     for (const o of result.options!) expect(Object.keys(o)).toEqual(["proposal"]);
 
     // The row itself, and what each member reads back, carry nothing more.
     const row = await storedRow(event.id);
     expect(row).not.toMatch(VERDICTS);
-    expect(row).not.toMatch(/Alice|Bob|buckets|nash/);
+    expect(row).not.toMatch(/Alice|Bob|buckets|nash|cannotCome|scores|prefs|\$20|\$80/);
     expect(JSON.parse(row)).toEqual(result);
     expect(await getResult(event.id, bob.id)).toEqual(result);
 
     const html = card(result);
     expect(html).toContain(result.places[result.proposal!.restaurantId].name);
-    expect(html).toMatch(/\d+ rounds?, 2 people/);
-    expect(html).toContain("stays hidden");
+    expect(html).toContain("Everyone can come");
+    expect(html).toMatch(/How it was decided: \d+ options, 2 people, no model/);
     expect(html).not.toMatch(VERDICTS);
     expect(html).not.toMatch(DIM_WORDS);
-    expect(html).not.toMatch(/How they decided|Round \d|concession|bucket|dimension name/i);
+    expect(html).not.toMatch(/How they decided|Round \d|concession|bucket|dimension name|Works for \d/i);
     expect(html).not.toMatch(/Alice|Bob/);
   });
 
-  it("says only that there is no plan when the two cannot agree, not what the sticking point is", async () => {
+  it("says only that there is no plan when a hard rule keeps one of the two out, not which or whose", async () => {
+    // One can only do lunch and the other only dinner, so every plan leaves one of them out.
     const { event, users } = await plan({
-      Alice: `${ANY_TIME}, up to $80`,
-      Bob: `${ANY_TIME}, $5 max`,
+      Alice: "lunch only, 30 minutes, no restrictions, up to $50",
+      Bob: "dinner only, 30 minutes, no restrictions, up to $50",
     });
     const result = await runNegotiation(event.id, users[0].id);
     expect(result).toMatchObject({ status: "no_deal", detail: "outcome", proposal: null, conflicts: [], places: {} });
+    expect(result).not.toHaveProperty("cannotCome");
+    expect(result).not.toHaveProperty("noPlan");
+    expect(result).not.toHaveProperty("options");
 
+    // "A plan one of you can come to" is never written down: to each of them it would be about the other.
     const row = await storedRow(event.id);
     expect(row).not.toMatch(VERDICTS);
     expect(row).not.toMatch(DIM_WORDS);
+    expect(row).not.toMatch(/partial|cannotCome|nobody_can_come|lunch|dinner/);
+    expect(await getResult(event.id, users[1].id)).toEqual(result);
 
     const html = card(result);
-    expect(html).toContain("No plan works for everyone yet");
+    expect(html).toContain("No plan works for both of you yet");
     expect(html).not.toContain("sticking point");
     expect(html).not.toMatch(VERDICTS);
     expect(html).not.toMatch(DIM_WORDS);
+    expect(html).not.toMatch(/Works for \d|one person|lunch|dinner/);
   });
 
   it("hides the details of a two-person result stored before this rule existed", async () => {
@@ -186,47 +195,55 @@ describe("a two-person plan shows the outcome only", () => {
   });
 });
 
-describe("plans of three or more are unchanged", () => {
-  it("keeps the round log, the counts and the dimension names", async () => {
+describe("plans of three or more", () => {
+  it("say how many can come, and never who or why", async () => {
+    // Alice can only do lunch; the other two only dinner. The closest plan leaves one person out.
+    const { event, users } = await plan({
+      Alice: "lunch only, 30 minutes, no restrictions, up to $50",
+      Bob: "dinner only, 30 minutes, no restrictions, up to $50",
+      Cara: "dinner only, 30 minutes, no restrictions, up to $60",
+    });
+    const result = await runNegotiation(event.id, users[0].id);
+    expect(result.participants).toBe(MIN_GROUP_FOR_DETAIL);
+    expect(result).toMatchObject({ detail: "full", status: "partial", engine: "optimizer", cannotCome: 1 });
+    expect(["17:00", "18:00", "19:00", "20:00"]).toContain(result.proposal!.slot);
+    // Nothing of the old round log is produced, and no names are stored: there is nobody to name.
+    expect(result).toMatchObject({ rounds: [], finalists: [], reservations: [], tally: null, memberNames: [] });
+    expect(JSON.parse(await storedRow(event.id))).toEqual(result);
+    expect(await getResult(event.id, users[2].id)).toEqual(result);
+    expect(await storedRow(event.id)).not.toMatch(/Alice|Bob|Cara|scores|prefs|lunch/);
+
+    const html = card(result);
+    expect(html).toContain("Works for 2 of 3");
+    expect(html).toContain("one person");
+    expect(html).toMatch(/How it was decided: \d+ options, 3 people, no model/);
+    expect(html).not.toMatch(/Alice|Bob|Cara|How they decided|Round \d|stays hidden/);
+    expect(html).not.toMatch(VERDICTS);
+    // The shortlist: the plan on top, the other places under it, each one a different place that
+    // as many people can come to.
+    expect(result.options![0].proposal).toEqual(result.proposal);
+    expect(result.options!.length).toBeGreaterThan(1);
+    expect(new Set(result.options!.map((o) => o.proposal.restaurantId)).size).toBe(result.options!.length);
+    expect(html).toMatch(/Best fit of \d places that as many people can come to/);
+    expect(html).toMatch(/See all \d options/);
+    // The pop-out holds one tile per option, the best fit first.
+    expect(html.match(/<li class="rounded-xl border p-4/g)).toHaveLength(result.options!.length);
+    expect(html).toContain("1 · Best fit");
+    for (const o of result.options!) expect(html).toContain(result.places[o.proposal.restaurantId].name);
+  });
+
+  it("say that everyone can come when nothing keeps anyone out", async () => {
     const { event, users } = await plan({
       Alice: `${ANY_TIME}, up to $80`,
       Bob: `${ANY_TIME}, $20 max`,
       Cara: `${ANY_TIME}, up to $60`,
     });
     const result = await runNegotiation(event.id, users[0].id);
-    expect(result.participants).toBe(MIN_GROUP_FOR_DETAIL);
-    expect(result.detail).toBe("full");
-    expect(result.rounds.length).toBe(result.roundCount);
-    expect(result.rounds.length).toBeGreaterThan(0);
-    expect(result.memberNames).toEqual(["Alice", "Bob", "Cara"]);
-    expect(result.tally).not.toBeNull();
-    expect(result.leakedDims).toBeGreaterThan(0);
-    expect(JSON.parse(await storedRow(event.id))).toEqual(result);
-    expect(await getResult(event.id, users[2].id)).toEqual(result);
-
+    expect(result).toMatchObject({ detail: "full", status: "agreed", cannotCome: 0 });
     const html = card(result);
-    expect(html).toContain("How they decided");
-    // The shortlist: the plan on top, the other options under it, each a place nobody rejected.
-    expect(result.options![0].proposal).toEqual(result.proposal);
-    expect(result.options!.length).toBeGreaterThan(1);
+    expect(html).toContain("Everyone can come");
     expect(html).toMatch(/Best fit of \d places that work for the group/);
-    expect(html).toMatch(/See all \d options/);
-    // The pop-out holds one tile per option, the best fit first.
-    expect(html.match(/<li class="rounded-xl border p-4/g)).toHaveLength(result.options!.length);
-    expect(html).toContain("1 · Best fit");
-    for (const o of result.options!) {
-      expect(html).toContain(result.places[o.proposal.restaurantId].name);
-      expect(typeof o.everyoneIn).toBe("boolean");
-    }
-    expect(html).toContain("Round 1");
-    expect(html).toMatch(/1× reject · price/);
-    expect(html).not.toContain("stays hidden");
-    // The finalists are shown by how they compare with the pick, never by anyone's score (#15).
-    expect(result.finalists.length).toBeGreaterThan(0);
-    expect(html).toContain("group score relative to the pick");
-    expect(html).toContain(">pick<");
-    expect(html).not.toMatch(/buckets \d/);
-    expect(JSON.stringify(result)).not.toMatch(/"buckets"|"nash"/);
+    expect(html).not.toMatch(/Works for \d of/);
   });
 });
 

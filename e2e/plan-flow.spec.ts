@@ -115,11 +115,11 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
 
   await test.step("the last person finishes and the plan is found without anyone pressing a button", async () => {
     await tellAssistant(blake, BLAKE);
-    await expect(blake.getByText("Everyone's in")).toBeVisible();
+    await expect(blake.getByText("Everyone can come")).toBeVisible();
     await alex.reload();
     await expectNoSecrets(alex, BLAKE);
     await expect(alex.getByText("2 of 2 ready")).toBeVisible();
-    await expect(alex.getByText("Everyone's in")).toBeVisible();
+    await expect(alex.getByText("Everyone can come")).toBeVisible();
     // The plan on the page is the first price line; the same line is repeated on the tiles of the pop-out.
     const planLine = (page: Page) => page.getByText(/~\$\d+\/person/).first();
     await expect(planLine(alex)).toBeVisible();
@@ -154,11 +154,11 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
 
   await test.step("with two people, only the outcome is shown: any count would be the other person's answer", async () => {
     for (const page of [alex, blake]) {
-      await expect(page.getByText(/\d+ rounds?, 2 people/)).toBeVisible();
-      await expect(page.getByText("stays hidden")).toBeVisible();
+      // The optimizer decided it: how many options it scored, and nothing about either person.
+      await expect(page.getByText(/How it was decided: \d+ options, 2 people, no model/)).toBeVisible();
       await expect(page.getByText("How they decided")).toHaveCount(0);
       const text = await page.locator("body").innerText();
-      expect(text).not.toMatch(/reject|reluctant|Round \d/i);
+      expect(text).not.toMatch(/reject|reluctant|Round \d|Works for \d of|cannot come/i);
     }
   });
 
@@ -166,7 +166,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await signUp(casey, CASEY, planPath);
     await expect(casey.getByRole("button", { name: "Join plan" })).toBeVisible();
     const text = await casey.locator("body").innerText();
-    expect(text).not.toContain("Everyone's in");
+    expect(text).not.toContain("Everyone can come");
     expect(text).not.toContain(ALEX.name);
     expect(text).not.toContain(BLAKE.name);
     await expectNoSecrets(casey, ALEX);

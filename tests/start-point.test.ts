@@ -22,6 +22,7 @@ import {
   sendMessage,
   setReady,
 } from "@/lib/events";
+import { loadOptimizerInput } from "@/lib/optimizer-source";
 import { PENDING_QUESTIONS, answerPending, extractRules, extractStart, ruleTurn } from "@/lib/extract-rules";
 import { centroid, haversineKm, travelMinutes, type LatLng } from "@/lib/geo";
 import { toPool, type PlaceResult } from "@/lib/places";
@@ -338,7 +339,7 @@ describe("end to end with a real-places pool", () => {
     vi.unstubAllGlobals();
   });
 
-  it("a member's own start point changes the outcome and never reaches the group", async () => {
+  it("a member's own start point changes their trip to every place and never reaches the group", async () => {
     const a = await makeUser("Alice");
     const b = await makeUser("Bob");
     const event = await createEvent(a.id, "Saturday dinner", "Stanford, CA", "meal", nextSaturday());
@@ -356,8 +357,10 @@ describe("end to end with a real-places pool", () => {
     const chat = await getMyMessages(event.id, b.id);
     expect(chat[chat.length - 1].content).toContain(PENDING_QUESTIONS.start_point);
 
-    // Nobody has given a start point: both are measured from the plan's location and agree.
+    // Nobody has given a start point: both are measured from the plan's location.
     expect((await runNegotiation(event.id, a.id)).status).toBe("agreed");
+    const before = (await loadOptimizerInput(event.id)).input;
+    for (const c of before.candidates) expect(c.travelMin.p2).toBe(c.travelMin.p1);
 
     // Bob turns out to be coming from Mountain View, more than 20 minutes from every candidate.
     await sendMessage(event.id, b.id, "Mountain View");
@@ -366,8 +369,15 @@ describe("end to end with a real-places pool", () => {
     expect((await getMyConstraints(event.id, a.id)).startPoint).toBeNull();
     await setReady(event.id, b.id, true);
 
+    // The optimizer is given his minutes to each place, and nothing about where they are from.
+    const after = (await loadOptimizerInput(event.id)).input;
+    for (const c of after.candidates) expect(c.travelMin.p2).toBeGreaterThan(20);
+    expect(after.candidates.map((c) => c.travelMin.p1)).toEqual(before.candidates.map((c) => c.travelMin.p1));
+    expect(JSON.stringify(after)).not.toMatch(/Mountain View|startPoint|37\.38|122\.08/);
+
+    // A long trip is a wish missed, not a reason he cannot come: there is still a plan.
     const result = await runNegotiation(event.id, a.id);
-    expect(result.status).toBe("no_deal");
+    expect(result).toMatchObject({ status: "agreed", engine: "optimizer" });
 
     const stored = JSON.stringify(await getResult(event.id, a.id));
     expect(stored).not.toMatch(/Mountain View|startPoint|37\.38|122\.08/);

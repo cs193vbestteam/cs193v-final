@@ -59,12 +59,14 @@ describe("the mediator cannot reach anyone's preferences", () => {
     expect(readFileSync(path.join(SRC, "vault.ts"), "utf8")).toMatch(/makeAgent\([^;]*constraints\.startPoint\)/);
   });
 
-  it("runNegotiation itself decrypts nothing; it only asks the vault for agents", () => {
+  it("deciding a plan decrypts nothing itself; it asks the optimizer's loader, the one place that may", () => {
     const src = readFileSync(path.join(SRC, "events.ts"), "utf8");
     const start = src.indexOf("export async function runNegotiation");
     const end = src.indexOf("export async function", start + 1);
     const body = src.slice(start, end);
-    expect(body).toMatch(/agentsForEvent\(/);
+    // The body runs to the next export, so it includes decideAndStore.
+    expect(body).toMatch(/async function decideAndStore/);
+    expect(body).toMatch(/loadOptimizerInput\(/);
     expect(body).not.toMatch(/constraints_enc|decrypt|ConstraintsSchema|compile\(/);
   });
 
