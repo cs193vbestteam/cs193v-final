@@ -22,6 +22,7 @@
     "sim:extract": "node --env-file-if-exists=.env.local --require ./sim/shims/server-only.cjs --import tsx sim/extract-eval-run.ts",
     "sim:yelp": "tsx sim/yelp/run.ts",
     "sample:places": "node --env-file-if-exists=.env.local --require ./sim/shims/server-only.cjs --import tsx sim/places-sample.ts",
+    "cases:optimizer": "node --env-file-if-exists=.env.local --require ./sim/shims/server-only.cjs --import tsx sim/optimizer-cases.ts",
     "gen-key": "node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
     "migrate:encryption": "node --env-file-if-exists=.env.local --import tsx scripts/migrate-encryption.ts",
     "personas": "node --require ./sim/shims/server-only.cjs --import tsx sim/personas.ts"

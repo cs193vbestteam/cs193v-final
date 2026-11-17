@@ -1,0 +1,300 @@
+{
+  "about": "Made-up groups for the Long Island City pool. `expected` is written by `npm run cases:optimizer -- record`; see sim/optimizer-cases.ts.",
+  "cases": [
+    {
+      "name": "Three after work",
+      "about": "One strongly wants Italian or pizza, one mildly wants Japanese or ramen, and one will not go to a bar and would like to start between 19:00 and 20:00. The strong wish should win over the mild one.",
+      "members": [
+        {
+          "startPoint": {
+            "lat": 40.755,
+            "lng": -73.97
+          },
+          "prefs": {
+            "version": 1,
+            "budget": {
+              "ideal": 30,
+              "max": 50,
+              "strength": "mild"
+            },
+            "cuisine": {
+              "scores": {
+                "italian_restaurant": 1,
+                "pizza_restaurant": 1
+              },
+              "strength": "strong"
+            }
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 40.765,
+            "lng": -73.92
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "preferred": [
+                {
+                  "from": "19:00",
+                  "to": "20:00"
+                }
+              ],
+              "strength": "strong"
+            },
+            "travel": {
+              "idealMin": 10,
+              "maxMin": 20,
+              "strength": "mild"
+            },
+            "style": {
+              "excluded": [
+                "bar"
+              ],
+              "strength": "mild"
+            }
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 40.73,
+            "lng": -73.955
+          },
+          "prefs": {
+            "version": 1,
+            "cuisine": {
+              "scores": {
+                "japanese_restaurant": 1,
+                "ramen_restaurant": 1
+              },
+              "strength": "mild"
+            }
+          }
+        }
+      ],
+      "expected": {
+        "restaurantId": "long-island-city-048",
+        "startTime": "19:00",
+        "cannotCome": 0,
+        "alternatives": [
+          {
+            "restaurantId": "long-island-city-041",
+            "startTime": "19:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "long-island-city-046",
+            "startTime": "19:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "long-island-city-052",
+            "startTime": "19:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "long-island-city-053",
+            "startTime": "19:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "long-island-city-054",
+            "startTime": "19:00",
+            "cannotCome": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "Four people: halal, vegan, and a named place that cannot work",
+      "about": "One eats halal and one is vegan, which only a couple of places serve together. A third strongly wants Indian under $35 and named a halal place that is not vegetarian; the fourth is busy until 19:00. A named wish should not cost anyone their seat.",
+      "members": [
+        {
+          "startPoint": {
+            "lat": 40.747,
+            "lng": -73.945
+          },
+          "prefs": {
+            "version": 1,
+            "dietary": [
+              "halal"
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 40.765,
+            "lng": -73.92
+          },
+          "prefs": {
+            "version": 1,
+            "dietary": [
+              "vegan"
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 40.755,
+            "lng": -73.97
+          },
+          "prefs": {
+            "version": 1,
+            "budget": {
+              "max": 35,
+              "strength": "strong"
+            },
+            "cuisine": {
+              "scores": {
+                "indian_restaurant": 1
+              },
+              "strength": "strong"
+            },
+            "wantedRestaurants": [
+              {
+                "name": "Long Island City Place 088",
+                "id": "long-island-city-088"
+              }
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 40.73,
+            "lng": -73.955
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "unavailable": [
+                {
+                  "from": "10:00",
+                  "to": "18:00"
+                }
+              ],
+              "strength": "mild"
+            }
+          }
+        }
+      ],
+      "expected": {
+        "restaurantId": "long-island-city-085",
+        "startTime": "19:00",
+        "cannotCome": 0,
+        "alternatives": [
+          {
+            "restaurantId": "long-island-city-083",
+            "startTime": "19:00",
+            "cannotCome": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "Two diets, and someone who refuses the only places that serve both",
+      "about": "The halal and vegan diners from the case above, a third person who has ruled out the two places that suit them both, and a fourth who wants Mexican and is busy until 20:00. Somebody cannot come; it should be as few people as possible.",
+      "members": [
+        {
+          "startPoint": {
+            "lat": 40.747,
+            "lng": -73.945
+          },
+          "prefs": {
+            "version": 1,
+            "dietary": [
+              "halal"
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 40.765,
+            "lng": -73.92
+          },
+          "prefs": {
+            "version": 1,
+            "dietary": [
+              "vegan"
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 40.755,
+            "lng": -73.97
+          },
+          "prefs": {
+            "version": 1,
+            "excludedRestaurants": [
+              {
+                "name": "Long Island City Place 083",
+                "id": "long-island-city-083"
+              },
+              {
+                "name": "Long Island City Place 085",
+                "id": "long-island-city-085"
+              }
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 40.73,
+            "lng": -73.955
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "unavailable": [
+                {
+                  "from": "10:00",
+                  "to": "19:00"
+                }
+              ],
+              "strength": "mild"
+            },
+            "cuisine": {
+              "scores": {
+                "mexican_restaurant": 1,
+                "taco_restaurant": 1
+              },
+              "strength": "strong"
+            }
+          }
+        }
+      ],
+      "expected": {
+        "restaurantId": "long-island-city-067",
+        "startTime": "20:00",
+        "cannotCome": 1,
+        "alternatives": [
+          {
+            "restaurantId": "long-island-city-063",
+            "startTime": "20:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "long-island-city-096",
+            "startTime": "20:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "long-island-city-091",
+            "startTime": "20:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "long-island-city-094",
+            "startTime": "20:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "long-island-city-090",
+            "startTime": "20:00",
+            "cannotCome": 1
+          }
+        ]
+      }
+    }
+  ]
+}

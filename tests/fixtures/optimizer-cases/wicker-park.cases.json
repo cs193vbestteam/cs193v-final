@@ -1,0 +1,313 @@
+{
+  "about": "Made-up groups for the Wicker Park pool. `expected` is written by `npm run cases:optimizer -- record`; see sim/optimizer-cases.ts.",
+  "cases": [
+    {
+      "name": "Three: sushi, a must budget, and a trip from the Loop",
+      "about": "One strongly wants sushi or Japanese, one must stay near $20 and at most $35, and one comes from the Loop, wants a short trip and prefers 18:00 to 19:00. Everyone should be able to come, at a cheap Japanese place if there is one.",
+      "members": [
+        {
+          "startPoint": {
+            "lat": 41.93,
+            "lng": -87.71
+          },
+          "prefs": {
+            "version": 1,
+            "cuisine": {
+              "scores": {
+                "sushi_restaurant": 1,
+                "japanese_restaurant": 1
+              },
+              "strength": "strong"
+            }
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 41.92,
+            "lng": -87.65
+          },
+          "prefs": {
+            "version": 1,
+            "budget": {
+              "ideal": 20,
+              "max": 35,
+              "strength": "must"
+            },
+            "priority": [
+              "budget"
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 41.88,
+            "lng": -87.63
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "preferred": [
+                {
+                  "from": "18:00",
+                  "to": "19:00"
+                }
+              ],
+              "strength": "mild"
+            },
+            "travel": {
+              "maxMin": 20,
+              "strength": "strong"
+            }
+          }
+        }
+      ],
+      "expected": {
+        "restaurantId": "wicker-park-033",
+        "startTime": "18:00",
+        "cannotCome": 0,
+        "alternatives": [
+          {
+            "restaurantId": "wicker-park-027",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "wicker-park-023",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "wicker-park-030",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "wicker-park-022",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "wicker-park-019",
+            "startTime": "18:00",
+            "cannotCome": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "Four: a vegan, fine dining, cheap tacos and an early night",
+      "about": "A vegan, someone who strongly wants fine dining around $80, someone who mildly wants Mexican and strongly wants to stay under $30, and someone who has to leave by 20:00 and prefers 17:00 to 18:00. The wishes pull apart, but nobody's hard rule does.",
+      "members": [
+        {
+          "startPoint": {
+            "lat": 41.908,
+            "lng": -87.677
+          },
+          "prefs": {
+            "version": 1,
+            "dietary": [
+              "vegan"
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 41.92,
+            "lng": -87.65
+          },
+          "prefs": {
+            "version": 1,
+            "budget": {
+              "ideal": 80,
+              "strength": "mild"
+            },
+            "style": {
+              "wanted": [
+                "fine_dining"
+              ],
+              "strength": "strong"
+            }
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 41.93,
+            "lng": -87.71
+          },
+          "prefs": {
+            "version": 1,
+            "budget": {
+              "max": 30,
+              "strength": "strong"
+            },
+            "cuisine": {
+              "scores": {
+                "mexican_restaurant": 1,
+                "taco_restaurant": 1
+              },
+              "strength": "mild"
+            }
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 41.88,
+            "lng": -87.63
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "unavailable": [
+                {
+                  "from": "20:00",
+                  "to": "23:00"
+                }
+              ],
+              "preferred": [
+                {
+                  "from": "17:00",
+                  "to": "18:00"
+                }
+              ],
+              "strength": "strong"
+            }
+          }
+        }
+      ],
+      "expected": {
+        "restaurantId": "wicker-park-098",
+        "startTime": "18:00",
+        "cannotCome": 0,
+        "alternatives": [
+          {
+            "restaurantId": "wicker-park-096",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "wicker-park-099",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "wicker-park-082",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "wicker-park-095",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "wicker-park-100",
+            "startTime": "18:00",
+            "cannotCome": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "A late shift against an early riser, and two musts on different things",
+      "about": "One person is only free from 22:00 and another has to be done before 21:00, so one of them cannot come. Of the other two, one says it must be fine dining and one says it must cost at most $25.",
+      "members": [
+        {
+          "startPoint": {
+            "lat": 41.908,
+            "lng": -87.677
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "unavailable": [
+                {
+                  "from": "10:00",
+                  "to": "21:00"
+                }
+              ],
+              "strength": "mild"
+            }
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 41.92,
+            "lng": -87.65
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "unavailable": [
+                {
+                  "from": "21:00",
+                  "to": "23:00"
+                }
+              ],
+              "strength": "mild"
+            }
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 41.93,
+            "lng": -87.71
+          },
+          "prefs": {
+            "version": 1,
+            "style": {
+              "wanted": [
+                "fine_dining"
+              ],
+              "strength": "must"
+            }
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 41.88,
+            "lng": -87.63
+          },
+          "prefs": {
+            "version": 1,
+            "budget": {
+              "max": 25,
+              "strength": "must"
+            }
+          }
+        }
+      ],
+      "expected": {
+        "restaurantId": "wicker-park-084",
+        "startTime": "18:00",
+        "cannotCome": 1,
+        "alternatives": [
+          {
+            "restaurantId": "wicker-park-062",
+            "startTime": "18:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "wicker-park-096",
+            "startTime": "18:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "wicker-park-001",
+            "startTime": "18:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "wicker-park-077",
+            "startTime": "18:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "wicker-park-027",
+            "startTime": "18:00",
+            "cannotCome": 1
+          }
+        ]
+      }
+    }
+  ]
+}

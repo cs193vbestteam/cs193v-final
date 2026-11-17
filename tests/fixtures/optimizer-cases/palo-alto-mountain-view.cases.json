@@ -1,0 +1,395 @@
+{
+  "about": "Made-up groups for the Palo Alto and Mountain View pool. `expected` is written by `npm run cases:optimizer -- record`; see sim/optimizer-cases.ts.",
+  "cases": [
+    {
+      "name": "Three friends who mostly agree",
+      "about": "One wants ramen or Japanese and has a budget, one cares about the trip from Mountain View and likes East and Southeast Asian food, one works until six. Nothing contradicts; everyone should be able to come.",
+      "members": [
+        {
+          "startPoint": {
+            "lat": 37.43,
+            "lng": -122.17
+          },
+          "prefs": {
+            "version": 1,
+            "budget": {
+              "ideal": 25,
+              "max": 40,
+              "strength": "strong"
+            },
+            "cuisine": {
+              "scores": {
+                "ramen_restaurant": 1,
+                "japanese_restaurant": 1,
+                "korean_restaurant": 0.5
+              },
+              "strength": "strong"
+            },
+            "priority": [
+              "cuisine",
+              "budget"
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 37.39,
+            "lng": -122.08
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "preferred": [
+                {
+                  "from": "18:00",
+                  "to": "19:00"
+                }
+              ],
+              "strength": "mild"
+            },
+            "travel": {
+              "idealMin": 10,
+              "maxMin": 20,
+              "strength": "strong"
+            },
+            "cuisine": {
+              "scores": {
+                "chinese_restaurant": 1,
+                "japanese_restaurant": 1,
+                "korean_restaurant": 1,
+                "thai_restaurant": 1,
+                "vietnamese_restaurant": 1
+              },
+              "strength": "mild"
+            }
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 37.45,
+            "lng": -122.18
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "unavailable": [
+                {
+                  "from": "10:00",
+                  "to": "17:00"
+                }
+              ],
+              "strength": "mild"
+            }
+          }
+        }
+      ],
+      "expected": {
+        "restaurantId": "palo-alto-mountain-view-035",
+        "startTime": "18:00",
+        "cannotCome": 0,
+        "alternatives": [
+          {
+            "restaurantId": "palo-alto-mountain-view-079",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-080",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-038",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-081",
+            "startTime": "18:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-039",
+            "startTime": "18:00",
+            "cannotCome": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "Four people, two diets and a tight budget",
+      "about": "A vegetarian who likes Indian food, someone who eats halal and will not go to fast food or travel over 20 minutes, someone who must stay under $30 and wants Mexican, and someone coming from Sunnyvale who named a place and prefers 19:00 to 20:00.",
+      "members": [
+        {
+          "startPoint": {
+            "lat": 37.44,
+            "lng": -122.16
+          },
+          "prefs": {
+            "version": 1,
+            "dietary": [
+              "vegetarian"
+            ],
+            "cuisine": {
+              "scores": {
+                "indian_restaurant": 1
+              },
+              "strength": "mild"
+            },
+            "notes": [
+              {
+                "type": "allergy",
+                "text": "peanuts"
+              }
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 37.39,
+            "lng": -122.08
+          },
+          "prefs": {
+            "version": 1,
+            "dietary": [
+              "halal"
+            ],
+            "budget": {
+              "ideal": 30,
+              "strength": "mild"
+            },
+            "travel": {
+              "maxMin": 20,
+              "strength": "must"
+            },
+            "style": {
+              "excluded": [
+                "fast_food"
+              ],
+              "strength": "mild"
+            }
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 37.43,
+            "lng": -122.17
+          },
+          "prefs": {
+            "version": 1,
+            "budget": {
+              "max": 30,
+              "strength": "must"
+            },
+            "cuisine": {
+              "scores": {
+                "mexican_restaurant": 1,
+                "taco_restaurant": 1
+              },
+              "strength": "strong"
+            },
+            "priority": [
+              "budget",
+              "cuisine"
+            ]
+          }
+        },
+        {
+          "startPoint": {
+            "lat": 37.38,
+            "lng": -122.04
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "preferred": [
+                {
+                  "from": "19:00",
+                  "to": "20:00"
+                }
+              ],
+              "strength": "strong"
+            },
+            "wantedRestaurants": [
+              {
+                "name": "Palo Alto and Mountain View Place 113",
+                "id": "palo-alto-mountain-view-113"
+              }
+            ]
+          }
+        }
+      ],
+      "expected": {
+        "restaurantId": "palo-alto-mountain-view-119",
+        "startTime": "19:00",
+        "cannotCome": 0,
+        "alternatives": [
+          {
+            "restaurantId": "palo-alto-mountain-view-115",
+            "startTime": "19:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-117",
+            "startTime": "19:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-128",
+            "startTime": "19:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-001",
+            "startTime": "19:00",
+            "cannotCome": 0
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-069",
+            "startTime": "19:00",
+            "cannotCome": 0
+          }
+        ]
+      }
+    },
+    {
+      "name": "A lunch-only person, and two musts that contradict",
+      "about": "One person can only do lunch and the other three only dinner, so somebody cannot come. Of the three who can meet, one says it must be Mexican and one says it must be Italian; the fourth is a vegetarian. The two musts are worth the same, so the tie goes to whoever finished first: the person who wants Italian.",
+      "members": [
+        {
+          "startPoint": {
+            "lat": 37.43,
+            "lng": -122.17
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "unavailable": [
+                {
+                  "from": "15:00",
+                  "to": "23:00"
+                }
+              ],
+              "strength": "mild"
+            },
+            "cuisine": {
+              "scores": {
+                "japanese_restaurant": 1
+              },
+              "strength": "must"
+            }
+          },
+          "finishedAt": 4000
+        },
+        {
+          "startPoint": {
+            "lat": 37.39,
+            "lng": -122.08
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "unavailable": [
+                {
+                  "from": "10:00",
+                  "to": "17:00"
+                }
+              ],
+              "strength": "mild"
+            },
+            "cuisine": {
+              "scores": {
+                "mexican_restaurant": 1
+              },
+              "strength": "must"
+            }
+          },
+          "finishedAt": 2000
+        },
+        {
+          "startPoint": {
+            "lat": 37.45,
+            "lng": -122.18
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "unavailable": [
+                {
+                  "from": "10:00",
+                  "to": "17:00"
+                }
+              ],
+              "strength": "mild"
+            },
+            "cuisine": {
+              "scores": {
+                "italian_restaurant": 1
+              },
+              "strength": "must"
+            },
+            "budget": {
+              "ideal": 60,
+              "strength": "mild"
+            }
+          },
+          "finishedAt": 1000
+        },
+        {
+          "startPoint": {
+            "lat": 37.4,
+            "lng": -122.11
+          },
+          "prefs": {
+            "version": 1,
+            "time": {
+              "unavailable": [
+                {
+                  "from": "10:00",
+                  "to": "16:00"
+                }
+              ],
+              "strength": "mild"
+            },
+            "dietary": [
+              "vegetarian"
+            ]
+          },
+          "finishedAt": 3000
+        }
+      ],
+      "expected": {
+        "restaurantId": "palo-alto-mountain-view-016",
+        "startTime": "18:00",
+        "cannotCome": 1,
+        "alternatives": [
+          {
+            "restaurantId": "palo-alto-mountain-view-103",
+            "startTime": "18:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-109",
+            "startTime": "18:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-111",
+            "startTime": "18:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-105",
+            "startTime": "18:00",
+            "cannotCome": 1
+          },
+          {
+            "restaurantId": "palo-alto-mountain-view-112",
+            "startTime": "18:00",
+            "cannotCome": 1
+          }
+        ]
+      }
+    }
+  ]
+}
