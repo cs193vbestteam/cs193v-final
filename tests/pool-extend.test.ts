@@ -74,6 +74,40 @@ describe("what the group asked for", () => {
     ]);
   });
 
+  it("searches for the places a diet needs, before any cuisine", () => {
+    const wanted = wantedTypes([likes("korean_restaurant"), likes("korean_restaurant"), prefs({ dietary: ["halal"] })]);
+    expect(wanted).toEqual(["halal_restaurant", "korean_restaurant"]);
+  });
+
+  it("a vegan needs vegan or vegetarian places; a vegetarian needs vegetarian ones", () => {
+    expect(wantedTypes([prefs({ dietary: ["vegan"] })])).toEqual(["vegan_restaurant", "vegetarian_restaurant"]);
+    expect(wantedTypes([prefs({ dietary: ["vegetarian"] })])).toEqual(["vegetarian_restaurant"]);
+    // Two people with overlapping diets: the shared type is the most needed and comes first.
+    expect(wantedTypes([prefs({ dietary: ["vegan"] }), prefs({ dietary: ["vegetarian"] })])).toEqual([
+      "vegetarian_restaurant",
+      "vegan_restaurant",
+    ]);
+  });
+
+  it("does not list a type twice when it is both a diet's and somebody's wish", () => {
+    expect(wantedTypes([prefs({ dietary: ["vegan"] }), likes("vegan_restaurant", "thai_restaurant")])).toEqual([
+      "vegan_restaurant",
+      "vegetarian_restaurant",
+      "thai_restaurant",
+    ]);
+  });
+
+  it("someone with no diet adds no search", () => {
+    expect(wantedTypes([prefs({ dietary: [] }), prefs({})])).toEqual([]);
+  });
+
+  it("keeps a diet's search single even when there are more cuisines than calls", () => {
+    const many = Array.from({ length: 10 }, (_, i) => `c${i}_restaurant`);
+    const plan = searchPlan(wantedTypes([likes(...many), prefs({ dietary: ["halal"] })]), newPoolMeta(CENTER));
+    expect(plan[0]).toEqual(["halal_restaurant"]);
+    expect(plan).toHaveLength(MAX_EXTRA_CALLS);
+  });
+
   it("never searches for what people ruled out, and is empty when nobody asked for anything", () => {
     expect(
       wantedTypes([
@@ -280,6 +314,19 @@ describe("a plan from creation to decision", () => {
     expect((await getMyConstraints(event.id, bob.id)).prefs.excludedRestaurants).toEqual([
       { name: "Nowhere Diner", id: null },
     ]);
+  });
+
+  it("finds places for a halal diner, so the optimizer has somewhere they can go", async () => {
+    const { google, alice, bob, event } = await plan();
+    await setPrefs(event.id, alice.id, prefs({ dietary: ["halal"] }));
+    await setPrefs(event.id, bob.id, likes("korean_restaurant"));
+    const before = await loadOptimizerInput(event.id);
+    expect(before.input.candidates.some((c) => c.types.includes("halal_restaurant"))).toBe(false);
+
+    expect(await refreshPool(event.id)).toBe(true);
+    expect(google.queries).toEqual(["restaurant", "halal_restaurant", "korean_restaurant"]);
+    const { input } = await loadOptimizerInput(event.id);
+    expect(input.candidates.filter((c) => c.types.includes("halal_restaurant")).length).toBe(3);
   });
 
   it("decides with the pool it has when Google fails", async () => {
