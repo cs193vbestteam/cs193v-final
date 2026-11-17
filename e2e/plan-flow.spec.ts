@@ -62,7 +62,7 @@ async function tellAssistant(page: Page, who: Person) {
   // The owner sees their own numbers in "What your assistant knows".
   await expect(page.getByText(`Budget: up to ${who.secrets[0]}/person`)).toBeVisible();
   await page.getByRole("button", { name: "I'm done" }).click();
-  await expect(page.getByRole("button", { name: "Not done yet" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Change my answers" })).toBeVisible();
 }
 
 async function expectNoSecrets(page: Page, of: Person) {
@@ -102,6 +102,9 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
 
   await test.step("Alex finishes first; Blake's page shows none of it", async () => {
     await tellAssistant(alex, ALEX);
+    // Alex is told their part is over and what the group is waiting for.
+    await expect(alex.getByText("Your part is done.")).toBeVisible();
+    await expect(alex.getByText(/Waiting for 1 other person to finish/)).toBeVisible();
     await blake.reload();
     await expectNoSecrets(blake, ALEX);
     await expect(blake.getByText("1 of 2 ready")).toBeVisible();
@@ -120,6 +123,14 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expectNoSecrets(alex, BLAKE);
     await expect(alex.getByText("2 of 2 ready")).toBeVisible();
     await expect(alex.getByText("Everyone can come")).toBeVisible();
+    // The plan is the first thing on the page, above the conversation, and the done note points to it.
+    for (const page of [alex, blake]) {
+      const plan = await page.getByRole("heading", { name: "The plan" }).boundingBox();
+      const chat = await page.getByRole("heading", { name: "Your private assistant" }).boundingBox();
+      expect(plan!.y).toBeLessThan(chat!.y);
+      await expect(page.getByText("The plan is ready.")).toBeVisible();
+      await expect(page.getByRole("link", { name: "See the plan" })).toHaveAttribute("href", "#plan");
+    }
     // The plan on the page is the first price line; the same line is repeated on the tiles of the pop-out.
     const planLine = (page: Page) => page.getByText(/~\$\d+\/person/).first();
     await expect(planLine(alex)).toBeVisible();
@@ -187,6 +198,9 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
 
     await blake.getByRole("button", { name: "I'm done" }).click();
     await expect(blake.getByText("2 of 2 ready")).toBeVisible();
+    // Being done again does not make the old plan current: it stays out of date until the re-run.
+    await expect(blake.getByText(/Everyone is done, but the plan is out of date/)).toBeVisible();
+    await expect(blake.getByText("Everyone can come")).toHaveCount(0);
     await blake.getByRole("button", { name: "Re-run with latest info" }).click();
     await expect(blake.getByText("Out of date")).toHaveCount(0);
     await expect(blake.getByRole("button", { name: "Share with the group" })).toBeVisible();

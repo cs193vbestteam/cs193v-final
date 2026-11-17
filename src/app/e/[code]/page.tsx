@@ -95,8 +95,13 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       : undefined;
   // A result is only as good as the answers it was made from. Once someone is not done again
   // (they changed something, or joined afterwards) it is shown as out of date until it is re-run (#140).
+  // That lasts until the re-run itself: being done again does not make the old plan current.
   const stale =
-    result && readyCount < members.length ? (members.length > result.participants ? "joined" : "changed") : null;
+    result && (readyCount < members.length || rerunnable)
+      ? members.length > result.participants
+        ? "joined"
+        : "changed"
+      : null;
   const shareResult =
     !stale && result?.proposal && chosen
       ? resultMessage({
@@ -128,6 +133,45 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
 
   // Plans without real restaurant data say so wherever a place is named.
   const sample = event.poolSource === "seed";
+
+  // For someone who is done: whether anything is left for them, and what the group is waiting for (#153).
+  const waiting = members.length - readyCount;
+  const others = `${waiting} other ${waiting === 1 ? "person" : "people"}`;
+  const next = !me.ready
+    ? null
+    : result && !stale
+      ? { text: "The plan is ready.", href: "#plan", link: "See the plan" }
+      : members.length < 2
+        ? {
+            text: "Now invite the others. The plan is worked out as soon as everyone is done.",
+            href: "#group",
+            link: "Invite people",
+          }
+        : waiting > 0
+          ? {
+              text: result
+                ? `Waiting for ${others} to finish. The plan is out of date until then.`
+                : `Waiting for ${others} to finish. The plan will appear on this page by itself.`,
+            }
+          : result
+            ? { text: "Everyone is done, but the plan is out of date.", href: "#plan", link: "Re-run it" }
+            : { text: "Everyone is done.", href: "#plan", link: "Find a plan" };
+
+  const planActions = (
+    <>
+      {shareResult && <ShareMessage label="Share with the group" message={shareResult} primary />}
+      <div className={shareResult ? "mt-2" : ""}>
+        <NegotiateButton
+          eventId={event.id}
+          inviteCode={code}
+          readyCount={readyCount}
+          memberCount={members.length}
+          decided={!!result}
+          canRerun={rerunnable}
+        />
+      </div>
+    </>
+  );
 
   return (
     <div className="mt-6 sm:mt-10">
@@ -161,6 +205,25 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         </div>
       </div>
 
+      {/* Once there is a plan it is the first thing on the page. In the side column, below the group,
+          a tester did not notice it had arrived (#154). */}
+      {result && (
+        <section
+          id="plan"
+          aria-labelledby="plan-heading"
+          className="card rise mt-6 scroll-mt-24"
+          style={{ "--d": "0.06s" } as React.CSSProperties}
+        >
+          <h2 id="plan-heading" className="font-serif text-2xl">
+            The plan
+          </h2>
+          <div className="mt-3 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+            <ResultCard result={result} sample={sample} date={event.date} stale={stale} />
+            <div>{planActions}</div>
+          </div>
+        </section>
+      )}
+
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="rise" style={{ "--d": "0.1s" } as React.CSSProperties}>
           <PrivateChat
@@ -171,10 +234,11 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             initialMissing={missingFields(constraints)}
             ready={me.ready}
             lastOne={!result && members.length >= 2 && members.every((m) => m.ready || m.userId === user.id)}
+            next={next}
           />
         </div>
         <aside className="space-y-5">
-          <section className="card rise" style={{ "--d": "0.18s" } as React.CSSProperties}>
+          <section id="group" className="card rise scroll-mt-24" style={{ "--d": "0.18s" } as React.CSSProperties}>
             <div className="flex items-baseline justify-between">
               <h2 className="font-serif text-xl">The group</h2>
               <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
@@ -236,33 +300,15 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             </div>
           </section>
 
-          <section className="card rise" style={{ "--d": "0.26s" } as React.CSSProperties}>
-            <h2 className="font-serif text-xl">The plan</h2>
-            <div className="mt-3">
-              {result ? (
-                <ResultCard result={result} sample={sample} date={event.date} stale={stale} />
-              ) : (
-                <p className="rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
-                  No plan yet. As soon as everyone&apos;s done, the plan is worked out. Nobody has to press anything.
-                </p>
-              )}
-            </div>
-            {shareResult && (
-              <div className="mt-4">
-                <ShareMessage label="Share with the group" message={shareResult} primary />
-              </div>
-            )}
-            <div className={shareResult ? "mt-2" : "mt-4"}>
-              <NegotiateButton
-                eventId={event.id}
-                inviteCode={code}
-                readyCount={readyCount}
-                memberCount={members.length}
-                decided={!!result}
-                canRerun={rerunnable}
-              />
-            </div>
-          </section>
+          {!result && (
+            <section id="plan" className="card rise scroll-mt-24" style={{ "--d": "0.26s" } as React.CSSProperties}>
+              <h2 className="font-serif text-xl">The plan</h2>
+              <p className="mt-3 rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
+                No plan yet. As soon as everyone&apos;s done, the plan is worked out. Nobody has to press anything.
+              </p>
+              <div className="mt-4">{planActions}</div>
+            </section>
+          )}
         </aside>
       </div>
     </div>

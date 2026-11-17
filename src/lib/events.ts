@@ -495,7 +495,7 @@ export const NOTHING_CHANGED =
 
 /**
  * Where a plan stands for running it (#118). `changedSince` is whether anyone changed what they
- * want, or joined, after the stored result was made. Pressing "Not done yet" and "I'm done" again
+ * want, or joined, after the stored result was made. Pressing "Change my answers" and "I'm done" again
  * changes nothing and does not count. Without a change, the answers are the ones the result was
  * made from, and the optimizer would return the same plan.
  */
