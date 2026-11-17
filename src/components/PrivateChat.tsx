@@ -150,7 +150,7 @@ export function PrivateChat({
               <span />
               <span />
             </span>
-            {finding ? "Everyone's done. The assistants are finding a plan…" : "Assistant is thinking…"}
+            {finding ? "Everyone's done. Finding a plan…" : "Assistant is thinking…"}
           </p>
         )}
         <div ref={bottom} />

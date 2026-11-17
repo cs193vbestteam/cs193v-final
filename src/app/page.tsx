@@ -94,7 +94,7 @@ const STEPS = [
       <div className="space-y-2 text-sm">
         <div className="flex justify-end">
           <span className="rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-paper">
-            sat night only, under $40, no spicy
+            after 6 only, under $40, no spicy
           </span>
         </div>
         <div className="flex">
@@ -105,37 +105,39 @@ const STEPS = [
   },
   {
     n: "02",
-    title: "Assistants answer, never explain",
-    body: "The mediator proposes a few options each round and asks every assistant the same question. Each one says accept, reluctant or reject, and at most which dimension. Never a number.",
+    title: "Every option gets scored",
+    body: "Once everyone is done, a program scores every place and start time against what each person said. No AI picks the plan, and nobody's answers are shown to anyone.",
     demo: (
-      <div className="flex flex-wrap gap-2 font-mono text-xs">
-        <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">accept</span>
-        <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-1 text-amber-ink">
-          reluctant · price
+      <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+        <span className="rounded-md border border-line-strong bg-paper-2 px-2 py-1 text-ink-2">60 places</span>
+        <span aria-hidden className="text-ink-3">
+          ×
         </span>
-        <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">accept</span>
-        <span className="rounded-md border border-seal/30 bg-seal-soft px-2 py-1 text-seal-ink">reject · time</span>
+        <span className="rounded-md border border-line-strong bg-paper-2 px-2 py-1 text-ink-2">14 start times</span>
+        <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">
+          every open option scored
+        </span>
       </div>
     ),
   },
   {
     n: "03",
     title: "A short list for the group",
-    body: "A few rounds later, with small concessions nobody else sees, there's a best fit and up to five more places that work. The group gets the answer and nothing else.",
+    body: "The plan is the one the fewest people would have to miss, and among those the one that suits the group best, with up to five more places. The group gets the answer and nothing else.",
     demo: (
       <div className="rounded-xl border border-ink bg-ink px-3 py-2 text-paper">
         <div className="font-serif text-lg leading-tight">Sat 7pm · Olive Tree Mezze</div>
-        <div className="text-xs text-paper/70">~$27 each · everyone&apos;s in</div>
+        <div className="text-xs text-paper/70">~$27 each · everyone can come</div>
       </div>
     ),
   },
 ];
 
-const LEDGER: { label: string; mine: string; width: number; verdict: "yes" | "meh" }[] = [
-  { label: "When", mine: "Saturday dinner only", width: 1, verdict: "yes" },
-  { label: "Budget", mine: "Up to $40, can stretch to $50", width: 2, verdict: "meh" },
-  { label: "Travel", mine: "15 minutes max", width: 1, verdict: "yes" },
-  { label: "Diet", mine: "No spicy food", width: 1, verdict: "yes" },
+const LEDGER: { label: string; mine: string; width: number }[] = [
+  { label: "When", mine: "Dinner only, from 6pm", width: 1 },
+  { label: "Budget", mine: "Up to $40, can stretch to $50", width: 2 },
+  { label: "Travel", mine: "15 minutes max", width: 1 },
+  { label: "Diet", mine: "No spicy food", width: 1 },
 ];
 
 function Landing() {
@@ -160,7 +162,8 @@ function Landing() {
           </h1>
           <p className="lede rise mt-6" style={{ "--d": "0.18s" } as React.CSSProperties}>
             Everyone says &ldquo;whatever works&rdquo; and nobody means it. Settle lets each person tell their own
-            assistant the real constraints, then the assistants negotiate a plan nobody has to secretly suffer through.
+            assistant the real constraints, then picks the plan that fits the group, so nobody has to secretly suffer
+            through it.
           </p>
           <div
             className="rise mt-8 flex flex-wrap items-center gap-3"
@@ -217,11 +220,12 @@ function Landing() {
       <section className="mt-28">
         <Reveal className="border-t border-line pt-10">
           <h2 className="display text-4xl sm:text-5xl">
-            Private <em>by construction</em>, not by promise.
+            Your limits stay <em>yours</em>.
           </h2>
           <p className="lede mt-4 max-w-2xl">
-            The mediator never receives anyone&apos;s constraints. It only gets one opaque assistant per person, and
-            every assistant answers with a verdict and at most one dimension name. Here is what that looks like.
+            To find a plan, a program on our server reads what everyone told their assistant. What it read goes no
+            further: the group gets the plan and, with three or more people, how many can come. Here is what that looks
+            like.
           </p>
         </Reveal>
         <Reveal
@@ -244,15 +248,9 @@ function Landing() {
                   group sees
                 </span>
                 <span className="redact" style={{ width: `${row.width * 3.5 + 2}rem` }} />
-                {row.verdict === "yes" ? (
-                  <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-0.5 font-mono text-xs text-moss">
-                    accept
-                  </span>
-                ) : (
-                  <span className="rounded-md border border-amber/30 bg-amber-soft px-2 py-0.5 font-mono text-xs text-amber-ink">
-                    reluctant · price
-                  </span>
-                )}
+                <span className="rounded-md border border-line-strong bg-paper-2 px-2 py-0.5 font-mono text-xs text-ink-2">
+                  nothing
+                </span>
               </div>
             </div>
           ))}
@@ -277,7 +275,7 @@ function Landing() {
           Stop saying <em>&ldquo;whatever works.&rdquo;</em>
         </h2>
         <p className="lede mx-auto mt-5 max-w-lg">
-          First version: picking a restaurant and a time for the weekend. Trips, roommates and chores come next.
+          First version: picking a restaurant and a time for a meal. Trips, roommates and chores come next.
         </p>
         <div className="mt-8 flex justify-center gap-3">
           <Link href="/signup" className="btn">

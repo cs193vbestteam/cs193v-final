@@ -30,7 +30,7 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Settle — group plans without the group chat",
   description:
-    "Tell your own assistant your real constraints in private. The assistants negotiate a plan that works for everyone, and nobody's numbers leave the room.",
+    "Tell your own assistant your real constraints in private. Settle picks a place and a time that fit the group, and nobody's numbers are shown to anyone.",
 };
 
 export const viewport: Viewport = {
@@ -86,8 +86,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </main>
         <footer className="mx-auto w-full max-w-6xl px-5 pb-8 sm:px-8">
           <div className="flex flex-col gap-2 border-t border-line pt-5 text-xs text-ink-3 sm:flex-row sm:items-center sm:justify-between">
-            <span className="font-mono tracking-wider">SETTLE · PRIVATE BY CONSTRUCTION</span>
-            <span>Constraints encrypted at rest · only verdicts leave your assistant</span>
+            <span className="font-mono tracking-wider">SETTLE · PRIVATE LIMITS, SHARED PLANS</span>
+            <span>Constraints encrypted at rest · the group sees only the plan</span>
           </div>
         </footer>
       </body>

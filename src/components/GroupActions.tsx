@@ -31,7 +31,7 @@ export function NegotiateButton({
           })
         }
       >
-        {pending ? "Assistants negotiating…" : decided ? "Re-run with latest info" : "Find a plan"}
+        {pending ? "Finding a plan…" : decided ? "Re-run with latest info" : "Find a plan"}
       </button>
       {readyCount < 2 && <p className="mt-2 text-center text-xs text-ink-3">Needs at least 2 people marked done.</p>}
       {memberCount >= 2 && readyCount < memberCount && (
