@@ -59,6 +59,11 @@ test("the plan form has visible labels, the plan page is named after the plan, a
   await chat.focus();
   await expect(chat).toBeFocused();
 
+  // Where people type, the page says who reads the chat and for how long, and links to the rest (#111).
+  await expect(page.getByText(/sent to Anthropic's Claude/)).toBeVisible();
+  await expect(page.getByText(/standard retention policy is up to 30 days/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /How your data is used/ })).toHaveAttribute("href", "/privacy");
+
   // Nothing a person reads is smaller than 12px, and nothing they press is shorter than 24px.
   const { small, short } = await page.evaluate(() => {
     const shown = (el: Element) => {

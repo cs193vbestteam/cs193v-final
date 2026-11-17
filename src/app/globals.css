@@ -302,6 +302,10 @@ summary:focus-visible {
     background-size 0.3s var(--ease-out-expo),
     color 0.2s ease;
 }
+/* The same link in 12px text: the words are shorter, so it needs more room to stay 24px tall. */
+.link-small {
+  padding-block: 0.4375rem;
+}
 .link:hover {
   background-size: 0% 1px;
 }

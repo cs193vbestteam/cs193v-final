@@ -87,7 +87,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <footer className="mx-auto w-full max-w-6xl px-5 pb-8 sm:px-8">
           <div className="flex flex-col gap-2 border-t border-line pt-5 text-xs text-ink-3 sm:flex-row sm:items-center sm:justify-between">
             <span className="font-mono tracking-wider">SETTLE · PRIVATE LIMITS, SHARED PLANS</span>
-            <span>Constraints encrypted at rest · the group sees only the plan</span>
+            <span>
+              Constraints encrypted at rest · the group sees only the plan ·{" "}
+              <Link href="/privacy" className="link link-small">
+                Privacy
+              </Link>
+            </span>
           </div>
         </footer>
       </body>
