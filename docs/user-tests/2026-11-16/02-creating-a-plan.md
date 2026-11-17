@@ -10,7 +10,7 @@ The tester did not understand why they needed to choose "Up to" a certain number
 
 Later, this became part of their confusion about whether the plan could be completed with two people.
 
-**Moment worth noticing:** The tester did not work out from the form that the number was a maximum rather than a required group size.
+**Moment worth noticing:** There was an urge to explain that the number was a maximum rather than a required group size. The tester had not worked that out from the form.
 
 ## Issues filed
 
