@@ -1,6 +1,6 @@
 import type { LatLng } from "./geo";
 import { openOn } from "./opening-hours";
-import type { PersonPreferences, Style } from "./optimizer-input";
+import type { DietaryNeed, PersonPreferences, Style } from "./optimizer-input";
 import { NEARBY_PAGE_SIZE, mergePools, nearbyRestaurants, toPlaces } from "./places";
 import type { Place } from "./restaurants";
 
@@ -13,7 +13,8 @@ import type { Place } from "./restaurants";
  * pure apart from the searches themselves; reading and writing the plan is pool-refresh.ts.
  *
  * What goes to Google is a list of place types and the plan's location. Nothing says who
- * asked for what, or how many people did.
+ * asked for what, or how many people did. A search for halal or vegan places does tell Google
+ * that somebody in a group meeting near that location keeps that diet, and nothing more.
  */
 
 /** Searches a plan may make after the first one, over its whole life. */
@@ -49,11 +50,32 @@ const STYLE_TYPE: Partial<Record<Style, string>> = {
 };
 
 /**
- * The place types the group asked for, most wanted first: every cuisine type somebody scored
- * as exactly what they want, and every kind of place somebody wants. Food and places people
- * ruled out are not searched for. Ties are broken by name so the order is always the same.
+ * The Google types to search for someone's diet. A diet is a hard rule for the optimizer: a
+ * vegan can only go to a vegan or vegetarian place and someone eating halal only to a halal
+ * one (`canAttend` in optimizer.ts). The general search finds few of those, so without a search
+ * of their own such a person has almost nowhere to go.
+ */
+const DIET_TYPES: Record<DietaryNeed, readonly string[]> = {
+  vegetarian: ["vegetarian_restaurant"],
+  vegan: ["vegan_restaurant", "vegetarian_restaurant"],
+  halal: ["halal_restaurant"],
+};
+
+/**
+ * The place types to search for, in order. First the types somebody's diet needs: without
+ * them that person cannot come at all, so they never wait behind a cuisine. Then what the group
+ * asked for, most wanted first: every cuisine type somebody scored as exactly what they want,
+ * and every kind of place somebody wants. Food and places people ruled out are not searched
+ * for. Ties are broken by name so the order is always the same.
  */
 export function wantedTypes(people: readonly PersonPreferences[]): string[] {
+  const diets = new Map<string, number>();
+  for (const prefs of people)
+    for (const type of new Set((prefs.dietary ?? []).flatMap((need) => DIET_TYPES[need])))
+      diets.set(type, (diets.get(type) ?? 0) + 1);
+  const byCount = (m: Map<string, number>) =>
+    [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([type]) => type);
+
   const count = new Map<string, number>();
   for (const prefs of people) {
     const mine = new Set<string>();
@@ -64,7 +86,8 @@ export function wantedTypes(people: readonly PersonPreferences[]): string[] {
     }
     for (const type of mine) count.set(type, (count.get(type) ?? 0) + 1);
   }
-  return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([type]) => type);
+  const needed = byCount(diets);
+  return [...needed, ...byCount(count).filter((type) => !needed.includes(type))];
 }
 
 /**
