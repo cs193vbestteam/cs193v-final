@@ -25,10 +25,17 @@ export function ResultCard({
   result,
   sample = false,
   date,
+  stale = null,
 }: {
   result: StoredResult;
   sample?: boolean;
   date?: string | null;
+  /**
+   * Someone is not done (#140): they changed their answers after this was decided ("changed"),
+   * or the group has grown since ("joined"). The plan stays on the page, but it no longer
+   * claims to work for the people it was made for.
+   */
+  stale?: "changed" | "joined" | null;
 }) {
   const when = (slot: string) => formatWhen(date, slot);
   const place = (id: string) => result.places?.[id] ?? getRestaurant(id);
@@ -36,8 +43,9 @@ export function ResultCard({
   // The optimizer's results say who can come, not who agreed: it does not ask anyone to accept.
   const byOptimizer = result.engine === "optimizer";
   const canCome = result.participants - (result.cannotCome ?? 0);
-  const headline =
-    result.status === "agreed"
+  const headline = stale
+    ? "Out of date"
+    : result.status === "agreed"
       ? byOptimizer
         ? "Everyone can come"
         : "Everyone's in"
@@ -50,8 +58,9 @@ export function ResultCard({
             : byOptimizer && result.participants === 2
               ? "No plan works for both of you yet"
               : "No plan works for everyone yet";
-  const tone =
-    result.status === "agreed"
+  const tone = stale
+    ? { border: "border-amber/40", text: "text-amber-ink", stamp: "border-amber text-amber-ink" }
+    : result.status === "agreed"
       ? { border: "border-moss/35", text: "text-moss", stamp: "border-moss text-moss" }
       : result.status === "compromise" || result.status === "partial"
         ? { border: "border-amber/40", text: "text-amber-ink", stamp: "border-amber text-amber-ink" }
@@ -95,6 +104,14 @@ export function ResultCard({
     <div className={`relative overflow-hidden rounded-2xl border bg-surface ${tone.border}`}>
       <div className="px-4 pt-4">
         <div className={`font-mono text-[0.75rem] uppercase tracking-[0.14em] ${tone.text}`}>{headline}</div>
+        {stale && (
+          <p role="status" className="mt-2 text-sm text-ink-2">
+            {stale === "joined"
+              ? "Someone joined after this was decided, so it does not count them yet."
+              : "Someone's answers have changed since this was decided, so it may no longer fit."}{" "}
+            Re-run it once everyone is done.
+          </p>
+        )}
         {showPlan ? (
           <div className="mt-2">
             <div className="font-serif text-[1.75rem] leading-tight">{r.name}</div>
@@ -147,7 +164,7 @@ export function ResultCard({
             what anyone gave up.
           </p>
         )}
-        {result.status === "agreed" && (
+        {result.status === "agreed" && !stale && (
           <div
             className={`stamp pointer-events-none absolute right-3 top-3 rounded-md border-2 px-2 py-0.5 font-mono text-[0.75rem] font-medium uppercase tracking-[0.18em] ${tone.stamp}`}
             aria-hidden

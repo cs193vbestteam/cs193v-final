@@ -162,6 +162,29 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     }
   });
 
+  await test.step("when someone changes their answers, the plan is marked out of date until it is re-run", async () => {
+    await blake.getByLabel("Message your assistant").fill("Actually make my budget $50");
+    await blake.getByRole("button", { name: "Send" }).click();
+    await expect(blake.getByText("1 of 2 ready")).toBeVisible();
+    for (const page of [blake, alex]) {
+      await page.reload();
+      await expect(page.getByText("Out of date").first()).toBeVisible();
+      await expect(page.getByText(/answers have changed since this was decided/)).toBeVisible();
+      // The plan is still there to read, but it no longer says it works for everyone, and it is not offered for sharing.
+      await expect(page.getByText("Everyone can come")).toHaveCount(0);
+      await expect(page.getByText(/~\$\d+\/person/).first()).toBeVisible();
+      await expect(page.getByRole("button", { name: "Share with the group" })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Re-run with latest info" })).toBeDisabled();
+    }
+    await expectNoSecrets(alex, BLAKE);
+
+    await blake.getByRole("button", { name: "I'm done" }).click();
+    await expect(blake.getByText("2 of 2 ready")).toBeVisible();
+    await blake.getByRole("button", { name: "Re-run with latest info" }).click();
+    await expect(blake.getByText("Out of date")).toHaveCount(0);
+    await expect(blake.getByRole("button", { name: "Share with the group" })).toBeVisible();
+  });
+
   await test.step("someone outside the plan sees only the invitation", async () => {
     await signUp(casey, CASEY, planPath);
     await expect(casey.getByRole("button", { name: "Join plan" })).toBeVisible();
@@ -171,6 +194,17 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     expect(text).not.toContain(BLAKE.name);
     await expectNoSecrets(casey, ALEX);
     await expectNoSecrets(casey, BLAKE);
+  });
+
+  await test.step("when someone joins after the plan is decided, it says so and is out of date", async () => {
+    await casey.getByRole("button", { name: "Join plan" }).click();
+    await expect(casey.getByText("3 of 12 joined")).toBeVisible();
+    for (const page of [casey, alex]) {
+      await page.reload();
+      await expect(page.getByText("Out of date").first()).toBeVisible();
+      await expect(page.getByText(/Someone joined after this was decided/)).toBeVisible();
+      await expect(page.getByText(/answers have changed/)).toHaveCount(0);
+    }
   });
 });
 

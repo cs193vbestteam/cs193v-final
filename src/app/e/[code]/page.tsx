@@ -91,8 +91,12 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
     result?.proposal && result.status !== "no_deal"
       ? (result.places?.[result.proposal.restaurantId] ?? getRestaurant(result.proposal.restaurantId))
       : undefined;
+  // A result is only as good as the answers it was made from. Once someone is not done again
+  // (they changed something, or joined afterwards) it is shown as out of date until it is re-run (#140).
+  const stale =
+    result && readyCount < members.length ? (members.length > result.participants ? "joined" : "changed") : null;
   const shareResult =
-    result?.proposal && chosen
+    !stale && result?.proposal && chosen
       ? resultMessage({
           title: event.title,
           place: chosen.name,
@@ -106,17 +110,19 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
     !result && event.creatorId === user.id && members.length >= 2 && readyCount < members.length
       ? nudgeMessage({ title: event.title, ready: readyCount, members: members.length, url: planUrl })
       : null;
-  const status = result
-    ? result.status === "agreed"
-      ? { label: "Decided", cls: "pill-moss" }
-      : result.status === "compromise"
-        ? { label: "Compromise", cls: "pill-amber" }
-        : result.status === "partial"
-          ? { label: "Not everyone", cls: "pill-amber" }
-          : { label: "Stuck", cls: "pill-seal" }
-    : readyCount === members.length && members.length >= 2
-      ? { label: "Ready to negotiate", cls: "pill-moss" }
-      : { label: "Collecting", cls: "pill-amber" };
+  const status = stale
+    ? { label: "Out of date", cls: "pill-amber" }
+    : result
+      ? result.status === "agreed"
+        ? { label: "Decided", cls: "pill-moss" }
+        : result.status === "compromise"
+          ? { label: "Compromise", cls: "pill-amber" }
+          : result.status === "partial"
+            ? { label: "Not everyone", cls: "pill-amber" }
+            : { label: "Stuck", cls: "pill-seal" }
+      : readyCount === members.length && members.length >= 2
+        ? { label: "Ready to negotiate", cls: "pill-moss" }
+        : { label: "Collecting", cls: "pill-amber" };
 
   // Plans without real restaurant data say so wherever a place is named.
   const sample = event.poolSource === "seed";
@@ -232,7 +238,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             <h2 className="font-serif text-xl">The plan</h2>
             <div className="mt-3">
               {result ? (
-                <ResultCard result={result} sample={sample} date={event.date} />
+                <ResultCard result={result} sample={sample} date={event.date} stale={stale} />
               ) : (
                 <p className="rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
                   No plan yet. As soon as everyone&apos;s done, the assistants talk it out. Nobody has to press
