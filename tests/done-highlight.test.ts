@@ -41,7 +41,7 @@ async function render(props: { messages: ChatTurn[]; missing: MissingField[]; re
       }),
     ),
   );
-  return [...container.querySelectorAll("button")].find((b) => /I'm done|Not done yet/.test(b.textContent ?? ""))!;
+  return [...container.querySelectorAll("button")].find((b) => /I'm done|Change my answers/.test(b.textContent ?? ""))!;
 }
 
 describe('D. highlighting "I\'m done"', () => {
@@ -80,7 +80,7 @@ describe('D. highlighting "I\'m done"', () => {
       missing: [],
       ready: true,
     });
-    expect(button.textContent).toBe("Not done yet");
+    expect(button.textContent).toBe("Change my answers");
     expect(button.className).not.toContain("btn-attention");
   });
 

@@ -65,7 +65,8 @@ async function submit() {
 function expectUpdated() {
   expect(container.textContent).toContain("Budget saved privately");
   expect(container.textContent).toContain("Budget: up to $40/person");
-  expect(container.textContent).toContain("All set ✓");
+  // Nothing is missing any more: "All set" for someone still chatting, the done note for someone who is done.
+  expect(container.textContent).toMatch(/All set ✓|Your part is done\./);
   expect(container.textContent).not.toContain("Still needs: budget");
 }
 
@@ -74,7 +75,7 @@ describe("PrivateChat server refresh", () => {
     await render(initial);
     await render(updated);
     expectUpdated();
-    expect(container.textContent).toContain("Not done yet");
+    expect(container.textContent).toContain("Change my answers");
   });
 
   it("preserves an unsent draft when another tab updates the server snapshot", async () => {

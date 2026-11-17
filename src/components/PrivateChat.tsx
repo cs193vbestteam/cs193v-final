@@ -15,6 +15,11 @@ type Props = {
   ready: boolean;
   /** Everyone else is done and there is no plan yet: finishing here starts the negotiation. */
   lastOne?: boolean;
+  /**
+   * For someone who is done: what happens now, and where to go for it (#153). A tester pressed
+   * "I'm done" and could not tell whether they were finished or what the group was waiting for.
+   */
+  next?: { text: string; href?: string; link?: string } | null;
 };
 
 const MISSING_LABEL: Record<MissingField, string> = {
@@ -39,6 +44,7 @@ export function PrivateChat({
   initialMissing,
   ready,
   lastOne = false,
+  next = null,
 }: Props) {
   const [finding, setFinding] = useState(false);
   const [localReply, setLocalReply] = useState<ChatSnapshot | null>(null);
@@ -47,6 +53,7 @@ export function PrivateChat({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const bottom = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
 
   const serverSnapshot: ChatSnapshot = {
     eventId,
@@ -104,6 +111,8 @@ export function PrivateChat({
         const res = await setReadyAction(eventId, inviteCode, !ready);
         // A notice means being done was saved but the automatic run failed: say what to do next.
         if (res.error || res.notice) setError(res.error ?? res.notice ?? null);
+        // "Change my answers" leads straight back to the conversation.
+        else if (ready) input.current?.focus();
       } catch {
         setError("Couldn't save that. Please try again.");
       } finally {
@@ -156,8 +165,51 @@ export function PrivateChat({
         <div ref={bottom} />
       </div>
 
+      {/* Where the conversation ends: what is still missing, the way to finish, and what happens after. */}
+      <div
+        className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-5 py-3 ${
+          ready ? "border-moss/30 bg-moss-soft" : "border-line"
+        }`}
+      >
+        {ready ? (
+          <p role="status" className="min-w-0 flex-1 basis-64 text-sm text-ink-2">
+            <strong className="font-medium text-moss">Your part is done.</strong>
+            {next && (
+              <>
+                {" "}
+                {next.text}
+                {next.href && next.link && (
+                  <>
+                    {" "}
+                    <a href={next.href} className="link">
+                      {next.link}
+                    </a>
+                  </>
+                )}
+              </>
+            )}
+          </p>
+        ) : (
+          <span
+            className={`font-mono text-[0.75rem] uppercase tracking-wider ${missing.length ? "text-ink-3" : "text-moss"}`}
+          >
+            {missing.length ? `Still needs: ${missing.map((m) => MISSING_LABEL[m]).join(", ")}` : "All set ✓"}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={toggleReady}
+          disabled={pending || (!ready && missing.length > 0)}
+          className={ready ? "btn-ghost btn-sm" : `btn btn-sm${askedToFinish ? " btn-attention" : ""}`}
+          data-attention={askedToFinish || undefined}
+        >
+          {finding ? "Finding a plan…" : ready ? "Change my answers" : "I'm done"}
+        </button>
+      </div>
+
       <form onSubmit={send} className="flex gap-2 border-t border-line px-4 py-3">
         <input
+          ref={input}
           className="input"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -191,21 +243,6 @@ export function PrivateChat({
         ) : (
           <p className="mt-2.5 text-sm text-ink-3">Nothing yet. Just talk to it like a friend who keeps secrets.</p>
         )}
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <span
-            className={`font-mono text-[0.75rem] uppercase tracking-wider ${missing.length ? "text-ink-3" : "text-moss"}`}
-          >
-            {missing.length ? `Still needs: ${missing.map((m) => MISSING_LABEL[m]).join(", ")}` : "All set ✓"}
-          </span>
-          <button
-            onClick={toggleReady}
-            disabled={pending || (!ready && missing.length > 0)}
-            className={ready ? "btn-ghost btn-sm" : `btn btn-sm${askedToFinish ? " btn-attention" : ""}`}
-            data-attention={askedToFinish || undefined}
-          >
-            {finding ? "Finding a plan…" : ready ? "Not done yet" : "I'm done"}
-          </button>
-        </div>
         {error && (
           <p role="alert" className="mt-3 text-sm text-seal-ink">
             {error}
