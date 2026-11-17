@@ -125,6 +125,36 @@ export function inferCuisine(types: readonly string[], name = ""): Cuisine | nul
   return null;
 }
 
+/** The longest restaurant name we keep. Longer ones are cut, not dropped: real names can be long. */
+export const MAX_PLACE_NAME_CHARS = 80;
+
+/** Text no restaurant is called, and that reads as an order to a language model. */
+const INSTRUCTION_LIKE = [
+  /\b(?:ignore|disregard|forget|override)\b.{0,40}\b(?:instructions?|prompts?|rules?)\b/i,
+  /\bsystem prompt\b/i,
+  /\byou are now\b/i,
+  /<\/?\s*(?:system|assistant|user|instructions?)\s*>/i,
+];
+
+/**
+ * A restaurant's name as we store and show it. The name is whatever its owner typed into
+ * Google, so it is cleaned before it goes anywhere: control and invisible characters are
+ * removed, whitespace is collapsed to single spaces, and it is cut to MAX_PLACE_NAME_CHARS.
+ * Returns null, and the place is left out, when the name reads as an instruction to a model.
+ * A missing or empty name becomes "Unnamed place", as before.
+ */
+export function cleanPlaceName(raw: string | undefined): string | null {
+  const text = (raw ?? "")
+    .normalize("NFC")
+    // Control characters, zero-width and direction-changing marks: nothing a name needs.
+    .replace(/[\p{Cc}\p{Cf}]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return "Unnamed place";
+  if (INSTRUCTION_LIKE.some((re) => re.test(text))) return null;
+  return text.length > MAX_PLACE_NAME_CHARS ? text.slice(0, MAX_PLACE_NAME_CHARS).trimEnd() : text;
+}
+
 /**
  * Map one Places result onto our shape. Returns null for things we can't place. A place whose
  * food is none of the ten older cuisines is kept, with `cuisine: null` (see `Place`).
@@ -140,7 +170,9 @@ export function toPlace(p: PlaceResult, center: LatLng): Place | null {
   // A supermarket with a cafe inside comes back from a cafe search; it is not somewhere to eat a meal.
   if (!isMealCandidate({ primaryType, types: placeTypes })) return null;
   const types = [...placeTypes, primaryType ?? ""];
-  const name = p.displayName?.text ?? "Unnamed place";
+  // The owner writes the name on Google, so it is treated as untrusted text (#121).
+  const name = cleanPlaceName(p.displayName?.text);
+  if (name === null) return null;
   const cuisine = inferCuisine(types, name);
   const location = { lat: p.location.latitude, lng: p.location.longitude };
   const joined = types.join(" ") + " " + name.toLowerCase();
