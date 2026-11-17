@@ -147,6 +147,13 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     for (const secret of [...ALEX.secrets, ...BLAKE.secrets]) expect(copied).not.toContain(secret);
   });
 
+  await test.step("with nothing changed, the plan cannot be run again", async () => {
+    for (const page of [alex, blake]) {
+      await expect(page.getByRole("button", { name: "Re-run with latest info" })).toBeDisabled();
+      await expect(page.getByText(/It can be run again once someone changes theirs/)).toBeVisible();
+    }
+  });
+
   await test.step("the result reveals nobody's limits", async () => {
     await expectNoSecrets(blake, ALEX);
     await expectNoSecrets(alex, BLAKE);

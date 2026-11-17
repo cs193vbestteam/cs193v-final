@@ -66,6 +66,9 @@ CREATE TABLE IF NOT EXISTS members (
 -- When the member last became ready and has stayed so; NULL while they are not. The optimizer
 -- uses the order, never the time, to settle exact ties in favour of whoever finished first.
 ALTER TABLE members ADD COLUMN IF NOT EXISTS ready_at BIGINT;
+-- When the member last changed what they want. A plan is only run again once this, or someone's
+-- joined_at, is later than the stored result (#118). NULL until they first say something that counts.
+ALTER TABLE members ADD COLUMN IF NOT EXISTS changed_at BIGINT;
 
 CREATE TABLE IF NOT EXISTS messages (
   id          BIGSERIAL PRIMARY KEY,

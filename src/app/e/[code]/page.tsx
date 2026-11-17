@@ -9,6 +9,7 @@ import { joinEventAction } from "@/app/actions";
 import {
   MAX_PLAN_SIZE,
   MIN_PLAN_SIZE,
+  canRerun,
   countMembers,
   getEventByCode,
   getMyConstraints,
@@ -81,6 +82,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
     getMyConstraints(event.id, user.id),
     getResult(event.id, user.id),
   ]);
+  const rerunnable = result ? await canRerun(event.id, user.id) : true;
   const { describeConstraints, missingFields } = scenarioFor(event.scenario);
   const me = members.find((m) => m.userId === user.id)!;
   const readyCount = members.filter((m) => m.ready).length;
@@ -257,6 +259,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
                 readyCount={readyCount}
                 memberCount={members.length}
                 decided={!!result}
+                canRerun={rerunnable}
               />
             </div>
           </section>

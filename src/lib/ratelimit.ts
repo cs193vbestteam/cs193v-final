@@ -34,6 +34,13 @@ export const LIMITS = {
    * the same instant; only the one who takes the claim starts the run. Longer than a run can last.
    */
   autoNegotiate: { max: 1, windowMs: 2 * MINUTE },
+  /**
+   * Times a plan can be decided in a day, the first time included. Every run shows the group a
+   * plan made from everyone's answers, so someone who keeps changing their own answers and running
+   * it again can work out what another person said (#118). A group that is really changing its mind
+   * needs a handful of runs; nobody needs dozens.
+   */
+  runsPerPlan: { max: 6, windowMs: DAY },
 } satisfies Record<string, Limit>;
 
 export const rateKey = {
@@ -41,6 +48,7 @@ export const rateKey = {
   llm: (eventId: string) => `llm:${eventId}`,
   createPlan: (userId: string) => `create-plan:${userId}`,
   autoNegotiate: (eventId: string) => `auto-negotiate:${eventId}`,
+  runs: (eventId: string) => `runs:${eventId}`,
   loginEmail: (email: string) => `login-email:${blindIndex(email, "ratelimit")}`,
   loginIp: (ip: string) => `login-ip:${blindIndex(ip, "ratelimit")}`,
   signupIp: (ip: string) => `signup-ip:${blindIndex(ip, "ratelimit")}`,
