@@ -1,6 +1,6 @@
 # LLM Safety
 
-On main `5cf7951`, Settle has one active LLM use: the private chat assistant in `src/lib/assistant.ts`. Claude reads a person's messages and returns a reply and preference updates. Code chooses the final plan.
+Settle has one active LLM use: the private chat assistant in `src/lib/assistant.ts`. Claude reads a person's messages and returns a reply and preference updates. Code chooses the final plan.
 
 ## The lethal trifecta
 
@@ -25,6 +25,6 @@ Model-generated preferences can affect the group's choice, which is their intend
 
 ## The old negotiation engine
 
-The previous engine used LLMs for individual agents, proposal selection, and a final explanation. After #138, the app's planning flow calls the optimizer instead. The old LLM files remain pending #130, but the current result flow does not call them.
+The previous engine used LLMs for individual agents, proposal selection, and a final explanation. After #138, the app's planning flow calls the optimizer instead. #130 removed the old LLM files.
 
 Repeated plans or extra accounts can still help someone infer others' preferences (#117 and #118). The chat's access controls do not solve those outcome-based risks.
