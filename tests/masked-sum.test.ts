@@ -223,7 +223,7 @@ describe("where a bucket may appear", () => {
   const read = (file: string) => readFileSync(path.resolve(__dirname, "../src/lib", `${file}.ts`), "utf8");
 
   it("negotiate.ts and mediator.ts never call for one and never import the unmasked agent", () => {
-    for (const file of ["negotiate", "mediator", "mediator-llm"]) {
+    for (const file of ["negotiate", "mediator"]) {
       const src = read(file);
       expect(src, file).not.toMatch(/\.bucket\(/);
       expect(src, file).not.toMatch(/PrivateAgent|makeAgent|pairKeys|maskValues/);
@@ -232,8 +232,6 @@ describe("where a bucket may appear", () => {
 
   it("the pair keys are made in one place and never leave agent.ts", () => {
     expect(read("agent")).toMatch(/pairKeys\(members\.length\)/);
-    for (const file of ["negotiate", "mediator", "vault", "events"]) expect(read(file), file).not.toMatch(/pairKeys/);
-    // The vault hands out masked agents only.
-    expect(read("vault")).toMatch(/agents: maskGroup\(members\)/);
+    for (const file of ["negotiate", "mediator", "events"]) expect(read(file), file).not.toMatch(/pairKeys/);
   });
 });

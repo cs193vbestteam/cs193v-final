@@ -37,7 +37,7 @@ End-to-end tests live in `e2e/` (Playwright). `npm run test:e2e` builds the app 
 - **Lint:** ESLint with Next.js's `core-web-vitals` + `typescript` rule sets (`eslint.config.mjs`).
 - **Formatting:** Prettier with `printWidth: 120` and everything else at defaults (`.prettierrc.json`). Don't argue about formatting in reviews; run `npm run format`.
 - Validate untrusted input with zod at the boundary (server actions, LLM tool output, external APIs).
-- Server-only code imports `server-only`. Keep anything that touches the database, `crypto.ts` or `vault.ts` out of the negotiation modules: `tests/isolation.test.ts` enforces this.
+- Server-only code imports `server-only`. Keep anything that touches the database or `crypto.ts` out of the negotiation modules: `tests/isolation.test.ts` enforces this.
 
 ## Secrets and security
 

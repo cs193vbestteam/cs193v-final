@@ -115,7 +115,7 @@ describe("where scenario-specific code may live", () => {
       module: m[2],
     }));
 
-  it.each(["negotiate", "mediator", "mediator-llm", "evaluate", "agent", "preferences"])(
+  it.each(["negotiate", "mediator", "evaluate", "agent", "preferences"])(
     "%s.ts does not import the scenario registry",
     (file) => {
       expect(importsOf(file).map((i) => i.module)).not.toEqual(expect.arrayContaining(["scenario"]));
@@ -123,7 +123,7 @@ describe("where scenario-specific code may live", () => {
     },
   );
 
-  it.each(["events", "vault", "pool"])("%s.ts reaches chat, candidates and compile only through a scenario", (file) => {
+  it.each(["events", "pool"])("%s.ts reaches chat, candidates and compile only through a scenario", (file) => {
     const direct = importsOf(file)
       .filter((i) => !i.typeOnly)
       .map((i) => i.module);

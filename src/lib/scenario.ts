@@ -14,7 +14,7 @@ import { meal } from "./scenario-meal";
  * goes through a `Scenario`: what the private chat collects, how the
  * assistant talks, where the candidates come from, and how one person's
  * answers become the `Preferences` contract. Data access (events.ts,
- * vault.ts, pool.ts) and the pages look the scenario up from the plan and
+ * pool.ts) and the pages look the scenario up from the plan and
  * never import a scenario's modules directly, so a second scenario is added
  * here and nowhere else.
  *

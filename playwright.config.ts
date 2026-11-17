@@ -38,7 +38,6 @@ export default defineConfig({
       DATABASE_URL: ":memory:",
       ANTHROPIC_API_KEY: "",
       GOOGLE_PLACES_API_KEY: "",
-      SETTLE_LLM_MEDIATOR: "",
     },
   },
 });

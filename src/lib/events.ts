@@ -480,29 +480,6 @@ export async function setReady(eventId: string, userId: string, ready: boolean):
   await saveConstraints(eventId, userId, c, ready);
 }
 
-/**
- * Runs the negotiation only when every joined member is ready.
- * The vault decrypts each member's preferences and wraps them in an opaque
- * Agent. This function, and the negotiation engine below it, never see them.
- */
-/**
- * Starting new LLM calls in a negotiation stops after this long; later steps answer with code.
- * Each call may still take up to 12 s, so the worst case stays under the route's 60 s limit.
- */
-export const LLM_NEGOTIATION_MS = 30_000;
-
-/**
- * Whether the negotiation may make one more LLM call: before the deadline, within the
- * plan's daily LLM budget (#4, shared with the chat), and while whoever pays for the run
- * (the plan's creator) is under their monthly spending cap. Past the deadline nothing is counted.
- */
-export function llmGate(eventId: string, deadline: number, now: () => number = Date.now, payer?: string | null) {
-  return async () =>
-    now() < deadline &&
-    (!payer || (await canSpend(payer))) &&
-    (await hit(rateKey.llm(eventId), LIMITS.llmPerPlan)).allowed;
-}
-
 export async function runNegotiation(eventId: string, userId: string): Promise<StoredResult> {
   await requireMember(eventId, userId);
   return decideAndStore(eventId);
