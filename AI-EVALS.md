@@ -18,7 +18,7 @@ We have three fixture files under `tests/fixtures/`:
 - `off-topic-cases.json`: 23 requests to reject and 13 legitimate messages to accept. Includes instruction overrides, requests for other people's information, and mixed messages.
 - `extract-cases.json`: 55 older cases covering clear and vague answers, corrections, other languages, multi-turn chats, and 16 adversarial cases. We compare 44 cases with fields shared by the old and new formats.
 
-We wrote these within the team, with AI assistance. Five assistant cases came from errors found during evaluations and a local two-person walkthrough. We have not collected conversations from people outside the team.
+We wrote these within the team, with AI assistance. Five assistant cases came from errors found during evaluations and a local two-person walkthrough. We also ran a user test on November 16 by inviting two friends from outside the team, who each chatted with the assistant (`docs/user-tests/2026-11-16/`).
 
 ## Scoring
 
