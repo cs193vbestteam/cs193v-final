@@ -5,15 +5,16 @@ import { DemoToggle } from "./DemoToggle";
  * Pure CSS keyframes (see globals.css .demo-*), so it costs nothing to run
  * and resolves to the final state under prefers-reduced-motion.
  */
-export const DEMO_THREAD: { who: string; text: string; link?: boolean }[] = [
+export const DEMO_THREAD: { who: string; text: string; link?: boolean; pivot?: boolean }[] = [
   { who: "Alex", text: "sooo what's the move saturday" },
   { who: "Sam", text: "whatever works for me 🤷" },
   { who: "Jo", text: "same honestly" },
   { who: "Mia", text: "somewhere not crazy expensive?" },
   { who: "Alex", text: "i'm out until like 6" },
-  { who: "Sam", text: "yelp.com/olive-tree-mezze", link: true },
   { who: "Jo", text: "anyone??" },
-  { who: "Mia", text: "bump" },
+  // The turn: someone stops the thread and sends the link. These two are not crossed out with the rest.
+  { who: "Mia", text: "ok let's just use settle", pivot: true },
+  { who: "Mia", text: "settle/e/sat-dinner", link: true, pivot: true },
 ];
 
 export const DEMO_RESULT = { when: "Sat 7pm", where: "Olive Tree Mezze", cost: "~$27 each" };
@@ -34,11 +35,11 @@ export function HeroDemo() {
           {DEMO_THREAD.map((m, i) => (
             <li
               key={i}
-              className="demo-msg flex items-baseline gap-2.5 text-[0.9375rem] leading-snug"
+              className={`demo-msg flex items-baseline gap-2.5 text-[0.9375rem] leading-snug${m.pivot ? " demo-pivot" : ""}`}
               style={{ "--i": i } as React.CSSProperties}
             >
               <span className="w-9 shrink-0 font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">{m.who}</span>
-              <span className={m.link ? "truncate text-ink-3 underline decoration-line underline-offset-2" : undefined}>
+              <span className={m.link ? "truncate font-medium text-seal-ink underline underline-offset-2" : undefined}>
                 {m.text}
               </span>
             </li>
