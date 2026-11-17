@@ -5,10 +5,10 @@
 - **When:** the evening of November 16, 2026.
 - **Who:** two MSE students, both outside the project team. The first is called "the tester" below. The second joined the tester's plan through the invite link, to test the group flow, and is called "the second participant".
 - **Version:** the version of Settle that was current that evening.
-- **Tasks:** none. We gave the tester no tasks and no instructions; they explored the site on their own.
+- **Task:** create a plan. That was all we told the tester. We gave no guidance, hints or explanations beyond it.
 - **Observer:** a member of the team watched and took notes.
 
-The tester completed the main flow without being asked to: creating a plan, entering preferences, inviting another person, and finding a restaurant recommendation. They also opened a recommended restaurant in Google Maps.
+The tester completed the task and carried on through the rest of the main flow: creating a plan, entering preferences, inviting another person, and finding a restaurant recommendation. They also opened a recommended restaurant in Google Maps.
 
 The quotes below are from the observer's notes, with Chinese responses translated into English.
 
