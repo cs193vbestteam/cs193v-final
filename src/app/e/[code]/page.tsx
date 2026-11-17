@@ -121,7 +121,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             ? { label: "Not everyone", cls: "pill-amber" }
             : { label: "Stuck", cls: "pill-seal" }
       : readyCount === members.length && members.length >= 2
-        ? { label: "Ready to negotiate", cls: "pill-moss" }
+        ? { label: "Everyone's done", cls: "pill-moss" }
         : { label: "Collecting", cls: "pill-amber" };
 
   // Plans without real restaurant data say so wherever a place is named.
@@ -241,8 +241,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
                 <ResultCard result={result} sample={sample} date={event.date} stale={stale} />
               ) : (
                 <p className="rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
-                  No plan yet. As soon as everyone&apos;s done, the assistants talk it out. Nobody has to press
-                  anything.
+                  No plan yet. As soon as everyone&apos;s done, the plan is worked out. Nobody has to press anything.
                 </p>
               )}
             </div>
