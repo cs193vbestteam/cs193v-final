@@ -21,7 +21,7 @@ export const DEMO_RESULT = { when: "Sat 7pm", where: "Olive Tree Mezze", cost: "
 export function HeroDemo() {
   return (
     <div
-      className="demo relative mx-auto w-full max-w-md"
+      className="demo relative mx-auto w-full max-w-lg lg:mr-0"
       role="group"
       aria-label="A group chat collapsing into one agreed plan"
     >
@@ -62,8 +62,9 @@ export function HeroDemo() {
           </div>
         </div>
       </div>
-      <p className="mt-3 text-center font-mono text-[0.75rem] uppercase tracking-[0.14em] text-ink-3">
-        8 messages → 1 line. nobody said a number out loud.
+      <p className="mt-4 text-center font-mono text-[0.75rem] uppercase tracking-[0.14em] text-ink-3">
+        <span className="block text-ink">8 messages → 1 line</span>
+        <span className="block whitespace-nowrap">nobody said a number out loud</span>
       </p>
       <p className="demo-toggle mt-1 text-center">
         <DemoToggle />
