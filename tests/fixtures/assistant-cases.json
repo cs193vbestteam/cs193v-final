@@ -84,7 +84,7 @@
         {
           "user": "I can't spend more than $40",
           "model": {
-            "reply": "No more than $40 a person, and that stays private. What time works for you?",
+            "reply": "I'll try hard to keep it under $40 a person. What time works for you?",
             "onTopic": true,
             "asks": "time",
             "update": {
@@ -357,7 +357,7 @@
         {
           "user": "30 would be nice, 50 at the very most",
           "model": {
-            "reply": "Ideally $30, and no more than $50. What time works for you?",
+            "reply": "Around $30, and I'll try hard to keep it under $50. What time works for you?",
             "onTopic": true,
             "asks": "time",
             "update": {
@@ -431,7 +431,7 @@
         {
           "user": "Asian food sounds good, and no more than $40",
           "model": {
-            "reply": "Asian food and at most $40 a person, noted. Is there a favourite among them?",
+            "reply": "Asian food, and I'll try hard to keep it under $40 a person. Is there a favourite among them?",
             "onTopic": true,
             "asks": "cuisine",
             "update": {

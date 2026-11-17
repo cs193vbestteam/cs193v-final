@@ -139,7 +139,12 @@ export function availableTimes(prefs: PersonPreferences): StartTime[] {
 // The summary shown to the owner, and to nobody else
 // ---------------------------------------------------------------------------------------
 
-const STRENGTH_WORDS: Record<Strength, string> = { must: " (a must)", strong: " (matters a lot)", mild: "" };
+/**
+ * How a strength reads to its owner. `must` is the heaviest weight the optimizer has, not a
+ * guarantee (optimizer.ts), so it is not called a must here: the words promise what the
+ * program does.
+ */
+const STRENGTH_WORDS: Record<Strength, string> = { must: " (matters most)", strong: " (matters a lot)", mild: "" };
 const PRIORITY_WORDS: Record<string, string> = {
   time: "the time",
   budget: "the budget",
