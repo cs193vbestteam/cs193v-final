@@ -24,10 +24,10 @@ Before the user types, the assistant's opening message explains that their group
 
 We put this explanation where users enter information instead of behind a checkbox. It identifies the provider and explains the group-facing boundary. It does not mean the server or Anthropic cannot process their messages.
 
-The current notice does not yet explain training or retention or link to the policies. That part of the user-facing explanation remains open in #111. The wording we plan to add beside the chat is:
+A notice under the message box also explains training and retention (added in #111). It reads:
 
 Your messages and meal preferences are sent to Anthropic's Claude. Anthropic does not use API chats for training by default. Its standard retention policy is up to 30 days, with longer retention for flagged content or legal requirements. Your group sees the plan, not your chat.
 
-This addition would link to the policies above. It is not implemented yet. Users also cannot currently choose a non-AI mode; automatic fallback after an error or spending limit is not an opt-out.
+It ends with a link, “How your data is used”, to a privacy page (`/privacy`) that links to the three policies above. Users cannot currently choose a non-AI mode; automatic fallback after an error or spending limit is not an opt-out.
 
 Settle's own storage is separate: chats and preferences are encrypted in our database, and the server can decrypt them. Users can delete their account, leave a plan, or delete a plan they created. Records do not currently expire automatically.
