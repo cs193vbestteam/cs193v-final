@@ -115,7 +115,7 @@ describe("who pays", () => {
     expect(await spentThisMonth(GLOBAL_PAYER)).toBeCloseTo(0.00015);
   });
 
-  it("the negotiation is charged to the plan's creator, whoever starts it", async () => {
+  it("finding a plan calls no model and is charged to nobody: the optimizer is code", async () => {
     const a = await makeUser("Alice");
     const b = await makeUser("Blake");
     const e = await createEvent(a.id, "Dinner");
@@ -125,9 +125,10 @@ describe("who pays", () => {
     await setReady(e.id, a.id, true);
     await setReady(e.id, b.id, true);
     const fetchMock = fakeAnthropic();
-    await runNegotiation(e.id, b.id);
-    expect(fetchMock.mock.calls.length).toBeGreaterThan(0);
-    expect(await spentThisMonth(a.id)).toBeCloseTo(0.00015 * fetchMock.mock.calls.length);
+    const result = await runNegotiation(e.id, b.id);
+    expect(result.engine).toBe("optimizer");
+    expect(fetchMock.mock.calls).toHaveLength(0);
+    expect(await spentThisMonth(a.id)).toBe(0);
     expect(await spentThisMonth(b.id)).toBe(0);
   });
 });

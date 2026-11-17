@@ -162,10 +162,14 @@ export function toCandidate(r: Place, travelMin: Record<string, number>): Candid
       : fromGoogle
         ? r.vegetarianFriendly || null
         : r.vegetarianFriendly;
+  // The optimizer reads halal from the Google type (optimizer.ts). A place known to be halal some
+  // other way, the seed places and one with "halal" in its name, is given that type here.
+  const types = uniq(r.types ?? (r.cuisine ? [LEGACY_CUISINE_TYPE[r.cuisine]] : [])).filter((t) => TYPE_NAME.test(t));
+  if (r.halal && !types.includes("halal_restaurant")) types.push("halal_restaurant");
   return {
     id: r.id,
     name: r.name,
-    types: uniq(r.types ?? (r.cuisine ? [LEGACY_CUISINE_TYPE[r.cuisine]] : [])).filter((t) => TYPE_NAME.test(t)),
+    types,
     ...(r.primaryType && TYPE_NAME.test(r.primaryType) ? { primaryType: r.primaryType } : {}),
     style: uniq(r.style ?? []),
     price,

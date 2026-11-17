@@ -33,18 +33,31 @@ export function ResultCard({
   const when = (slot: string) => formatWhen(date, slot);
   const place = (id: string) => result.places?.[id] ?? getRestaurant(id);
   const r = result.proposal ? place(result.proposal.restaurantId) : undefined;
+  // The optimizer's results say who can come, not who agreed: it does not ask anyone to accept.
+  const byOptimizer = result.engine === "optimizer";
+  const canCome = result.participants - (result.cannotCome ?? 0);
   const headline =
     result.status === "agreed"
-      ? "Everyone's in"
+      ? byOptimizer
+        ? "Everyone can come"
+        : "Everyone's in"
       : result.status === "compromise"
         ? "Works for everyone, a stretch for some"
-        : "No plan works for everyone yet";
+        : result.status === "partial"
+          ? `Works for ${canCome} of ${result.participants}`
+          : result.noPlan === "no_candidates"
+            ? "Nothing is open that day"
+            : byOptimizer && result.participants === 2
+              ? "No plan works for both of you yet"
+              : "No plan works for everyone yet";
   const tone =
     result.status === "agreed"
       ? { border: "border-moss/35", text: "text-moss", stamp: "border-moss text-moss" }
-      : result.status === "compromise"
+      : result.status === "compromise" || result.status === "partial"
         ? { border: "border-amber/40", text: "text-amber-ink", stamp: "border-amber text-amber-ink" }
         : { border: "border-seal/35", text: "text-seal-ink", stamp: "border-seal text-seal-ink" };
+  // What the place serves: the optimizer's results say it in Google's terms, older ones by cuisine.
+  const kindOf = (p: { kind?: string; cuisine: string | null }) => p.kind ?? p.cuisine ?? "restaurant";
   const tried = result.rounds.reduce((n, round) => n + round.proposals.length, 0);
   // Small groups get the outcome only: any count would be one person's answer (events.ts, forGroupSize).
   const outcomeOnly = result.detail === "outcome";
@@ -62,7 +75,7 @@ export function ResultCard({
             key: `${o.proposal.restaurantId}-${o.proposal.slot}`,
             name: p.name,
             when: when(o.proposal.slot),
-            cuisine: p.cuisine,
+            cuisine: kindOf(p),
             pricePerPerson: p.pricePerPerson,
             ...(p.travelMin !== undefined ? { travelMin: p.travelMin } : {}),
             ...(p.rating !== undefined ? { rating: p.rating, ratingCount: p.ratingCount } : {}),
@@ -87,20 +100,35 @@ export function ResultCard({
             <div className="font-serif text-[1.75rem] leading-tight">{r.name}</div>
             <div className="mt-1 text-sm text-ink-2">
               {when(result.proposal!.slot)} · ~${r.pricePerPerson}/person
-              {r.travelMin !== undefined ? ` · ${r.travelMin} min away` : ""} · {r.cuisine}
+              {r.travelMin !== undefined ? ` · ${r.travelMin} min away` : ""} · {kindOf(r)}
             </div>
+            {result.status === "partial" && (
+              <p className="mt-2 text-sm text-ink-2">
+                This is the closest plan there is. A diet, a time or a place someone ruled out keeps{" "}
+                {result.cannotCome === 1 ? "one person" : `${result.cannotCome} people`} from coming; no other place and
+                time leaves out fewer.
+              </p>
+            )}
             {sample && <p className="mt-1 text-xs text-amber-ink">Sample place, not a real restaurant.</p>}
             {result.explanation && <p className="mt-2 text-sm italic text-ink-2">{result.explanation}</p>}
             {tiles.length > 1 && (
-              <p className="mt-2 text-xs text-ink-3">Best fit of {tiles.length} places that work for the group.</p>
+              <p className="mt-2 text-xs text-ink-3">
+                {result.status === "partial"
+                  ? `Best fit of ${tiles.length} places that as many people can come to.`
+                  : `Best fit of ${tiles.length} places that work for the group.`}
+              </p>
             )}
             <PlanOptions tiles={tiles} sample={sample} />
           </div>
         ) : (
           <p className="mt-2 text-sm text-ink-2">
-            {result.conflicts?.length
-              ? `The sticking point is ${result.conflicts.map((d) => DIM_LABEL[d]).join(", then ")}. Someone may need to loosen that, then re-run.`
-              : "Someone may need to loosen a constraint. Try chatting with your assistant again, then re-run."}
+            {result.noPlan === "no_candidates"
+              ? "None of the places found can take a start time on the plan's date. Try another date or location."
+              : result.noPlan === "nobody_can_come"
+                ? "Every place and time breaks a diet, a time or an exclusion for every person. Someone may need to loosen one. Try chatting with your assistant again, then re-run."
+                : result.conflicts?.length
+                  ? `The sticking point is ${result.conflicts.map((d) => DIM_LABEL[d]).join(", then ")}. Someone may need to loosen that, then re-run.`
+                  : "Someone may need to loosen a constraint. Try chatting with your assistant again, then re-run."}
           </p>
         )}
         {reservations.length > 0 && (
@@ -131,7 +159,20 @@ export function ResultCard({
 
       <div className="my-4 border-t border-dashed border-line-strong" />
 
-      {outcomeOnly ? (
+      {byOptimizer ? (
+        <div className="px-4 pb-4 text-xs text-ink-2">
+          <p className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
+            How it was decided: {(result.optionsScored ?? 0).toLocaleString("en-US")} options, {result.participants}{" "}
+            people, no model
+          </p>
+          <p className="mt-2 text-ink-3">
+            Every place and start time was scored by code against what each person told their own assistant. The plan is
+            the one that leaves out the fewest people, and among those the one that suits the group best. Nobody&apos;s
+            answers or scores are shown, here or to anyone in the group
+            {outcomeOnly ? "." : "; the only number about people is how many can come."}
+          </p>
+        </div>
+      ) : outcomeOnly ? (
         <div className="px-4 pb-4 text-xs text-ink-2">
           <p className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
             {roundCount} round{roundCount === 1 ? "" : "s"}, {result.participants} people

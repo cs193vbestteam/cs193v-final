@@ -4,15 +4,16 @@ import { db } from "./db";
 import { decrypt, decryptJson, decryptOrPlain, encrypt, encryptJson, scope } from "./crypto";
 import type { MemberState } from "./member-state";
 import type { ChatTurn } from "./extract";
-import { configuredExplainer, configuredSelector } from "./mediator-llm";
 import type { Proposal } from "./evaluate";
-import { negotiate, type NegotiationResult } from "./negotiate";
+import type { NegotiationResult } from "./negotiate";
+import { optimize } from "./optimizer";
+import { checkResult, type OptimizerResult } from "./optimizer-handoff";
+import { loadOptimizerInput } from "./optimizer-source";
 import { planDateSchema, todayPacific } from "./plan-date";
-import { poolForEvent, summarize, type PlaceSummary, type PoolSource } from "./pool";
+import { poolForEvent, summarizePlaces, type PlaceSummary, type PoolSource } from "./pool";
 import { newPoolMeta } from "./pool-extend";
 import { refreshPool } from "./pool-refresh";
 import { DEFAULT_SCENARIO, parseScenarioId, ScenarioIdSchema, scenarioFor, type ScenarioId } from "./scenario";
-import { agentsForEvent } from "./vault";
 import { clearRateKey, hit, LIMITS, rateKey, waitText } from "./ratelimit";
 import { canSpend, withPayer } from "./spend";
 
@@ -20,6 +21,9 @@ import { canSpend, withPayer } from "./spend";
  * Data access for plans ("events"). Every function takes the acting userId explicitly
  * and checks membership, so authorization is testable without HTTP/cookies.
  */
+
+/** Why the optimizer chose nothing (optimizer-handoff.ts). */
+type OptimizerNoPlan = Extract<OptimizerResult, { restaurantId: null }>["reason"];
 
 export class AccessError extends Error {}
 /** Too many requests; the message is safe to show. */
@@ -45,7 +49,23 @@ export type Member = { userId: string; displayName: string; ready: boolean };
  * What the group sees. `memberNames` lets the UI name a reservation ("Sam: timing") without exposing ids;
  * `places` carries the public details of every restaurant the rounds mention, so results outlive the pool.
  */
-export type StoredResult = NegotiationResult & {
+export type StoredResult = Omit<NegotiationResult, "status"> & {
+  /**
+   * `partial` is the optimizer's alone: the closest plan there is, which a hard rule keeps at
+   * least one person out of (`cannotCome`). `compromise` is the negotiation engine's alone.
+   */
+  status: NegotiationResult["status"] | "partial";
+  /** What decided the plan. Absent on results the negotiation engine stored. */
+  engine?: "optimizer";
+  /**
+   * Optimizer results: how many people a diet, a time or an exclusion keeps out of the plan. A
+   * count and never who. Left out below `MIN_GROUP_FOR_DETAIL`, where it would name someone.
+   */
+  cannotCome?: number;
+  /** Optimizer results: how many place-and-time options were scored. Public: the pool and the clock. */
+  optionsScored?: number;
+  /** Optimizer results with no plan: nothing is open that day, or every option keeps every person out. */
+  noPlan?: OptimizerNoPlan;
   participants: number;
   memberNames: string[];
   places: Record<string, PlaceSummary>;
@@ -87,13 +107,16 @@ export const MIN_GROUP_FOR_DETAIL = 3;
 export function forGroupSize(result: StoredResult): StoredResult {
   const roundCount = result.roundCount ?? result.rounds.length;
   if (result.participants >= MIN_GROUP_FOR_DETAIL) return { ...result, detail: "full", roundCount };
-  const chosen = result.proposal?.restaurantId;
+  // A plan one of two can come to is, to each of them, a statement about the other. A pair is
+  // told only that nothing works for both, which is also all they could act on.
+  const kept = result.status !== "partial";
+  const chosen = kept ? result.proposal?.restaurantId : undefined;
   // A pair still gets the shortlist, as places only: no counts, and not who is merely reluctant.
-  const options = (result.options ?? []).map(({ proposal }) => ({ proposal }));
+  const options = kept ? (result.options ?? []).map(({ proposal }) => ({ proposal })) : [];
   const listed = new Set([...(chosen ? [chosen] : []), ...options.map((o) => o.proposal.restaurantId)]);
   return {
-    status: result.status,
-    proposal: result.proposal,
+    status: kept ? result.status : "no_deal",
+    proposal: kept ? result.proposal : null,
     tally: null,
     rounds: [],
     concessionLevel: 0,
@@ -108,6 +131,10 @@ export function forGroupSize(result: StoredResult): StoredResult {
     decidedAt: result.decidedAt,
     detail: "outcome",
     roundCount,
+    ...(result.engine ? { engine: result.engine } : {}),
+    ...(result.optionsScored !== undefined ? { optionsScored: result.optionsScored } : {}),
+    // "Nothing is open" is about the places. "Nobody can come" would be about the other person.
+    ...(result.noPlan === "no_candidates" ? { noPlan: result.noPlan } : {}),
   };
 }
 
@@ -415,53 +442,66 @@ export function llmGate(eventId: string, deadline: number, now: () => number = D
 
 export async function runNegotiation(eventId: string, userId: string): Promise<StoredResult> {
   await requireMember(eventId, userId);
-  // Every model call in the negotiation is charged to the plan's creator, whoever pressed the button.
-  const payer = (await creatorOf(eventId)) ?? userId;
-  return withPayer(payer, () => negotiateAndStore(eventId, userId, payer));
+  return decideAndStore(eventId);
 }
 
-async function negotiateAndStore(eventId: string, userId: string, payer: string): Promise<StoredResult> {
-  const budget = llmGate(eventId, Date.now() + LLM_NEGOTIATION_MS, Date.now, payer);
-  const { agents: firstAgents, userIds, readyCount } = await agentsForEvent(eventId, budget);
-  if (readyCount < 2) throw new AccessError("At least 2 people need to be ready first");
-  if (readyCount !== firstAgents.length) {
+/**
+ * Decides the plan with the optimizer (optimizer.ts) and stores what the group may see of it.
+ *
+ * No model is called and nothing is charged to anyone: the optimizer is code. This is the one
+ * place besides the pool refresh where everyone's preferences are read together, through
+ * `loadOptimizerInput`, and nothing of them is stored with the result: it holds the place, the
+ * time, the other places on the list and one count.
+ *
+ * The function and `runNegotiation` keep the names the page and its actions already use; the
+ * negotiation engine they are named after no longer decides plans (#130 removes it).
+ */
+async function decideAndStore(eventId: string): Promise<StoredResult> {
+  const first = await loadOptimizerInput(eventId);
+  if (first.ready < 2) throw new AccessError("At least 2 people need to be ready first");
+  if (first.ready !== first.members) {
     throw new AccessError("Everyone who joined must be ready before finding a plan");
   }
   // Everyone is done, so what the group wants is known: fetch the places for it before deciding (#101).
-  // A plan whose pool grew gets its agents again, so they can look up the new places.
   const grew = await refreshPool(eventId);
-  const ready = grew ? await agentsForEvent(eventId, budget) : null;
-  const agents = ready?.agents ?? firstAgents;
-  const members = await listMembers(eventId, userId);
-  const memberNames = userIds.map((id) => members.find((m) => m.userId === id)?.displayName ?? "Someone");
-  const { restaurants } = await poolForEvent(eventId);
+  const { input } = grew ? await loadOptimizerInput(eventId) : first;
 
-  const lookup = (id: string) => restaurants.find((r) => r.id === id);
-  const outcome = await negotiate(agents, {
-    restaurants,
-    maxRounds: 6,
-    perRound: 5,
-    shortlist: SHORTLIST,
-    selector: configuredSelector(lookup, budget),
-    explainer: configuredExplainer(lookup, budget),
-  });
-  const mentioned = new Set<string>();
-  if (outcome.proposal) mentioned.add(outcome.proposal.restaurantId);
-  for (const round of outcome.rounds) for (const p of round.proposals) mentioned.add(p.proposal.restaurantId);
-  for (const f of outcome.finalists) mentioned.add(f.proposal.restaurantId);
-  // Small groups store the outcome only: what the page must not show is never written (forGroupSize).
+  const picked = optimize(input);
+  const problems = checkResult(input, picked);
+  if (problems.length > 0) throw new Error(`The optimizer returned a result its input does not allow: ${problems[0]}`);
+
+  const choices = picked.restaurantId === null ? [] : [picked, ...picked.alternatives];
+  const proposals = choices.map((c) => ({ proposal: { restaurantId: c.restaurantId, slot: c.startTime } }));
+  const cannotCome = choices[0]?.cannotCome;
+  const { places } = await poolForEvent(eventId);
+  // Small groups store less: what the page must not show is never written (forGroupSize).
   const result = forGroupSize({
-    ...outcome,
-    options: outcome.finalists.map((f) => ({
-      proposal: f.proposal,
-      everyoneIn: f.tally.accept === agents.length,
-    })),
-    participants: agents.length,
-    memberNames,
-    places: summarize(restaurants, mentioned),
+    status: cannotCome === undefined ? "no_deal" : cannotCome === 0 ? "agreed" : "partial",
+    proposal: proposals[0]?.proposal ?? null,
+    tally: null,
+    rounds: [],
+    concessionLevel: 0,
+    finalists: [],
+    reservations: [],
+    conflicts: [],
+    leakedDims: 0,
+    ...(proposals.length ? { options: proposals } : {}),
+    participants: input.people.length,
+    memberNames: [],
+    places: summarizePlaces(
+      places,
+      choices.map((c) => c.restaurantId),
+    ),
     decidedAt: Date.now(),
     detail: "full",
-    roundCount: outcome.rounds.length,
+    roundCount: 0,
+    engine: "optimizer",
+    optionsScored: input.candidates.reduce(
+      (n, r) => n + (r.openAt ?? []).filter((t) => input.plan.startTimes.includes(t)).length,
+      0,
+    ),
+    ...(cannotCome !== undefined ? { cannotCome } : {}),
+    ...(picked.restaurantId === null ? { noPlan: picked.reason } : {}),
   });
   const client = await db();
   await client.execute({

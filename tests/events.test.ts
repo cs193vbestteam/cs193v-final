@@ -264,8 +264,7 @@ describe("candidate pool per plan", () => {
     await expect(createEvent(a.id, "Dinner", "x".repeat(121))).rejects.toThrow();
   });
 
-  it("the stored result carries public place summaries for everything the rounds mention", async () => {
-    // Three people: a two-person plan stores no round log at all (see two-person-privacy.test.ts).
+  it("the stored result carries public place summaries for the plan and the other places listed", async () => {
     const { a, b, event } = await setup();
     const c = await makeUser("Charlie");
     await joinEvent(event.inviteCode, c.id);
@@ -274,10 +273,17 @@ describe("candidate pool per plan", () => {
       await setReady(event.id, u.id, true);
     }
     const result = await runNegotiation(event.id, a.id);
-    const mentioned = new Set(result.rounds.flatMap((r) => r.proposals.map((p) => p.proposal.restaurantId)));
-    expect(mentioned.size).toBeGreaterThan(0);
-    for (const id of mentioned)
-      expect(result.places[id]).toMatchObject({ name: expect.any(String), pricePerPerson: expect.any(Number) });
+    const listed = result.options!.map((o) => o.proposal.restaurantId);
+    expect(listed[0]).toBe(result.proposal!.restaurantId);
+    expect(new Set(listed).size).toBe(listed.length); // every place once
+    expect(listed.length).toBeGreaterThan(1);
+    expect(Object.keys(result.places).sort()).toEqual([...listed].sort());
+    for (const id of listed)
+      expect(result.places[id]).toMatchObject({
+        name: expect.any(String),
+        pricePerPerson: expect.any(Number),
+        kind: expect.any(String),
+      });
     expect(JSON.stringify(result.places)).not.toMatch(/budget|constraints|weight/);
     const stored = await getResult(event.id, b.id);
     expect(stored?.places).toEqual(result.places);

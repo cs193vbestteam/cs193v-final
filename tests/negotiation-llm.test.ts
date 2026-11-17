@@ -16,7 +16,7 @@ import {
 } from "@/lib/events";
 import { llmExplainer, REVEALING } from "@/lib/mediator-llm";
 import { negotiate } from "@/lib/negotiate";
-import { LIMITS, rateKey } from "@/lib/ratelimit";
+import { rateKey } from "@/lib/ratelimit";
 import { RESTAURANTS, getRestaurant } from "@/lib/restaurants";
 
 type Call = { tool: string; system: string; user: string };
@@ -239,104 +239,38 @@ describe("the final pick: code decides, the LLM only explains", () => {
   });
 });
 
-describe("a whole negotiation in LLM mode (runNegotiation)", () => {
-  let n = 0;
-  async function readyGroup(messages: string[]) {
+describe("finding a plan with a model key set (runNegotiation)", () => {
+  // The plan flow used to run this file's negotiation, one model call per person per round. The
+  // optimizer decides plans now (optimizer.ts), so the flow must reach no model at all. The
+  // negotiation modules above are still tested on their own until they are removed (#130).
+  it("sends nothing to a model: no prompt, no call, no spend against the plan's budget", async () => {
     const users = await Promise.all(
-      messages.map((_, i) =>
-        createUser({ email: `p${i}-${n++}@test.dev`, displayName: `P${i}`, password: "password123" }),
+      ["P0", "P1", "P2"].map((name, i) =>
+        createUser({ email: `flow-${i}@test.dev`, displayName: name, password: "password123" }),
       ),
     );
     const event = await createEvent(users[0].id, "Dinner");
     for (const u of users.slice(1)) await joinEvent(event.inviteCode, u.id);
-    // The chat runs on the rule-based path (no key yet); the negotiation is what's under test.
+    const said = [
+      "Saturday dinner or Sunday lunch, under $47, up to 29 minutes, no restrictions",
+      "I'm free all day, max $53 per person, 33 minutes, I'm allergic to peanuts",
+      "Sunday lunch or Saturday dinner, under $41, 25 minutes, I can't eat mushrooms",
+    ];
+    // The chat runs on the rule-based path (no key yet); deciding the plan is what's under test.
     for (const [i, u] of users.entries()) {
-      await sendMessage(event.id, u.id, messages[i]);
+      await sendMessage(event.id, u.id, said[i]);
       await setReady(event.id, u.id, true);
     }
-    return { users, event };
-  }
-
-  const ALEX = "Saturday dinner or Sunday lunch, under $47, up to 29 minutes, no restrictions";
-  const BLAKE = "I'm free all day, max $53 per person, 33 minutes, I'm allergic to peanuts";
-  const CASEY = "Sunday lunch or Saturday dinner, under $41, 25 minutes, I can't eat mushrooms";
-
-  it("keeps everyone's words out of everyone else's prompt and out of the mediator's", async () => {
-    const { users, event } = await readyGroup([ALEX, BLAKE, CASEY]);
     const { calls } = fakeAnthropic();
     const result = await runNegotiation(event.id, users[0].id);
+    expect(result).toMatchObject({ engine: "optimizer", rounds: [], leakedDims: 0 });
     expect(result.status).not.toBe("no_deal");
-
-    const agentCalls = calls.filter((c) => c.tool === "judge_options");
-    const mediatorCalls = calls.filter((c) => c.tool !== "judge_options");
-    expect(agentCalls.length).toBeGreaterThan(0);
-    expect(mediatorCalls.length).toBeGreaterThan(0);
-    // Each agent prompt mentions exactly one person's private note (or none, for Alex).
-    for (const c of agentCalls) {
-      const notes = ["peanuts", "mushrooms"].filter((w) => c.user.includes(w));
-      expect(notes.length, c.user).toBeLessThanOrEqual(1);
-      const budgets = ["up to $47/person", "up to $53/person", "up to $41/person"].filter((b) => c.user.includes(b));
-      expect(budgets, c.user).toHaveLength(1);
-    }
-    for (const c of mediatorCalls) {
-      expect(c.user).not.toMatch(/peanut|mushroom|up to \$|P0|P1|P2/);
-    }
-    // The group sees the mediator's sentence (3+ people).
-    expect(result.explanation).toBe("A relaxed Saturday dinner that suits the group's budget.");
-  });
-
-  it("makes a bounded number of calls: one per person per round, plus the mediator", async () => {
-    const { users, event } = await readyGroup([ALEX, BLAKE, CASEY]);
-    const { calls } = fakeAnthropic();
-    const result = await runNegotiation(event.id, users[0].id);
-    const rounds = result.rounds.length;
-    const agentCalls = calls.filter((c) => c.tool === "judge_options").length;
-    expect(agentCalls).toBeLessThanOrEqual(3 * (rounds + 1));
-    expect(calls.filter((c) => c.tool === "pick").length).toBeLessThanOrEqual(rounds);
-    expect(calls.filter((c) => c.tool === "explain_plan").length).toBeLessThanOrEqual(1);
-    // ...and every one of them was counted against the plan's daily LLM budget.
+    expect(result.explanation).toBeUndefined();
+    expect(calls).toHaveLength(0);
     const { rows } = await (
       await db()
     ).execute({ sql: "SELECT count FROM rate_limits WHERE key = ?", args: [rateKey.llm(event.id)] });
-    expect(Number(rows[0].count)).toBe(calls.length);
-  });
-
-  it("an LLM agent can never accept what breaks a hard rule, whatever the model says", async () => {
-    const { users, event } = await readyGroup([
-      "Saturday dinner only, under $15, up to 29 minutes, no restrictions",
-      BLAKE,
-    ]);
-    fakeAnthropic(() => "accept"); // a model that accepts everything
-    const result = await runNegotiation(event.id, users[0].id);
-    const place = result.proposal ? RESTAURANTS.find((r) => r.id === result.proposal!.restaurantId) : undefined;
-    if (place) {
-      expect(place.pricePerPerson).toBeLessThanOrEqual(15);
-      expect(["17:00", "18:00", "19:00", "20:00"]).toContain(result.proposal!.slot);
-    } else {
-      expect(result.status).toBe("no_deal");
-    }
-  });
-
-  it("falls back to code entirely once the plan's LLM budget is spent", async () => {
-    const { users, event } = await readyGroup([ALEX, BLAKE]);
-    await (
-      await db()
-    ).execute({
-      sql: "INSERT INTO rate_limits (key, window_start, count) VALUES (?, ?, ?)",
-      args: [rateKey.llm(event.id), Date.now(), LIMITS.llmPerPlan.max],
-    });
-    const { calls } = fakeAnthropic();
-    const result = await runNegotiation(event.id, users[0].id);
-    expect(calls).toHaveLength(0);
-    expect(result.status).not.toBe("no_deal");
-  });
-
-  it("SETTLE_LLM_NEGOTIATION=0 switches back to the code-only negotiation", async () => {
-    const { users, event } = await readyGroup([ALEX, BLAKE]);
-    const { calls } = fakeAnthropic();
-    process.env.SETTLE_LLM_NEGOTIATION = "0";
-    await runNegotiation(event.id, users[0].id);
-    expect(calls).toHaveLength(0);
+    expect(rows).toHaveLength(0);
   });
 });
 

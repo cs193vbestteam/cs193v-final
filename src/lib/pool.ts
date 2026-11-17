@@ -1,3 +1,4 @@
+import { labelOf } from "./cuisine-table";
 import { db } from "./db";
 import { decryptOrPlain, scope } from "./crypto";
 import type { Place, Restaurant } from "./restaurants";
@@ -45,10 +46,28 @@ export async function poolForEvent(
  * assistant measures their own trip, so one number for the group would be
  * wrong for most of them, and a per-person one must never be shown.
  */
-export type PlaceSummary = Pick<Restaurant, "name" | "cuisine" | "pricePerPerson"> &
-  Pick<Restaurant, "rating" | "ratingCount" | "address" | "mapsUrl"> & { travelMin?: number };
+export type PlaceSummary = Pick<Place, "name" | "cuisine" | "pricePerPerson"> &
+  Pick<Restaurant, "rating" | "ratingCount" | "address" | "mapsUrl"> & {
+    travelMin?: number;
+    /** What kind of food it is, in words, from the place's main Google type: "ramen", "Indian". Optimizer results only. */
+    kind?: string;
+  };
 
-export function summarize(restaurants: Restaurant[], ids: Iterable<string>): Record<string, PlaceSummary> {
+/**
+ * The same for a plan the optimizer decided. Its pool includes places that have none of the ten
+ * older cuisines, so each summary also says what the place is in Google's own terms.
+ */
+export function summarizePlaces(places: readonly Place[], ids: Iterable<string>): Record<string, PlaceSummary> {
+  const out = summarize(places, ids);
+  for (const [id, summary] of Object.entries(out)) {
+    const p = places.find((x) => x.id === id);
+    const type = p?.primaryType ?? p?.types?.find((t) => t !== "restaurant") ?? p?.types?.[0];
+    if (type) summary.kind = labelOf(type);
+  }
+  return out;
+}
+
+export function summarize(restaurants: readonly Place[], ids: Iterable<string>): Record<string, PlaceSummary> {
   const out: Record<string, PlaceSummary> = {};
   for (const id of ids) {
     const r = restaurants.find((x) => x.id === id);
