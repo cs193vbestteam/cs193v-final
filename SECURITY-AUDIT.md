@@ -44,6 +44,20 @@ sidestepped, and a member can learn the other person's answers by running the ne
 Severity reflects impact on this app's users at its current scale (a class project with a public URL),
 not a formal CVSS score.
 
+### Status on 17 November 2026
+
+| #   | Status | Fixed in |
+| --- | ------ | -------- |
+| F1  | Open | |
+| F2  | Fixed: a plan is run again only after someone changes an answer, at most six times a day | #118 |
+| F3  | Fixed: the creator can remove members, replace the invite link and set how many people fit | #119 |
+| F4  | Fixed: security headers on every response (CSP still report-only) | #120 |
+| F5  | Fixed: restaurant names from Google are treated as untrusted text | #121 |
+| F6–F9 | Open | |
+
+Since the audit, the optimizer decides plans and the negotiation's LLM calls are gone (#130), so the
+only model calls left are the private chat's.
+
 ## What is already done well
 
 - **SQL injection:** every query uses `?` placeholders through `db.ts`; no query is built by string
@@ -239,15 +253,13 @@ the URL has; Neon URLs include `sslmode=require`, but nothing in code insists on
 
 ## In progress elsewhere (no new issues filed)
 
-These were found by the cost-controls work and are being fixed in a separate branch, so they are not
-duplicated here:
+These were found by the cost-controls work and fixed there (#116), so they were not filed again:
 
-- **No limit on creating plans.** Each plan with a location calls Google Places when it is created and again when its pool is widened
-  and gets its own daily budget of 300 LLM calls, so the per-plan budget can be multiplied by creating plans.
-  A per-user plan creation limit is being added.
-- **No per-person or total spend cap on LLM calls.** A $10 per-person cap is being added. A monthly total
-  cap across all users is a known gap; until it exists, a spending limit set in the Anthropic and Google Cloud
-  consoles is the backstop.
+- **No limit on creating plans.** Each plan with a location calls Google Places when it is created and
+  again when its pool is widened. Fixed: one person can create 10 plans a day.
+- **No per-person or total spend cap on LLM calls.** Fixed: every model call is priced from the tokens it
+  used, with a monthly cap per person and one for the whole app. Past either, the rule-based code answers.
+  A spending limit in the Anthropic and Google Cloud consoles is still the backstop. See `COST-CONTROLS.md`.
 
 ## Informational (no action needed now)
 

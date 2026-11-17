@@ -21,7 +21,7 @@ export const LIMITS = {
   chatPerUser: { max: 30, windowMs: 10 * MINUTE },
   /** Plans one person can create per day. Each new plan costs a geocode and a restaurant search (Google Places). */
   createPlanPerUser: { max: 10, windowMs: DAY },
-  /** LLM extraction calls per plan per day; after that, the rule-based extractor answers. */
+  /** Model calls from a plan's private chats per day, everyone's together; after that, the rule-based reader answers. */
   llmPerPlan: { max: 300, windowMs: DAY },
   /** Login attempts per email address (also covers the password check before deleting an account). */
   loginPerEmail: { max: 10, windowMs: 15 * MINUTE },
