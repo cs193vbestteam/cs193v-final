@@ -377,10 +377,8 @@ summary:focus-visible {
   }
 }
 .seal {
-  width: clamp(6.5rem, 14vw, 10rem);
-  margin: 0 auto 1.75rem;
-  color: var(--color-seal);
-  transform: rotate(-9deg);
+  width: clamp(9rem, 20vw, 14rem);
+  margin: 0 auto 2rem;
 }
 
 /* Underline links */
