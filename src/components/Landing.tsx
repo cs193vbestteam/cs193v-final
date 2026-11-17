@@ -7,7 +7,7 @@ const EXCUSES = ["whatever works", "I'm easy", "anything's fine", "up to you", "
 
 /** The problem, as three exchanges: what someone means, and how it sounds once it is said out loud. */
 const SOUNDS_LIKE: { said: string; heard: string }[] = [
-  { said: "$40 max", heard: "sounds cheap" },
+  { said: "$30 max", heard: "sounds cheap" },
   { said: "not that far", heard: "sounds difficult" },
   { said: "whatever", heard: "the loudest person decides" },
 ];
@@ -21,7 +21,7 @@ const STEPS = [
       <div className="space-y-2 text-sm">
         <div className="flex justify-end">
           <span className="rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-paper">
-            after 6 only, under $40, no spicy
+            after 6 only, under $30, no spicy
           </span>
         </div>
         <div className="flex">
@@ -62,7 +62,7 @@ const STEPS = [
 
 const LEDGER: { label: string; mine: string; width: number }[] = [
   { label: "When", mine: "Dinner only, from 6pm", width: 1 },
-  { label: "Budget", mine: "Up to $40, can stretch to $50", width: 2 },
+  { label: "Budget", mine: "Up to $30, can stretch to $40", width: 2 },
   { label: "Travel", mine: "15 minutes max", width: 1 },
   { label: "Diet", mine: "No spicy food", width: 1 },
 ];
@@ -159,7 +159,7 @@ export function Landing() {
           <p className="eyebrow !text-paper/65 lg:col-span-3">The problem</p>
           <p className="font-serif text-[clamp(1.75rem,3.4vw,2.75rem)] leading-[1.14] tracking-[-0.01em] lg:col-span-9">
             Everyone has real limits: a budget, a Saturday that only works after six, a 20-minute radius. But saying{" "}
-            <em>&ldquo;$40 max&rdquo;</em> in the group sounds cheap, and <em>&ldquo;not that far&rdquo;</em> sounds
+            <em>&ldquo;$30 max&rdquo;</em> in the group sounds cheap, and <em>&ldquo;not that far&rdquo;</em> sounds
             difficult. So everyone says &ldquo;whatever&rdquo;, the information stays hidden, and the loudest person
             decides.
           </p>
