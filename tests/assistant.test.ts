@@ -803,7 +803,7 @@ describe("what is sent to the model", () => {
     expect(stateBlock(s)).toBe(stateBlock(JSON.parse(JSON.stringify(s))));
     expect(stateBlock(s).split("\n")).toEqual([
       "# STATE (this request)",
-      "Recorded so far, in words: Budget: up to $40/person (a must)",
+      "Recorded so far, in words: Budget: up to $40/person (matters most)",
       `Recorded so far, as stored (JSON): ${JSON.stringify(s.prefs)}`,
       "Question you asked last: travel (minutes one way)",
       "You may ask about ONE of: time, diet, cuisine. Nothing else.",

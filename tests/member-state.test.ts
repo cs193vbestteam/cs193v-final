@@ -133,7 +133,7 @@ describe("the summary shown to its owner", () => {
     expect(lines).toEqual([
       "Free: 6:00 PM to 11:00 PM",
       "Would like: 6:00 PM to 7:00 PM (matters a lot)",
-      "Budget: ideally $30, up to $50/person (a must)",
+      "Budget: ideally $30, up to $50/person (matters most)",
       "Travel: ideally 15 min, up to 30 min",
       "Coming from: Mountain View",
       "Diet: vegetarian",
