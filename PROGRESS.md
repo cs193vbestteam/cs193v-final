@@ -42,24 +42,6 @@ Where Settle stands, how that compares with our plan, what is in the way, and wh
 
 **What we learned.** Testing with the real model caught bugs that fake-model tests missed. We also learned that a prompt fix can affect other results: one eval dropped from 160/165 to 159/165. We still need to rerun it to see if that was just normal variation.
 
-### Since Checkpoint 1: security, encryption and cost (Jackson)
-
-**What I built.**
-
-- Per-user, per-field encryption (#103). Every private value has its own key, derived from the master key for one user, one member of a plan, or one field of a plan. A bug that reads the wrong row fails to decrypt instead of leaking. Old rows still work, and `npm run migrate:encryption` re-encrypts them.
-- Cost caps (#116, updated after #130). Each person can create 10 plans a day. The private chat is now the only part that calls Claude; each call is priced from its tokens and charged to the person chatting. Past $1 a month for one person, or $10 a month for the whole app, the rule-based code answers.
-- A security audit (`SECURITY-AUDIT.md`, #126) with nine findings filed as #117 to #125. #118 to #121 are now fixed.
-- `SECRETS.md`, `ENCRYPTION.md` and `COST-CONTROLS.md`: where keys live and how to rotate them, what is encrypted, and every limit on paid services.
-- Fixed the `npm install` warnings (#72).
-
-**What I learned.** A per-plan call limit doesn't bound the monthly bill, so spending has to be tracked per person. The audit's biggest privacy risks were in the product logic, not the encryption.
-
-**Changed from the plan.** My two Week 9 tasks moved: re-run limits became #118 (fixed), and the cost per plan is now only the private chat's.
-
-**Blocker.** Claude still runs on a personal API key. Is there course credit or a shared key?
-
-**Next.** Auth hardening (#122), data retention (#124), Postgres with TLS in production (#125), and removing the old decryption paths once the migration has run on production (#123). Each is done when its issue is closed with tests.
-
 ## Changes from our proposal
 
 We did not keep the Week 8 goals in the repository, so this uses the fifteen issues we opened at the start as the record of our plan.
