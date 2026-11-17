@@ -4,10 +4,9 @@ import { chargeTo, type Usage } from "./spend-context";
 /**
  * Monthly spending caps on Anthropic API calls (COST-CONTROLS).
  *
- * Every model call is charged to one person, the "payer":
- *   - a chat turn with your own assistant is charged to you;
- *   - the negotiation (each person's agent, the mediator's picks, the sentence under the plan)
- *     is charged to the person who created the plan.
+ * The only model calls left are the private chat's: plans are decided by the optimizer, which is
+ * code and calls no model (#130). A chat turn with your own assistant is charged to you, the
+ * "payer". Nobody pays for anyone else's chat.
  *
  * Before a call, `canSpend` checks the payer's total for this calendar month (UTC) and the
  * app's total for the month. After a call, `recordUsage` adds what the API reported it used
@@ -40,9 +39,14 @@ export function prices() {
   };
 }
 
-/** Dollars one person may spend on model calls in a calendar month. */
+/**
+ * Dollars one person may spend on model calls in a calendar month. A chat turn costs about a tenth
+ * of a cent on Haiku 5.5 (a ~6K-token prompt and up to 512 tokens out), so $1 is roughly a thousand
+ * messages, over a hundred full chats. It is a tenth of the app's total, so one person can't use up
+ * everyone's month.
+ */
 export function perUserMonthlyCap(): number {
-  return envNumber("LLM_MONTHLY_CAP_PER_USER_USD", 10);
+  return envNumber("LLM_MONTHLY_CAP_PER_USER_USD", 1);
 }
 
 /** Dollars the whole app may spend on model calls in a calendar month, across everyone. */
@@ -99,9 +103,9 @@ export async function spentThisMonth(payer: string, now = Date.now()): Promise<n
 }
 
 /**
- * Runs `fn` with every model call inside it charged to `payer`. The API code (anthropic.ts,
- * assistant.ts) reports usage through spend-context.ts, which has no database access, so the
- * negotiation modules stay unable to reach storage (tests/isolation.test.ts).
+ * Runs `fn` with every model call inside it charged to `payer`. The assistant (assistant.ts)
+ * reports usage through spend-context.ts, which has no database access, so the code that talks
+ * to the model never imports storage.
  */
 export function withPayer<T>(payer: string, fn: () => Promise<T>): Promise<T> {
   return chargeTo(async (usage) => {

@@ -2,8 +2,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 /**
  * Carries "who pays for this model call" from the request handler (events.ts, via spend.ts)
- * down to the code that talks to the API, without that code importing the database: the
- * negotiation's LLM modules must not be able to reach storage (tests/isolation.test.ts).
+ * down to the code that talks to the API (assistant.ts), without that code importing the database.
  */
 
 export type Usage = { input_tokens?: number; output_tokens?: number };

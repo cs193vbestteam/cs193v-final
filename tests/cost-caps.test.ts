@@ -24,22 +24,10 @@ import {
 
 const USAGE = { input_tokens: 1000, output_tokens: 100 }; // 1000 × $0.10/M + 100 × $0.50/M = $0.00015
 
-/** A fake Anthropic API that answers every tool and reports `USAGE` on each reply. */
+/** A fake Anthropic API that answers the chat's tool and reports `USAGE` on each reply. */
 function fakeAnthropic() {
-  const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
-    const body = JSON.parse(String(init.body));
-    const tool = body.tools[0].name as string;
-    let input: unknown;
-    if (tool === "judge_options") {
-      const { options } = JSON.parse(body.messages[0].content);
-      input = { verdicts: options.map((o: { id: number }) => ({ id: o.id, verdict: "accept" })) };
-    } else if (tool === "pick") {
-      input = { ids: [0, 1, 2] };
-    } else if (tool === "explain_plan") {
-      input = { explanation: "A relaxed dinner." };
-    } else {
-      input = { reply: "Got it, Saturday dinner.", onTopic: true, asks: "none", update: {} };
-    }
+  const fetchMock = vi.fn(async () => {
+    const input = { reply: "Got it, Saturday dinner.", onTopic: true, asks: "none", update: {} };
     return Response.json({ content: [{ type: "tool_use", input }], usage: USAGE });
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -88,8 +76,8 @@ describe("what a call costs", () => {
     expect(costMicros(undefined)).toBe(0);
   });
 
-  it("defaults to $10 a person and $10 in total per month", () => {
-    expect(perUserMonthlyCap()).toBe(10);
+  it("defaults to $1 a person and $10 in total per month", () => {
+    expect(perUserMonthlyCap()).toBe(1);
     expect(globalMonthlyCap()).toBe(10);
   });
 
@@ -156,23 +144,6 @@ describe("when a cap is reached, the rules answer instead of the model", () => {
     const fetchMock = fakeAnthropic();
     await sendMessage(e.id, a.id, "Saturday dinner works");
     expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it("the creator's cap: the negotiation runs on code alone and still finds a plan", async () => {
-    const a = await makeUser("Alice");
-    const b = await makeUser("Blake");
-    const e = await createEvent(a.id, "Dinner");
-    await joinEvent(e.inviteCode, b.id);
-    await sendMessage(e.id, a.id, "Saturday dinner, under $50, 30 minutes, no restrictions");
-    await sendMessage(e.id, b.id, "Saturday dinner, under $50, 30 minutes, no restrictions");
-    await setReady(e.id, a.id, true);
-    await setReady(e.id, b.id, true);
-    process.env.LLM_MONTHLY_CAP_TOTAL_USD = "100";
-    await recordSpend(a.id, perUserMonthlyCap() * 1e6);
-    const fetchMock = fakeAnthropic();
-    const result = await runNegotiation(e.id, b.id);
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(result.status).not.toBe("no_deal");
   });
 });
 
