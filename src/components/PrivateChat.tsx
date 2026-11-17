@@ -177,6 +177,16 @@ export function PrivateChat({
         </p>
       )}
 
+      {/* The words are AI-CONSENT.md's: what leaves, who gets it, and for how long, said where people type. */}
+      <p className="px-4 pb-3 text-xs leading-relaxed text-ink-3">
+        Your messages and meal preferences are sent to Anthropic&apos;s Claude. Anthropic does not use API chats for
+        training by default. Its standard retention policy is up to 30 days, with longer retention for flagged content
+        or legal requirements. Your group sees the plan, not your chat.{" "}
+        <a className="link link-small" href="/privacy" target="_blank" rel="noopener">
+          How your data is used<span className="sr-only"> (opens in a new tab)</span>
+        </a>
+      </p>
+
       <div className="border-t border-line bg-paper-2/40 px-5 py-4">
         <div className="eyebrow">What your assistant knows</div>
         {summary.length ? (
