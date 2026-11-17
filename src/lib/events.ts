@@ -411,7 +411,14 @@ export async function getMyConstraints(eventId: string, userId: string): Promise
   return (await loadConstraints(eventId, userId)).constraints;
 }
 
-async function saveConstraints(eventId: string, userId: string, c: MemberState, ready: boolean) {
+async function saveConstraints(
+  eventId: string,
+  userId: string,
+  c: MemberState,
+  ready: boolean,
+  /** Whether what they want is different from before; only the chat can make it so. */
+  changed = false,
+) {
   const client = await db();
   // `ready_at` is when they became ready and have stayed so: kept while they stay ready, set when
   // they become ready, cleared when they stop being ready. Changing your answers therefore gives
@@ -419,13 +426,16 @@ async function saveConstraints(eventId: string, userId: string, c: MemberState, 
   await client.execute({
     sql: `UPDATE members SET constraints_enc = ?,
             ready_at = CASE WHEN ? = 0 THEN NULL WHEN ready = 1 AND ready_at IS NOT NULL THEN ready_at ELSE ? END,
-            ready = ?
+            ready = ?,
+            changed_at = CASE WHEN ? = 1 THEN ? ELSE changed_at END
           WHERE event_id = ? AND user_id = ?`,
     args: [
       encryptJson(c, scope.constraints(eventId, userId)),
       ready ? 1 : 0,
       Date.now(),
       ready ? 1 : 0,
+      changed ? 1 : 0,
+      Date.now(),
       eventId,
       userId,
     ],
@@ -465,7 +475,7 @@ export async function sendMessage(
     args: [eventId, userId],
   });
   const wasReady = Number(rows[0].ready) === 1;
-  await saveConstraints(eventId, userId, next, wasReady && !changed);
+  await saveConstraints(eventId, userId, next, wasReady && !changed, changed);
   await addMessage(eventId, userId, "assistant", reply);
 
   return { messages: await getMyMessages(eventId, userId), constraints: next, scenario: scenario.id };
@@ -480,8 +490,59 @@ export async function setReady(eventId: string, userId: string, ready: boolean):
   await saveConstraints(eventId, userId, c, ready);
 }
 
+export const NOTHING_CHANGED =
+  "Nobody has changed their answers since this plan was found, so running it again would give the same plan.";
+
+/**
+ * Where a plan stands for running it (#118). `changedSince` is whether anyone changed what they
+ * want, or joined, after the stored result was made. Pressing "Not done yet" and "I'm done" again
+ * changes nothing and does not count. Without a change, the answers are the ones the result was
+ * made from, and the optimizer would return the same plan.
+ */
+async function runState(eventId: string) {
+  const client = await db();
+  const { rows } = await client.execute({
+    sql: `SELECT e.result_json IS NOT NULL AS decided, e.decided_at,
+                 (SELECT COUNT(*) FROM members m WHERE m.event_id = e.id) AS members,
+                 (SELECT COUNT(*) FROM members m WHERE m.event_id = e.id AND m.ready = 1) AS ready,
+                 (SELECT MAX(GREATEST(COALESCE(m.changed_at, 0), m.joined_at)) FROM members m
+                   WHERE m.event_id = e.id) AS last_change
+          FROM events e WHERE e.id = ?`,
+    args: [eventId],
+  });
+  const row = rows[0];
+  if (!row) throw new AccessError("That plan doesn't exist");
+  const decided = row.decided === true || Number(row.decided) === 1;
+  return {
+    decided,
+    members: Number(row.members),
+    ready: Number(row.ready),
+    changedSince: decided && Number(row.last_change ?? 0) > Number(row.decided_at ?? 0),
+  };
+}
+
+/** Whether pressing "Re-run" would do anything: only once someone has changed an answer or joined. */
+export async function canRerun(eventId: string, userId: string): Promise<boolean> {
+  await requireMember(eventId, userId);
+  const state = await runState(eventId);
+  return state.decided && state.changedSince;
+}
+
 export async function runNegotiation(eventId: string, userId: string): Promise<StoredResult> {
   await requireMember(eventId, userId);
+  const state = await runState(eventId);
+  // The same checks decideAndStore makes, made first so a run that cannot start is not counted.
+  if (state.ready < 2) throw new AccessError("At least 2 people need to be ready first");
+  if (state.ready !== state.members) {
+    throw new AccessError("Everyone who joined must be ready before finding a plan");
+  }
+  if (state.decided && !state.changedSince) throw new AccessError(NOTHING_CHANGED);
+  const quota = await hit(rateKey.runs(eventId), LIMITS.runsPerPlan);
+  if (!quota.allowed) {
+    throw new RateLimitError(
+      `This plan has been worked out ${LIMITS.runsPerPlan.max} times today, which is the most allowed. You can run it again ${waitText(quota.retryAfterMs)}.`,
+    );
+  }
   return decideAndStore(eventId);
 }
 
@@ -680,6 +741,7 @@ export async function deletePlan(eventId: string, userId: string): Promise<void>
   await client.execute({ sql: "DELETE FROM events WHERE id = ? AND creator_id = ?", args: [eventId, userId] });
   await clearRateKey(rateKey.llm(eventId));
   await clearRateKey(rateKey.autoNegotiate(eventId));
+  await clearRateKey(rateKey.runs(eventId));
 }
 
 /** Takes one member's constraints and private chat out of a plan and un-decides it. */

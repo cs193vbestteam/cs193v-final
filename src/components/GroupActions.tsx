@@ -10,20 +10,25 @@ export function NegotiateButton({
   readyCount,
   memberCount,
   decided,
+  canRerun = true,
 }: {
   eventId: string;
   inviteCode: string;
   readyCount: number;
   memberCount: number;
   decided: boolean;
+  /** For a decided plan: whether anyone has changed an answer or joined since. Without that a run gives the same plan (#118). */
+  canRerun?: boolean;
 }) {
+  const everyoneDone = readyCount >= 2 && readyCount === memberCount;
+  const nothingNew = decided && everyoneDone && !canRerun;
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
     <div>
       <button
         className={`${decided ? "btn-ghost" : "btn"} w-full`}
-        disabled={pending || readyCount < 2 || readyCount !== memberCount}
+        disabled={pending || !everyoneDone || nothingNew}
         onClick={() =>
           start(async () => {
             const res = await runNegotiationAction(eventId, inviteCode);
@@ -37,6 +42,11 @@ export function NegotiateButton({
       {memberCount >= 2 && readyCount < memberCount && (
         <p className="mt-2 text-center text-xs text-ink-3">
           {readyCount} of {memberCount} people ready. Waiting for everyone to finish.
+        </p>
+      )}
+      {nothingNew && (
+        <p className="mt-2 text-center text-xs text-ink-3">
+          This is the plan for everyone&apos;s current answers. It can be run again once someone changes theirs.
         </p>
       )}
       {error && (
