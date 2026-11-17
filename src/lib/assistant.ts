@@ -430,6 +430,39 @@ const PRIVATE_ALREADY = /stays? private|is private|只有你|保密/i;
 const CANNOT_CHECK = /can(?:no|')t (?:be )?check|cannot (?:be )?check|not (?:be )?checked|unable to check/i;
 
 /**
+ * How "there is nothing I can't eat" is confirmed (#157). Written by code: in a user test the
+ * model answered a bare "No" with "You can't eat anything restricted", which reads as the opposite.
+ */
+export const NOTHING_OFF_LIMITS = "Got it: there's nothing you can't eat.";
+/** A sentence that says, or can be read as saying, that the person cannot eat anything. */
+const READS_AS_CANNOT_EAT =
+  /\b(?:can(?:['’]|no)?t|can not)\s+eat\s+(?:any|every)thing\b|\b(?:any|every)thing\s+restricted\b|\bno(?:thing| food)s?\s+you\s+can\s+eat\b/i;
+const CJK = /[\u3400-\u9fff]/;
+
+/**
+ * The reply for a message that said there is nothing they cannot eat. When that is all the
+ * message said, the confirmation is code's sentence and only the model's question is kept.
+ * Otherwise only a sentence that could be read the wrong way round is replaced.
+ */
+function confirmNothingOffLimits(reply: string, onlyThat: boolean): string {
+  if (CJK.test(reply)) return reply;
+  const sentences = reply.split(SENTENCE_BREAK).filter((x) => x.trim());
+  if (onlyThat) {
+    const questions = sentences.filter((x) => QUESTION_END.test(x.trim()));
+    return [NOTHING_OFF_LIMITS, ...questions].join(" ");
+  }
+  if (!READS_AS_CANNOT_EAT.test(reply)) return reply;
+  let said = false;
+  const kept = sentences.flatMap((x) => {
+    if (!READS_AS_CANNOT_EAT.test(x)) return [x];
+    if (said) return [];
+    said = true;
+    return [NOTHING_OFF_LIMITS];
+  });
+  return kept.join(" ");
+}
+
+/**
  * Apply what the model returned to the stored state. Pure: no network, no clock. Returns the
  * new state and the reply with any sentences code had to add (a block that could not be
  * recorded, a restaurant that is not a candidate, a note that cannot be checked).
@@ -616,6 +649,12 @@ export function applyAssistantOutput(
 
   // The cap is on the model's own text. The sentences below are written by code and are short.
   let reply = capReply(output.reply);
+  if (blocks.nothingTheyCannotEat) {
+    const said = Object.entries(blocks).filter(
+      ([, v]) => v !== undefined && v !== false && !(Array.isArray(v) && !v.length),
+    );
+    reply = confirmNothingOffLimits(reply, said.length === 1);
+  }
   // A broad word: say what it was taken to mean, unless the model already listed it.
   const saidBroad = new Set<string>();
   for (const match of words.liked.filter(isBroad)) {
