@@ -38,9 +38,7 @@ export function HeroDemo() {
               style={{ "--i": i } as React.CSSProperties}
             >
               <span className="w-9 shrink-0 font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">{m.who}</span>
-              <span
-                className={m.link ? "truncate text-ink-3 underline decoration-line underline-offset-2" : "text-ink"}
-              >
+              <span className={m.link ? "truncate text-ink-3 underline decoration-line underline-offset-2" : undefined}>
                 {m.text}
               </span>
             </li>
@@ -50,6 +48,7 @@ export function HeroDemo() {
         {/* The one line everyone actually needed */}
         <div className="demo-result pointer-events-none absolute inset-x-5 top-1/2 -translate-y-1/2">
           <div className="relative rounded-2xl border border-ink bg-ink px-5 py-4 text-paper shadow-[var(--shadow-lift)]">
+            <span aria-hidden className="demo-ring pointer-events-none absolute inset-0 rounded-2xl" />
             <div className="font-mono text-[0.75rem] uppercase tracking-[0.14em] text-paper/60">
               settle · to the group
             </div>

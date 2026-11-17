@@ -426,8 +426,12 @@ summary:focus-visible {
 .demo[data-paused="true"] * {
   animation-play-state: paused;
 }
+/* The thread stays readable the whole time (WCAG 1.4.3): once the plan lands, the messages are
+   greyed and struck through, not faded out. What sets the plan apart is the dark card landing on top. */
 .demo-msg {
   opacity: 0;
+  color: var(--color-ink);
+  text-decoration: line-through 1px transparent;
   animation: demo-msg var(--cycle) var(--ease-out-expo) infinite;
   animation-delay: calc(var(--i) * 0.55s);
 }
@@ -445,24 +449,22 @@ summary:focus-visible {
   44% {
     opacity: 1;
     transform: none;
-    filter: blur(0);
     color: var(--color-ink);
+    text-decoration-color: transparent;
   }
-  52% {
-    opacity: 0.18;
-    transform: translateY(-4px) scale(0.985);
-    filter: blur(1.5px);
-  }
+  52%,
   86% {
-    opacity: 0.18;
-    transform: translateY(-4px) scale(0.985);
-    filter: blur(1.5px);
+    opacity: 1;
+    transform: scale(0.985);
+    color: var(--color-ink-3);
+    text-decoration-color: var(--color-ink-3);
   }
   92%,
   100% {
     opacity: 0;
     transform: translateY(-8px);
-    filter: blur(3px);
+    color: var(--color-ink-3);
+    text-decoration-color: var(--color-ink-3);
   }
 }
 .demo-result {
@@ -474,12 +476,13 @@ summary:focus-visible {
   0%,
   50% {
     opacity: 0;
-    transform: translateY(16px) scale(0.97);
+    transform: translateY(18px) scale(0.92);
   }
-  56% {
+  54% {
     opacity: 1;
-    transform: none;
+    transform: translateY(-2px) scale(1.035);
   }
+  58%,
   86% {
     opacity: 1;
     transform: none;
@@ -488,6 +491,28 @@ summary:focus-visible {
   100% {
     opacity: 0;
     transform: translateY(-8px);
+  }
+}
+/* One ring spreading out from the card as it lands. */
+.demo-ring {
+  opacity: 0;
+  animation: demo-ring var(--cycle) var(--ease-out-expo) infinite;
+  animation-delay: 3.4s;
+}
+@keyframes demo-ring {
+  0%,
+  53% {
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgb(198 69 31 / 0.55);
+  }
+  54% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgb(198 69 31 / 0.55);
+  }
+  64%,
+  100% {
+    opacity: 0;
+    box-shadow: 0 0 0 18px rgb(198 69 31 / 0);
   }
 }
 .demo-seal {
@@ -585,8 +610,13 @@ summary:focus-visible {
   }
   .demo-msg {
     animation: none;
-    opacity: 0.18;
-    filter: blur(1.5px);
+    opacity: 1;
+    color: var(--color-ink-3);
+    text-decoration-color: var(--color-ink-3);
+  }
+  .demo-ring {
+    animation: none;
+    opacity: 0;
   }
   .demo-result,
   .demo-seal {
