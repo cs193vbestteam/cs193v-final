@@ -772,14 +772,16 @@ export function matchCuisine(
   types: readonly string[],
   cuisine: { scores?: Record<string, number>; excluded?: readonly string[] },
 ): { excluded: boolean; score: number } {
-  const scores = cuisine.scores ?? {};
+  // A Map, not a property lookup: a type named like something every object has ("constructor")
+  // must read as "not scored", not as that built-in.
+  const scores = new Map(Object.entries(cuisine.scores ?? {}));
   const banned = new Set(cuisine.excluded ?? []);
   let excluded = false;
   let score = 0;
   for (const type of types) {
     const parent = parentCuisine(type);
     if (banned.has(type) || (parent !== undefined && banned.has(parent))) excluded = true;
-    score = Math.max(score, scores[type] ?? (parent !== undefined ? (scores[parent] ?? 0) : 0));
+    score = Math.max(score, scores.get(type) ?? (parent !== undefined ? (scores.get(parent) ?? 0) : 0));
   }
   return { excluded, score };
 }

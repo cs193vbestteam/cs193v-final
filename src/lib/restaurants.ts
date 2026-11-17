@@ -19,6 +19,8 @@ export type Restaurant = {
    * Present for Places results and the seed; absent for the Yelp sample data.
    */
   types?: string[];
+  /** The one type Google calls the place's main one, when it names one. Also in `types`. Places results only. */
+  primaryType?: string;
   /** The kind of place, worked out from `types` (`stylesOf`). Present whenever `types` is. */
   style?: Style[];
   /** Typical spend per person, in dollars. */

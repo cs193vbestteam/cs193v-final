@@ -61,6 +61,9 @@ CREATE TABLE IF NOT EXISTS members (
   joined_at       BIGINT NOT NULL,
   PRIMARY KEY (event_id, user_id)
 );
+-- When the member last became ready and has stayed so; NULL while they are not. The optimizer
+-- uses the order, never the time, to settle exact ties in favour of whoever finished first.
+ALTER TABLE members ADD COLUMN IF NOT EXISTS ready_at BIGINT;
 
 CREATE TABLE IF NOT EXISTS messages (
   id          BIGSERIAL PRIMARY KEY,

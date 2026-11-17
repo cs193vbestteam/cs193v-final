@@ -155,6 +155,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "pakistani_restaurant",
       "style": [
         "casual"
       ],
@@ -196,6 +197,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "ramen_restaurant",
       "style": [
         "casual"
       ],
@@ -233,6 +235,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "hamburger_restaurant",
       "style": [
         "fast_food"
       ],
@@ -279,6 +282,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "spanish_restaurant",
       "style": [
         "casual"
       ],
@@ -318,6 +322,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "indian_restaurant",
       "style": [
         "fine_dining"
       ],
@@ -354,6 +359,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "cajun_restaurant",
       "style": [
         "casual"
       ],
@@ -399,6 +405,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "brunch_restaurant",
       "style": [
         "casual"
       ],
@@ -432,6 +439,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "hamburger_restaurant",
       "style": [
         "casual"
       ],
@@ -473,6 +481,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "casual"
       ],
@@ -510,6 +519,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "greek_restaurant",
       "style": [
         "casual"
       ],
@@ -551,6 +561,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "restaurant",
       "style": [
         "casual"
       ],
@@ -592,6 +603,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "restaurant",
       "style": [
         "fast_food"
       ],
@@ -634,6 +646,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "restaurant",
       "style": [
         "casual"
       ],
@@ -675,6 +688,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "italian_restaurant",
       "style": [
         "casual"
       ],
@@ -709,6 +723,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "korean_restaurant",
       "style": [
         "casual"
       ],
@@ -750,6 +765,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "hamburger_restaurant",
       "style": [
         "fast_food"
       ],
@@ -795,6 +811,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "turkish_restaurant",
       "style": [
         "casual"
       ],
@@ -829,6 +846,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "japanese_restaurant",
       "style": [
         "casual"
       ],
@@ -867,6 +885,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "japanese_restaurant",
       "style": [
         "casual"
       ],
@@ -906,6 +925,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "sushi_restaurant",
       "style": [
         "casual"
       ],
@@ -952,6 +972,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "hawaiian_restaurant",
       "style": [
         "fast_food"
       ],
@@ -995,6 +1016,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "seafood_restaurant",
       "style": [
         "fine_dining"
       ],
@@ -1025,6 +1047,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "japanese_restaurant",
       "style": [
         "casual"
       ],
@@ -1057,6 +1080,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "japanese_restaurant",
       "style": [
         "casual"
       ],
@@ -1094,6 +1118,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "sushi_restaurant",
       "style": [
         "casual"
       ],
@@ -1128,6 +1153,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "taiwanese_restaurant",
       "style": [
         "casual"
       ],
@@ -1172,6 +1198,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "casual"
       ],
@@ -1211,6 +1238,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "japanese_restaurant",
       "style": [
         "casual"
       ],
@@ -1253,6 +1281,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "asian_restaurant",
       "style": [
         "casual"
       ],
@@ -1286,6 +1315,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "japanese_restaurant",
       "style": [
         "casual"
       ],
@@ -1328,6 +1358,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "japanese_restaurant",
       "style": [
         "casual"
       ],
@@ -1368,6 +1399,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "ramen_restaurant",
       "style": [
         "casual"
       ],
@@ -1401,6 +1433,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "japanese_restaurant",
       "style": [
         "casual"
       ],
@@ -1434,6 +1467,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "sushi_restaurant",
       "style": [
         "casual"
       ],
@@ -1469,6 +1503,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "ramen_restaurant",
       "style": [
         "casual"
       ],
@@ -1508,6 +1543,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "japanese_restaurant",
       "style": [
         "casual"
       ],
@@ -1545,6 +1581,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "cantonese_restaurant",
       "style": [
         "casual"
       ],
@@ -1587,6 +1624,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "dumpling_restaurant",
       "style": [
         "casual"
       ],
@@ -1624,6 +1662,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "casual"
       ],
@@ -1659,6 +1698,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "casual"
       ],
@@ -1701,6 +1741,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "fast_food"
       ],
@@ -1741,6 +1782,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "casual"
       ],
@@ -1784,6 +1826,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "fast_food"
       ],
@@ -1822,6 +1865,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "dim_sum_restaurant",
       "style": [
         "casual"
       ],
@@ -1867,6 +1911,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "fast_food"
       ],
@@ -1909,6 +1954,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "casual"
       ],
@@ -1943,6 +1989,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "casual"
       ],
@@ -1989,6 +2036,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "restaurant",
       "style": [
         "casual"
       ],
@@ -2019,6 +2067,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "casual"
       ],
@@ -2054,6 +2103,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "casual"
       ],
@@ -2092,6 +2142,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "burmese_restaurant",
       "style": [
         "casual"
       ],
@@ -2125,6 +2176,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "chinese_restaurant",
       "style": [
         "casual"
       ],
@@ -2162,6 +2214,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "indian_restaurant",
       "style": [
         "casual"
       ],
@@ -2198,6 +2251,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "indian_restaurant",
       "style": [
         "fine_dining"
       ],
@@ -2232,6 +2286,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "indian_restaurant",
       "style": [
         "casual"
       ],
@@ -2269,6 +2324,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "indian_restaurant",
       "style": [
         "casual"
       ],
@@ -2305,6 +2361,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "indian_restaurant",
       "style": [
         "casual"
       ],
@@ -2339,6 +2396,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "indian_restaurant",
       "style": [
         "casual"
       ],
@@ -2381,6 +2439,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "indian_restaurant",
       "style": [
         "casual"
       ],
@@ -2416,6 +2475,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "indian_restaurant",
       "style": [
         "casual"
       ],
@@ -2462,6 +2522,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "fast_food_restaurant",
       "style": [
         "fast_food"
       ],
@@ -2504,6 +2565,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -2550,6 +2612,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "fast_food_restaurant",
       "style": [
         "fast_food"
       ],
@@ -2596,6 +2659,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "fast_food_restaurant",
       "style": [
         "fast_food"
       ],
@@ -2637,6 +2701,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -2680,6 +2745,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -2725,6 +2791,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "fast_food_restaurant",
       "style": [
         "fast_food"
       ],
@@ -2767,6 +2834,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -2804,6 +2872,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "fast_food_restaurant",
       "style": [
         "fast_food"
       ],
@@ -2851,6 +2920,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "fast_food_restaurant",
       "style": [
         "fast_food"
       ],
@@ -2894,6 +2964,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -2935,6 +3006,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "fast_food"
       ],
@@ -2973,6 +3045,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -3020,6 +3093,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "fast_food"
       ],
@@ -3058,6 +3132,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -3095,6 +3170,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -3139,6 +3215,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "fast_food_restaurant",
       "style": [
         "fast_food"
       ],
@@ -3180,6 +3257,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -3217,6 +3295,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -3254,6 +3333,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "mexican_restaurant",
       "style": [
         "casual"
       ],
@@ -3298,6 +3378,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "cafe",
       "style": [
         "cafe"
       ],
@@ -3334,6 +3415,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "pizza_restaurant",
       "style": [
         "casual"
       ],
@@ -3372,6 +3454,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "italian_restaurant",
       "style": [
         "casual"
       ],
@@ -3412,6 +3495,7 @@
         "service",
         "establishment"
       ],
+      "primaryType": "italian_restaurant",
       "style": [
         "casual"
       ],
@@ -3452,6 +3536,7 @@
         "service",
         "establishment"
       ],
+      "primaryType": "italian_restaurant",
       "style": [
         "casual"
       ],
@@ -3491,6 +3576,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "italian_restaurant",
       "style": [
         "casual"
       ],
@@ -3529,6 +3615,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "italian_restaurant",
       "style": [
         "fine_dining"
       ],
@@ -3564,6 +3651,7 @@
         "service",
         "establishment"
       ],
+      "primaryType": "pizza_restaurant",
       "style": [
         "casual"
       ],
@@ -3607,6 +3695,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "italian_restaurant",
       "style": [
         "casual"
       ],
@@ -3642,6 +3731,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "italian_restaurant",
       "style": [
         "casual"
       ],
@@ -3681,6 +3771,7 @@
         "service",
         "establishment"
       ],
+      "primaryType": "pizza_restaurant",
       "style": [
         "casual"
       ],
@@ -3723,6 +3814,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "pizza_restaurant",
       "style": [
         "casual"
       ],
@@ -3760,6 +3852,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "italian_restaurant",
       "style": [
         "casual"
       ],
@@ -3795,6 +3888,7 @@
         "service",
         "establishment"
       ],
+      "primaryType": "pizza_restaurant",
       "style": [
         "casual"
       ],
@@ -3847,6 +3941,7 @@
         "service",
         "establishment"
       ],
+      "primaryType": "pizza_restaurant",
       "style": [
         "casual"
       ],
@@ -3887,6 +3982,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "italian_restaurant",
       "style": [
         "casual"
       ],
@@ -3921,6 +4017,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "restaurant",
       "style": [
         "casual"
       ],
@@ -3962,6 +4059,7 @@
         "point_of_interest",
         "establishment"
       ],
+      "primaryType": "pizza_restaurant",
       "style": [
         "casual"
       ],
