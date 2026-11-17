@@ -178,7 +178,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             <div className="flex items-baseline justify-between">
               <h2 className="font-serif text-xl">The group</h2>
               <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
-                {members.length} of {event.maxMembers} joined
+                {members.length} joined · limit {event.maxMembers}
               </span>
             </div>
             <ul className="mt-3 divide-y divide-line">

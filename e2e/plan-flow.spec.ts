@@ -93,7 +93,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expect(blake.getByText("You've been invited to")).toBeVisible();
     await blake.getByRole("button", { name: "Join plan" }).click();
     await expect(blake.getByRole("heading", { name: "Your private assistant" })).toBeVisible();
-    await expect(blake.getByText("2 of 12 joined")).toBeVisible();
+    await expect(blake.getByText("2 joined · limit 12")).toBeVisible();
   });
 
   await test.step("a plan cannot be found until everyone is done", async () => {
@@ -205,7 +205,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
 
   await test.step("when someone joins after the plan is decided, it says so and is out of date", async () => {
     await casey.getByRole("button", { name: "Join plan" }).click();
-    await expect(casey.getByText("3 of 12 joined")).toBeVisible();
+    await expect(casey.getByText("3 joined · limit 12")).toBeVisible();
     for (const page of [casey, alex]) {
       await page.reload();
       await expect(page.getByText("Out of date").first()).toBeVisible();
