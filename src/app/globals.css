@@ -560,6 +560,28 @@ summary:focus-visible {
     text-decoration-color: var(--color-ink-3);
   }
 }
+/* The message that sends the link is the turn of the story: it stays as written while the rest is crossed out. */
+.demo-pivot {
+  animation-name: demo-msg-kept;
+}
+@keyframes demo-msg-kept {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(3px);
+  }
+  4%,
+  86% {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+  92%,
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
 .demo-result {
   opacity: 0;
   animation: demo-result var(--cycle) var(--ease-out-expo) infinite;
@@ -710,6 +732,10 @@ summary:focus-visible {
   .demo-ring {
     animation: none;
     opacity: 0;
+  }
+  .demo-pivot {
+    color: var(--color-ink);
+    text-decoration-color: transparent;
   }
   .strike-draw::after {
     animation: none;

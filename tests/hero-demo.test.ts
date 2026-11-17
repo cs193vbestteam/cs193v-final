@@ -41,7 +41,7 @@ describe("HeroDemo", () => {
     expect(DEMO_THREAD.some((m) => /whatever works/i.test(m.text))).toBe(true);
   });
 
-  it("marks the one external link so it reads as noise, not content", async () => {
+  it("shows one link in the thread: the invitation that ends it", async () => {
     await act(async () => root.render(createElement(HeroDemo)));
     const links = DEMO_THREAD.filter((m) => m.link);
     expect(links).toHaveLength(1);
