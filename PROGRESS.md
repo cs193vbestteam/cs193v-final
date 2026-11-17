@@ -29,6 +29,24 @@ Settle is a web app, live at https://cs193v-final.vercel.app, in which a group p
 
 **One user test** (`docs/user-tests/2026-11-16`). Two students outside the team made a plan with no guidance. They finished the flow and opened the recommended restaurant in Google Maps. Fourteen issues came out of it, among them having to register before trying anything.
 
+**What we changed after the user test.**
+
+After the user test, we fixed the three biggest problems people had (PR #168).
+
+First, the tester did not notice the plan when it showed up. It was in a small box on the side. We moved it to the top of the page, so now it is the first thing you see.
+
+Second, the tester clicked “I’m done” and did not know what to do next. We moved the button to the end of the chat. After you click it, the page says “Your part is done” and tells you the next step, like inviting people or how many people we are still waiting for. We also changed “Not done yet” to “Change my answers” because the old words were confusing.
+
+Third, the tester thought “Up to 5 people” meant the plan needed 5 people. We changed it to “Maximum group size” and added a line that says two people are enough.
+
+While we were fixing these, we found one more bug. When someone changed an answer, the old plan still said “Everyone can come” before it was run again. Now it stays “Out of date” until someone re-runs it.
+
+Then we checked the whole site for accessibility. We scanned 29 screens on desktop and phone. We found two problems. The “Open in Google Maps” link was too small to tap, so we made it taller (PR #173). The chat messages in the home page demo were too faded to read, so we stopped fading them. Now they turn grey and get crossed out.
+
+We also tested the full flow with real restaurants in Palo Alto and three people. Everything worked. The plan showed up, the Google Maps links worked, and adding a third person updated the plan.
+
+Last, we redesigned the home page (PR #174). The headline is much bigger now, and “group chat” is crossed out in red. We added a dark section that explains the problem, and we changed “How it works” into three big rows. The demo tells a small story now: friends cannot decide, one person sends a Settle link, and then the plan appears.
+
 ### 2. Backend Progress
 
 #### 1. Progress So Far
