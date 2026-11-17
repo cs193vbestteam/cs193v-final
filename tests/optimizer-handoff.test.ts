@@ -5,6 +5,7 @@ import { createUser } from "@/lib/auth";
 import { resetDbForTests } from "@/lib/db";
 import { createEvent, joinEvent, sendMessage, setReady } from "@/lib/events";
 import { travelMinutes } from "@/lib/geo";
+import { optimize } from "@/lib/optimizer";
 import {
   MAX_ALTERNATIVES,
   OptimizerInputSchema,
@@ -254,16 +255,12 @@ describe("price and vegetarian answer from Google Places", () => {
 
 describe("the optimizer's result", () => {
   const input = sample();
-  const first = input.candidates.find(isSelectable)!;
-  const second = input.candidates.filter(isSelectable)[1];
-  const good: OptimizerResult = {
-    restaurantId: first.id,
-    startTime: first.openAt![0],
-    cannotCome: 1,
-    alternatives: [{ restaurantId: second.id, startTime: second.openAt![0], cannotCome: 2 }],
-  };
+  // A result the input really allows: checkResult recomputes every count, so a made-up one will not do.
+  const good = optimize(input) as Extract<OptimizerResult, { alternatives: unknown }>;
+  const first = input.candidates.find((c) => c.id === good.restaurantId)!;
 
   it("is a place, a start time, a count of people who cannot come, and alternatives", () => {
+    expect(good.alternatives.length).toBeGreaterThan(0);
     expect(OptimizerResultSchema.parse(good)).toEqual(good);
     expect(checkResult(input, good)).toEqual([]);
   });
@@ -291,6 +288,18 @@ describe("the optimizer's result", () => {
     expect(checkResult(input, { ...good, cannotCome: 9 })[0]).toMatch(/more people/);
     const choice = { restaurantId: good.restaurantId, startTime: good.startTime, cannotCome: good.cannotCome };
     expect(checkResult(input, { ...good, alternatives: [choice] })[0]).toMatch(/twice/);
+  });
+
+  it("is rejected when a count is wrong, or an alternative has other attendance than the choice", () => {
+    expect(checkResult(input, { ...good, cannotCome: good.cannotCome + 1 })[0]).toMatch(/cannot come, but it is/);
+    // A place one person's diet rules out, listed beside a choice everyone can come to, with its true count.
+    const fewer = input.candidates.find(
+      (c) => c.openAt?.includes(good.startTime) && !c.types.includes("halal_restaurant"),
+    )!;
+    const mixed = { restaurantId: fewer.id, startTime: good.startTime, cannotCome: 1 };
+    expect(checkResult(input, { ...good, alternatives: [mixed] })).toEqual([
+      "alternative 1: not as many people can come as to the choice",
+    ]);
   });
 });
 

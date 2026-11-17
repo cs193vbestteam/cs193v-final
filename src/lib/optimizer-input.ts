@@ -261,12 +261,14 @@ export type Plan = z.infer<typeof PlanSchema>;
 /**
  * A candidate restaurant. `price`, `servesVegetarian` and `openAt` are null when Google
  * does not say. `travelMin` is keyed by person and is all the optimizer learns about
- * where anyone starts from.
+ * where anyone starts from. `primaryType` is the one of `types` Google calls the place's
+ * main one; it is left out when Google names none, and for pools stored before it was kept.
  */
 export const CandidateRestaurantSchema = z.strictObject({
   id: z.string().min(1),
   name: z.string().min(1),
   types: z.array(PlaceTypeSchema),
+  primaryType: PlaceTypeSchema.optional(),
   style: uniqueList(z.enum(STYLES), STYLES.length),
   price: z
     .strictObject({ low: z.number().nonnegative(), high: z.number().nonnegative() })

@@ -150,6 +150,7 @@ export function toPlace(p: PlaceResult, center: LatLng): Place | null {
     name,
     cuisine,
     types: primaryType && !placeTypes.includes(primaryType) ? [primaryType, ...placeTypes] : placeTypes,
+    ...(primaryType ? { primaryType } : {}),
     style: stylesOf(placeTypes, primaryType),
     pricePerPerson: PRICE_BY_LEVEL[p.priceLevel ?? ""] ?? DEFAULT_PRICE,
     price: priceOf(p),

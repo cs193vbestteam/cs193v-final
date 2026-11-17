@@ -323,9 +323,22 @@ export async function getMyConstraints(eventId: string, userId: string): Promise
 
 async function saveConstraints(eventId: string, userId: string, c: MemberState, ready: boolean) {
   const client = await db();
+  // `ready_at` is when they became ready and have stayed so: kept while they stay ready, set when
+  // they become ready, cleared when they stop being ready. Changing your answers therefore gives
+  // up your place in the order (optimizer.ts settles exact ties for whoever finished first).
   await client.execute({
-    sql: "UPDATE members SET constraints_enc = ?, ready = ? WHERE event_id = ? AND user_id = ?",
-    args: [encryptJson(c, scope.constraints(eventId, userId)), ready ? 1 : 0, eventId, userId],
+    sql: `UPDATE members SET constraints_enc = ?,
+            ready_at = CASE WHEN ? = 0 THEN NULL WHEN ready = 1 AND ready_at IS NOT NULL THEN ready_at ELSE ? END,
+            ready = ?
+          WHERE event_id = ? AND user_id = ?`,
+    args: [
+      encryptJson(c, scope.constraints(eventId, userId)),
+      ready ? 1 : 0,
+      Date.now(),
+      ready ? 1 : 0,
+      eventId,
+      userId,
+    ],
   });
 }
 
