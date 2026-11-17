@@ -105,7 +105,7 @@ export function PlanOptions({
                     href={t.mapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 inline-block text-sm underline"
+                    className="mt-1 inline-block py-1 text-sm underline"
                   >
                     Open in Google Maps
                   </a>
