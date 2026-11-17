@@ -255,15 +255,28 @@ function Landing() {
             </div>
           ))}
         </Reveal>
-        <Reveal delay={0.15} className="mt-6 grid gap-3 font-mono text-xs text-ink-2 sm:grid-cols-3">
+        <Reveal delay={0.15} className="mt-6 grid gap-3 sm:grid-cols-3">
           {[
-            ["AES-256-GCM", "private chats and constraints are encrypted at rest"],
-            ["bcrypt · cost 12", "passwords are salted and hashed, never stored"],
-            ["HMAC blind index", "emails are looked up without being readable"],
-          ].map(([k, v]) => (
-            <div key={k} className="rounded-xl border border-line bg-paper-2/50 px-4 py-3">
-              <div className="text-ink">{k}</div>
-              <div className="mt-1 leading-relaxed text-ink-3">{v}</div>
+            [
+              "Your chat is stored scrambled",
+              "What you tell your assistant, and the limits it notes, are encrypted in our database. They cannot be read from a copy of the database alone.",
+              "AES-256-GCM",
+            ],
+            [
+              "We never keep your password",
+              "Only a one-way fingerprint of it, enough to check that you typed it right. Nobody can read your password back, us included.",
+              "bcrypt, cost 12",
+            ],
+            [
+              "Your email is not kept readable",
+              "It is encrypted too. We can tell that it is you when you log in without storing it in a form anyone could read.",
+              "HMAC blind index",
+            ],
+          ].map(([title, body, how]) => (
+            <div key={title} className="rounded-xl border border-line bg-paper-2/50 px-4 py-3.5">
+              <div className="text-[0.9375rem] font-medium text-ink">{title}</div>
+              <p className="mt-1 text-sm leading-relaxed text-ink-2">{body}</p>
+              <p className="mt-2 font-mono text-xs text-ink-3">{how}</p>
             </div>
           ))}
         </Reveal>
