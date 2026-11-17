@@ -20,6 +20,8 @@
   --color-seal-soft: #f6ddd2;
   /* -ink steps: the same hue, dark enough for small text (4.5:1 on paper, surface and the -soft fills). */
   --color-seal-ink: #ad3a17;
+  /* The seal on the dark page: light enough for text on ink. */
+  --color-seal-bright: #f08a66;
   --color-moss: #2f6a4c;
   --color-moss-soft: #dfeadf;
   --color-amber: #b8771c;
@@ -286,6 +288,99 @@ summary:focus-visible {
   border-radius: 2px;
   background: var(--color-ink);
   box-shadow: 0 0 0 1px var(--color-ink);
+}
+
+/* ── Landing page ───────────────────────────────────────────── */
+.hero-title {
+  font-size: clamp(3.5rem, 11.4vw, 8.5rem);
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+}
+/* The group chat, crossed out: one line in seal red drawn through the words once the page has settled. */
+.strike-draw {
+  position: relative;
+  white-space: nowrap;
+}
+.strike-draw::after {
+  content: "";
+  position: absolute;
+  left: -0.05em;
+  right: -0.05em;
+  top: 56%;
+  height: 0.05em;
+  border-radius: 999px;
+  background: var(--color-seal);
+  transform: rotate(-2deg) scaleX(0);
+  transform-origin: left center;
+  animation: strike-draw 0.9s var(--ease-in-out-quart) 1s forwards;
+}
+@keyframes strike-draw {
+  to {
+    transform: rotate(-2deg) scaleX(1);
+  }
+}
+.btn-lg {
+  min-height: 3.25rem;
+  padding: 0 1.6rem;
+  font-size: 1rem;
+}
+.excuses {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35em 1.1em;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: clamp(1.75rem, 4.6vw, 3.5rem);
+  line-height: 1.1;
+  color: var(--color-ink-3);
+}
+.excuses li {
+  text-decoration: line-through 0.055em var(--color-seal);
+}
+.inked {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  border-radius: 2rem;
+  padding: clamp(2rem, 6vw, 5rem) clamp(1.5rem, 5vw, 4.5rem) clamp(1.25rem, 3vw, 2.5rem);
+  box-shadow: var(--shadow-lift);
+}
+.inked em {
+  color: var(--color-seal-bright);
+}
+.step {
+  display: grid;
+  gap: 1.25rem;
+  padding: 2.25rem 0;
+  border-bottom: 1px solid var(--color-line-strong);
+}
+.step-num {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: clamp(4rem, 9vw, 7rem);
+  line-height: 0.8;
+  color: var(--color-seal);
+}
+.step-demo {
+  border: 1px solid var(--color-line);
+  border-radius: 1.25rem;
+  background: var(--color-surface);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-card);
+}
+@media (min-width: 768px) {
+  .step {
+    grid-template-columns: 9rem minmax(0, 1fr) minmax(0, 21rem);
+    align-items: center;
+    gap: 2.5rem;
+    padding: 3rem 0;
+  }
+}
+.seal {
+  width: clamp(6.5rem, 14vw, 10rem);
+  margin: 0 auto 1.75rem;
+  color: var(--color-seal);
+  transform: rotate(-9deg);
 }
 
 /* Underline links */
@@ -617,6 +712,10 @@ summary:focus-visible {
   .demo-ring {
     animation: none;
     opacity: 0;
+  }
+  .strike-draw::after {
+    animation: none;
+    transform: rotate(-2deg) scaleX(1);
   }
   .demo-result,
   .demo-seal {
