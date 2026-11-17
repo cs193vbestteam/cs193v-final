@@ -8,7 +8,7 @@ import { getRestaurant, type Restaurant } from "./restaurants";
 /**
  * A person's assistant, as the mediator is allowed to hold it: two functions
  * that close over the private preferences and answer in coarse terms only.
- * Built by vault.ts (server) and sim/ (synthetic people). Nothing here reads
+ * Built by sim/ (synthetic people); the app no longer builds agents (#130). Nothing here reads
  * storage; the caller hands over plain preferences and keeps the keys.
  *
  * `start` is where this person travels from. When it is given, every
@@ -20,8 +20,8 @@ export type Agent = {
   /** verdict + at most one dimension name. `level` = concession steps requested so far. */
   judge: (p: Proposal, level: number) => Judgement;
   /**
-   * The same verdicts for a whole round at once, in order. Present when the assistant is an
-   * LLM (agent-llm.ts), which judges a round in one call; negotiate() uses it when it can.
+   * The same verdicts for a whole round at once, in order, for an assistant that can judge a
+   * round in one call; negotiate() uses it when it is present.
    */
   judgeAll?: (ps: readonly Proposal[], level: number) => Promise<Judgement[]>;
   /**

@@ -8,8 +8,8 @@ import type { Restaurant } from "./restaurants";
  *
  * The extractor only ever produces text (`startText`); this is the one place
  * that resolves it, so a model can never invent coordinates. The result is
- * stored encrypted with the person's constraints and read by nobody but their
- * own assistant (vault.ts → agent.ts). The text is sent to Google Places to
+ * stored encrypted with the person's constraints and used only to work out their
+ * own travel minutes (optimizer-handoff.ts). The text is sent to Google Places to
  * be geocoded, biased towards the plan's candidate pool.
  */
 

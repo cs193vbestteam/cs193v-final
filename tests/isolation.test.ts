@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -6,11 +6,11 @@ import { describe, expect, it } from "vitest";
  * Privacy by construction, checked structurally: the modules that run the
  * negotiation must not be able to reach preferences in storage. We walk the
  * static import graph from each of them and assert it never touches the
- * database, the crypto layer, the vault or the data-access layer.
+ * database, the crypto layer or the data-access layer.
  */
 const SRC = path.resolve(__dirname, "../src/lib");
-const FORBIDDEN = ["db", "crypto", "vault", "events", "auth", "session", "extract", "extract-rules"];
-const ENTRY_POINTS = ["negotiate", "mediator", "evaluate", "preferences", "agent", "agent-llm", "mediator-llm"];
+const FORBIDDEN = ["db", "crypto", "events", "auth", "session", "extract", "extract-rules"];
+const ENTRY_POINTS = ["negotiate", "mediator", "evaluate", "preferences", "agent"];
 
 function imports(file: string): string[] {
   const src = readFileSync(path.join(SRC, `${file}.ts`), "utf8");
@@ -36,7 +36,7 @@ function reachable(entry: string): Set<string> {
 }
 
 describe("the mediator cannot reach anyone's preferences", () => {
-  it.each(ENTRY_POINTS)("%s.ts imports no storage, crypto or vault module (transitively)", (entry) => {
+  it.each(ENTRY_POINTS)("%s.ts imports no storage or crypto module (transitively)", (entry) => {
     const graph = reachable(entry);
     for (const bad of FORBIDDEN)
       expect(graph.has(bad), `${entry} reaches ${bad} via ${[...graph].join(" → ")}`).toBe(false);
@@ -49,14 +49,13 @@ describe("the mediator cannot reach anyone's preferences", () => {
     }
   });
 
-  it("only the vault and the agent handle a person's start point; the mediator never sees it", () => {
-    for (const f of ["negotiate", "mediator", "mediator-llm", "evaluate", "preferences", "pool"]) {
+  it("only the agent handles a person's start point; the mediator never sees it", () => {
+    for (const f of ["negotiate", "mediator", "evaluate", "preferences", "pool"]) {
       const src = readFileSync(path.join(SRC, `${f}.ts`), "utf8");
       expect(src, `${f}.ts`).not.toMatch(/startPoint|startText|start-point/);
     }
     // The agent takes the point as an argument and closes over it; it never reads it from anywhere.
     expect(reachable("agent").has("start-point")).toBe(false);
-    expect(readFileSync(path.join(SRC, "vault.ts"), "utf8")).toMatch(/makeAgent\([^;]*constraints\.startPoint\)/);
   });
 
   it("deciding a plan decrypts nothing itself; it asks the optimizer's loader, the one place that may", () => {
@@ -70,11 +69,12 @@ describe("the mediator cannot reach anyone's preferences", () => {
     expect(body).not.toMatch(/constraints_enc|decrypt|ConstraintsSchema|compile\(/);
   });
 
-  it("the vault exposes agents, never preference values", () => {
-    const src = readFileSync(path.join(SRC, "vault.ts"), "utf8");
-    expect(src).toMatch(/import "server-only"/);
-    const exported = [...src.matchAll(/^export (?:async )?function (\w+)/gm)].map((m) => m[1]);
-    expect(exported).toEqual(["agentsForEvent"]);
-    expect(src).not.toMatch(/return\s+\{[^}]*(constraints|prefs|preferences)\b/);
+  it("only the private chat calls a model: no other module talks to the Anthropic API", () => {
+    const files = readdirSync(SRC).filter((f) => f.endsWith(".ts"));
+    const callers = files.filter((f) => readFileSync(path.join(SRC, f), "utf8").includes("api.anthropic.com"));
+    expect(callers).toEqual(["assistant.ts"]);
+    // The LLM parts of the negotiation engine were removed with #130 and must not come back unnoticed.
+    for (const gone of ["agent-llm.ts", "mediator-llm.ts", "anthropic.ts", "vault.ts"])
+      expect(files).not.toContain(gone);
   });
 });

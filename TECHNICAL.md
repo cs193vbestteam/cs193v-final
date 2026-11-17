@@ -69,7 +69,7 @@ We use three secrets on the live site: `ENCRYPTION_KEY` (encrypts private data),
 - **Emails, private chats, constraints and starting points** are encrypted with AES-256-GCM before they are written to the database. Accounts are found at login through a keyed hash of the email.
 - **Login cookies** hold a random token, and the database stores only its hash, so a copy of the database cannot be used to log in as someone.
 - **Access is checked on the server.** Every function that reads or changes a plan checks that the person is a member, and no function exists that reads another person's chat or constraints.
-- **The negotiation never receives constraints.** One module (`vault.ts`) turns each person's stored constraints into an assistant and hands over only the assistant. A person's own constraints are decrypted elsewhere only to show them back to that person. A test fails if the negotiation code can reach the database or the encryption code.
+- **Everyone's preferences are read together in one place.** Deciding a plan needs all of them, so one module (`optimizer-source.ts`) decrypts them and hands the optimizer people as `p1`, `p2`, … with no names, chat text or start points. A person's own preferences are decrypted elsewhere only to show them back to that person or to continue their own chat.
 - **Abuse limits** cap chat messages, model calls per plan, login attempts and new accounts.
 - **Claude's output is checked** before it is saved: anything that does not fit the expected shape is discarded, and out-of-range numbers (a budget over $500, for example) are dropped.
 

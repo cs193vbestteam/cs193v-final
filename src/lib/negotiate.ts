@@ -58,9 +58,9 @@ export type NegotiateOptions = {
   shortlist?: number;
   selector?: Selector;
   /**
-   * Writes one sentence for the group about the plan the code picked, e.g. an LLM
-   * (mediator-llm.ts). It sees only the chosen plan's public facts and cannot change
-   * the pick; a failure or an empty answer just means no sentence.
+   * Writes one sentence for the group about the plan the code picked. It sees only the chosen
+   * plan's public facts and cannot change the pick; a failure or an empty answer just means no
+   * sentence.
    */
   explainer?: Explainer;
 };
