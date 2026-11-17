@@ -291,29 +291,24 @@ function Arrow() {
   );
 }
 
-/** A wax seal with the promise set around its rim. Decoration: the words are already on the page. */
+/**
+ * Four separate lines run into one, and the one ends in a full stop: everyone's own limits,
+ * one plan, settled. The full stop is the red dot of the wordmark. Decoration only.
+ */
 function Seal() {
   return (
-    <svg aria-hidden viewBox="0 0 200 200" className="seal">
-      <defs>
-        <path id="seal-rim" d="M100,100 m-74,0 a74,74 0 1,1 148,0 a74,74 0 1,1 -148,0" />
-      </defs>
-      <circle cx="100" cy="100" r="96" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <circle cx="100" cy="100" r="58" fill="none" stroke="currentColor" strokeWidth="1" />
-      <text fontSize="13.5" letterSpacing="3.4" fill="currentColor" fontFamily="var(--font-mono)">
-        <textPath href="#seal-rim">NOBODY SAID A NUMBER OUT LOUD · SETTLED IN PRIVATE ·</textPath>
-      </text>
-      <text
-        x="100"
-        y="118"
-        textAnchor="middle"
-        fontSize="58"
-        fontStyle="italic"
-        fill="currentColor"
-        fontFamily="var(--font-serif)"
-      >
-        S.
-      </text>
+    <svg aria-hidden viewBox="0 0 240 96" fill="none" className="seal">
+      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-ink">
+        <path d="M4 8 C 70 8, 78 48, 132 48" />
+        <path d="M4 34 C 60 34, 80 48, 132 48" />
+        <path d="M4 62 C 60 62, 80 48, 132 48" />
+        <path d="M4 88 C 70 88, 78 48, 132 48" />
+        <path d="M132 48 H 208" strokeWidth="3.5" />
+      </g>
+      {[8, 34, 62, 88].map((y) => (
+        <circle key={y} cx="4" cy={y} r="3.5" className="fill-ink" />
+      ))}
+      <circle cx="224" cy="48" r="9" className="fill-seal" />
     </svg>
   );
 }
