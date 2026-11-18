@@ -69,12 +69,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             {user ? (
               <form action={logoutAction} className="flex items-center gap-4">
                 <span className="hidden text-sm text-ink-2 sm:inline">
-                  Signed in as <span className="font-medium text-ink">{user.displayName}</span>
+                  {user.guest ? "Here as a guest:" : "Signed in as"}{" "}
+                  <span className="font-medium text-ink">{user.displayName}</span>
                 </span>
                 <Link href="/account" className="link text-sm text-ink-2">
                   Account
                 </Link>
-                <button className="btn-ghost btn-sm">Log out</button>
+                {/* A guest has nothing to log back in with, so logging out would strand what they said. */}
+                {user.guest ? (
+                  <Link href="/signup" className="btn-ghost btn-sm">
+                    Save account
+                  </Link>
+                ) : (
+                  <button className="btn-ghost btn-sm">Log out</button>
+                )}
               </form>
             ) : (
               <Suspense fallback={<AuthNavFallback />}>

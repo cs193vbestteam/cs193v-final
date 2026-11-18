@@ -23,6 +23,9 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    BIGINT NOT NULL
 );
 
+-- A guest joined with a plan code and has no email or password (auth.ts). 0 for an account.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_guest INTEGER NOT NULL DEFAULT 0;
+
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,          -- sha256 of the cookie token; raw token never stored
   user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

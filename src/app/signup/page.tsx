@@ -7,6 +7,8 @@ export const metadata = { title: "Sign up — Settle" };
 
 export default async function SignupPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next = "/" } = await searchParams;
-  if (await currentUser()) redirect(next.startsWith("/") ? next : "/");
-  return <AuthForm mode="signup" action={signupAction} next={next} />;
+  const user = await currentUser();
+  // A guest comes here to keep their plans; anyone else who is signed in has nothing to do here.
+  if (user && !user.guest) redirect(next.startsWith("/") ? next : "/");
+  return <AuthForm mode="signup" action={signupAction} next={next} guestName={user?.displayName} />;
 }

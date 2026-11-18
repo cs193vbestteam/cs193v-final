@@ -132,6 +132,12 @@ export function Landing() {
                 Log in
               </Link>
             </div>
+            <p className="rise mt-4 text-sm text-ink-2" style={d(0.35)}>
+              Got a plan code from a friend?{" "}
+              <Link href="/guest" className="link text-ink">
+                Continue as a guest
+              </Link>
+            </p>
             <dl
               className="rise mt-10 grid max-w-md grid-cols-3 border-t border-line pt-4 font-mono text-[0.75rem] uppercase tracking-[0.12em] text-ink-3"
               style={d(0.4)}

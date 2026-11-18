@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { ZodError } from "zod";
 import { headers } from "next/headers";
-import { AuthError, authenticate, checkIpLimit, createUser } from "@/lib/auth";
+import { AuthError, authenticate, checkIpLimit, createGuest, createUser, upgradeGuest } from "@/lib/auth";
 import type { MissingField } from "@/lib/constraints";
 import type { ChatTurn } from "@/lib/extract";
 import {
@@ -14,6 +14,7 @@ import {
   createEvent,
   deleteAccount,
   deletePlan,
+  getEventByCode,
   joinEvent,
   leavePlan,
   negotiateWhenAllReady,
@@ -26,7 +27,8 @@ import {
 } from "@/lib/events";
 import { planDateSchema } from "@/lib/plan-date";
 import { DEFAULT_SCENARIO, ScenarioIdSchema, scenarioFor } from "@/lib/scenario";
-import { endSession, requireUser, startSession } from "@/lib/session";
+import { planCodeFrom } from "@/lib/plan-code";
+import { currentUser, endSession, requireUser, startSession } from "@/lib/session";
 import { safeNext } from "@/lib/redirect";
 
 export type FormState = { error?: string };
@@ -47,12 +49,18 @@ function friendly(err: unknown): string {
 export async function signupAction(_: FormState, form: FormData): Promise<FormState> {
   try {
     await checkIpLimit("signup", await clientIp());
-    const user = await createUser({
+    const input = {
       email: String(form.get("email") ?? ""),
       displayName: String(form.get("displayName") ?? ""),
       password: String(form.get("password") ?? ""),
-    });
-    await startSession(user.id);
+    };
+    // A guest who signs up keeps their plans: the row they already have becomes the account.
+    const guest = await currentUser();
+    if (guest?.guest) {
+      await upgradeGuest(guest.id, input);
+      // The session is the same one, so nothing else tells the header it is no longer a guest's.
+      revalidatePath("/", "layout");
+    } else await startSession((await createUser(input)).id);
   } catch (err) {
     return { error: friendly(err) };
   }
@@ -73,6 +81,37 @@ export async function loginAction(_: FormState, form: FormData): Promise<FormSta
   redirect(safeNext(form.get("next")));
 }
 
+/** Shown for a code that leads nowhere. It does not say whether the code was close. */
+const NO_SUCH_PLAN = "No plan has that code. Check it with whoever invited you.";
+
+/**
+ * Join a plan with its code and a name, without an account (#160). Every try counts against the
+ * same per-network limit as signing up, whether or not the code exists, so this can neither be
+ * used to make people without end nor to guess plan codes.
+ */
+export async function guestAction(_: FormState, form: FormData): Promise<FormState> {
+  let code: string;
+  try {
+    const existing = await currentUser();
+    if (!existing) await checkIpLimit("signup", await clientIp());
+    const displayName = String(form.get("displayName") ?? "");
+    if (!existing && !displayName.trim()) return { error: "Enter a name" };
+    code = planCodeFrom(form.get("code"));
+    if (!code || !(await getEventByCode(code))) return { error: NO_SUCH_PLAN };
+    const user = existing ?? (await createGuest({ displayName }));
+    if (!existing) await startSession(user.id);
+    try {
+      await joinEvent(code, user.id);
+    } catch (err) {
+      // A full plan: the plan page says so, and says what to do about it.
+      if (!(err instanceof AccessError)) throw err;
+    }
+  } catch (err) {
+    return { error: friendly(err) };
+  }
+  redirect(`/e/${code}`);
+}
+
 export async function logoutAction() {
   await endSession();
   redirect("/login");
@@ -80,6 +119,8 @@ export async function logoutAction() {
 
 export async function createEventAction(_: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser();
+  // A guest cannot come back from another browser, so a plan they made could be left with nobody able to manage it.
+  if (user.guest) return { error: "Guests can join plans. Create an account to start your own." };
   let code: string;
   try {
     const scenario = ScenarioIdSchema.parse(form.get("scenario") ?? DEFAULT_SCENARIO);
