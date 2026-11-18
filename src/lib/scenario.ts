@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { MissingField } from "./constraints";
-import type { MemberState } from "./member-state";
+import type { AnswerStep, MemberState } from "./member-state";
 import type { ChatTurn } from "./extract";
 import type { ResolvedPool } from "./places";
 import type { Preferences } from "./preferences";
@@ -44,6 +44,8 @@ export type Scenario = {
   missingFields(c: MemberState): MissingField[];
   /** Human-readable summary, shown ONLY to the owner of these constraints. */
   describeConstraints(c: MemberState): string[];
+  /** Each thing the assistant asks about and whether it is answered, shown ONLY to its owner. */
+  answerProgress(c: MemberState): AnswerStep[];
   /** One turn of the private chat: the assistant's reply and the constraints after it. */
   chatTurn(
     history: ChatTurn[],

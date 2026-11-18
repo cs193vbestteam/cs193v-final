@@ -84,7 +84,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
     getResult(event.id, user.id),
   ]);
   const rerunnable = result ? await canRerun(event.id, user.id) : true;
-  const { describeConstraints, missingFields } = scenarioFor(event.scenario);
+  const { describeConstraints, missingFields, answerProgress } = scenarioFor(event.scenario);
   const me = members.find((m) => m.userId === user.id)!;
   const readyCount = members.filter((m) => m.ready).length;
   const h = await headers();
@@ -233,6 +233,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             initialMessages={messages}
             initialSummary={describeConstraints(constraints)}
             initialMissing={missingFields(constraints)}
+            initialProgress={answerProgress(constraints)}
             ready={me.ready}
             lastOne={!result && members.length >= 2 && members.every((m) => m.ready || m.userId === user.id)}
             next={next}

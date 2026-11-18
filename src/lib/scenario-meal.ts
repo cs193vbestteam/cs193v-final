@@ -1,7 +1,7 @@
 import { assistantTurn } from "./assistant";
 import { OPENING_MESSAGE } from "./extract-rules";
 import { toLegacyConstraints } from "./legacy-adapter";
-import { describeState, emptyMemberState, missingRequired, parseMemberState } from "./member-state";
+import { answerProgress, describeState, emptyMemberState, missingRequired, parseMemberState } from "./member-state";
 import { openOn } from "./opening-hours";
 import { MIN_POOL, resolvePool } from "./places";
 import { compile } from "./preferences";
@@ -19,6 +19,7 @@ export const meal: Scenario = {
   parseConstraints: parseMemberState,
   missingFields: missingRequired,
   describeConstraints: describeState,
+  answerProgress,
 
   async chatTurn(history, current, pool, options = {}) {
     const turn = await assistantTurn(history, current, pool, options);

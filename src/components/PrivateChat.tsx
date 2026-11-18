@@ -5,6 +5,7 @@ import { sendMessageAction, setReadyAction } from "@/app/actions";
 import { MAX_MESSAGE_CHARS, MESSAGE_HINT_FROM } from "@/lib/chat-limits";
 import type { MissingField } from "@/lib/constraints";
 import type { ChatTurn } from "@/lib/extract";
+import type { AnswerStep } from "@/lib/member-state";
 
 type Props = {
   eventId: string;
@@ -12,6 +13,8 @@ type Props = {
   initialMessages: ChatTurn[];
   initialSummary: string[];
   initialMissing: MissingField[];
+  /** The questions and which are answered, for the progress bar. Left out, no bar is drawn. */
+  initialProgress?: AnswerStep[];
   ready: boolean;
   /** Everyone else is done and there is no plan yet: finishing here starts the negotiation. */
   lastOne?: boolean;
@@ -34,7 +37,10 @@ type ChatSnapshot = {
   messages: ChatTurn[];
   summary: string[];
   missing: MissingField[];
+  progress: AnswerStep[];
 };
+
+const NO_PROGRESS: AnswerStep[] = [];
 
 export function PrivateChat({
   eventId,
@@ -42,6 +48,7 @@ export function PrivateChat({
   initialMessages,
   initialSummary,
   initialMissing,
+  initialProgress = NO_PROGRESS,
   ready,
   lastOne = false,
   next = null,
@@ -60,6 +67,7 @@ export function PrivateChat({
     messages: initialMessages,
     summary: initialSummary,
     missing: initialMissing,
+    progress: initialProgress,
   };
   // Chats are append-only. Keep a completed send until server props catch up,
   // then render refreshed props directly instead of copying them into state.
@@ -68,11 +76,13 @@ export function PrivateChat({
       ? localReply
       : serverSnapshot;
   // A refresh during a send must not erase its optimistic message or draft.
-  const { messages, summary, missing } = submission?.eventId === eventId ? submission : latest;
+  const { messages, summary, missing, progress } = submission?.eventId === eventId ? submission : latest;
 
   // The assistant has asked them to click "I'm done": draw the eye to it until they do.
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
   const askedToFinish = !ready && missing.length === 0 && /\bI['’]m done\b/i.test(lastAssistant);
+
+  const answered = progress.filter((s) => s.done).length;
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -84,12 +94,18 @@ export function PrivateChat({
     if (!msg || pending) return;
     setText("");
     setError(null);
-    setSubmission({ eventId, messages: [...messages, { role: "user", content: msg }], summary, missing });
+    setSubmission({ eventId, messages: [...messages, { role: "user", content: msg }], summary, missing, progress });
     startTransition(async () => {
       try {
         const res = await sendMessageAction(eventId, inviteCode, msg);
         if ("messages" in res) {
-          setLocalReply({ eventId, messages: res.messages, summary: res.summary, missing: res.missing });
+          setLocalReply({
+            eventId,
+            messages: res.messages,
+            summary: res.summary,
+            missing: res.missing,
+            progress: res.progress,
+          });
         } else {
           setError(res.error);
           setText((draft) => draft || msg);
@@ -159,52 +175,90 @@ export function PrivateChat({
               <span />
               <span />
             </span>
-            {finding ? "Everyone's done. Finding a plan…" : "Assistant is thinking…"}
+            <span className="shiny">{finding ? "Everyone's done. Finding a plan…" : "Assistant is thinking…"}</span>
           </p>
         )}
         <div ref={bottom} />
       </div>
 
       {/* Where the conversation ends: what is still missing, the way to finish, and what happens after. */}
-      <div
-        className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-5 py-3 ${
-          ready ? "border-moss/30 bg-moss-soft" : "border-line"
-        }`}
-      >
-        {ready ? (
-          <p role="status" className="min-w-0 flex-1 basis-64 text-sm text-ink-2">
-            <strong className="font-medium text-moss">Your part is done.</strong>
-            {next && (
-              <>
-                {" "}
-                {next.text}
-                {next.href && next.link && (
-                  <>
-                    {" "}
-                    <a href={next.href} className="link">
-                      {next.link}
-                    </a>
-                  </>
-                )}
-              </>
-            )}
-          </p>
-        ) : (
-          <span
-            className={`font-mono text-[0.75rem] uppercase tracking-wider ${missing.length ? "text-ink-3" : "text-moss"}`}
-          >
-            {missing.length ? `Still needs: ${missing.map((m) => MISSING_LABEL[m]).join(", ")}` : "All set ✓"}
-          </span>
+      <div className={`border-t px-5 py-3 ${ready ? "border-moss/30 bg-moss-soft" : "border-line"}`}>
+        {/* How far through the questions they are, so nobody has to guess whether they have finished. */}
+        {!ready && progress.length > 0 && (
+          <div className="mb-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span id="answers-label" className="eyebrow">
+                Your answers
+              </span>
+              <span className="font-mono text-[0.75rem] text-ink-3">
+                {answered} of {progress.length} answered
+              </span>
+            </div>
+            <ol aria-labelledby="answers-label" className="mt-2 grid grid-cols-5 gap-1.5">
+              {progress.map((s) => (
+                <li
+                  key={s.topic}
+                  className="answer-step"
+                  data-done={s.done || undefined}
+                  data-needed={(!s.done && s.required) || undefined}
+                >
+                  <span aria-hidden className="answer-step-bar" />
+                  <span className="answer-step-label">
+                    {s.done && <span aria-hidden>✓ </span>}
+                    {s.label}
+                    <span className="sr-only">
+                      {s.done
+                        ? ": answered"
+                        : s.required
+                          ? ": needed before you can finish"
+                          : ": optional, not answered"}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
         )}
-        <button
-          type="button"
-          onClick={toggleReady}
-          disabled={pending || (!ready && missing.length > 0)}
-          className={ready ? "btn-ghost btn-sm" : `btn btn-sm${askedToFinish ? " btn-attention" : ""}`}
-          data-attention={askedToFinish || undefined}
-        >
-          {finding ? "Finding a plan…" : ready ? "Change my answers" : "I'm done"}
-        </button>
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          {ready ? (
+            <p role="status" className="min-w-0 flex-1 basis-64 text-sm text-ink-2">
+              <strong className="font-medium text-moss">Your part is done.</strong>
+              {next && (
+                <>
+                  {" "}
+                  {next.text}
+                  {next.href && next.link && (
+                    <>
+                      {" "}
+                      <a href={next.href} className="link">
+                        {next.link}
+                      </a>
+                    </>
+                  )}
+                </>
+              )}
+            </p>
+          ) : (
+            <span
+              className={`font-mono text-[0.75rem] uppercase tracking-wider ${missing.length ? "text-ink-3" : "text-moss"}`}
+            >
+              {missing.length
+                ? `Still needs: ${missing.map((m) => MISSING_LABEL[m]).join(", ")}`
+                : answered < progress.length
+                  ? "All set ✓ The rest is optional"
+                  : "All set ✓"}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={toggleReady}
+            disabled={pending || (!ready && missing.length > 0)}
+            className={ready ? "btn-ghost btn-sm" : `btn btn-sm${askedToFinish ? " btn-attention" : ""}`}
+            data-attention={askedToFinish || undefined}
+          >
+            {finding ? "Finding a plan…" : ready ? "Change my answers" : "I'm done"}
+          </button>
+        </div>
       </div>
 
       <form onSubmit={send} className="flex gap-2 border-t border-line px-4 py-3">

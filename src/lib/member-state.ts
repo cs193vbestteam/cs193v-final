@@ -83,6 +83,39 @@ export function missingRequired(state: MemberState): MissingField[] {
   return missing;
 }
 
+/** One of the five things the assistant asks about, and whether this person has answered it. */
+export type AnswerStep = { topic: Variable; label: string; required: boolean; done: boolean };
+
+const STEP_LABEL: Record<Variable, string> = {
+  time: "When",
+  budget: "Budget",
+  travel: "Distance",
+  diet: "Diet",
+  cuisine: "Food",
+};
+
+/**
+ * How far through the questions a person is, for the bar above "I'm done". A required topic is
+ * done exactly when `missingRequired` stops listing it, so the bar and the button never disagree.
+ * An optional one also counts once something is recorded for it, however it came up.
+ */
+export function answerProgress(state: MemberState): AnswerStep[] {
+  const { prefs, chat } = state;
+  const recorded: Record<Variable, boolean> = {
+    time: false,
+    diet: false,
+    budget: !!prefs.budget,
+    travel: !!prefs.travel,
+    cuisine: !!(Object.keys(prefs.cuisine?.scores ?? {}).length || prefs.cuisine?.excluded?.length),
+  };
+  return VARIABLES.map((topic) => ({
+    topic,
+    label: STEP_LABEL[topic],
+    required: REQUIRED.includes(topic),
+    done: chat.answered.includes(topic) || recorded[topic],
+  }));
+}
+
 /**
  * The variables the assistant may ask about in its next reply. Decided here, not by the prompt:
  * nothing once the turn cap is reached; otherwise what is unanswered and has not been asked.
