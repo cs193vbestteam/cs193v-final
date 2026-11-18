@@ -24,6 +24,7 @@ const response: ChatState = {
   ],
   summary: ["Budget: up to $40/person"],
   missing: [],
+  progress: [],
 };
 const updated: Props = {
   ...initial,

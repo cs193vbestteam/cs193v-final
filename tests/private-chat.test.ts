@@ -42,6 +42,7 @@ describe("PrivateChat auto-scroll", () => {
         ],
         summary: [],
         missing: ["budget", "distance", "diet"],
+        progress: [],
       });
       container = document.createElement("div");
       document.body.appendChild(container);

@@ -6,6 +6,7 @@ import { ZodError } from "zod";
 import { headers } from "next/headers";
 import { AuthError, authenticate, checkIpLimit, createUser } from "@/lib/auth";
 import type { MissingField } from "@/lib/constraints";
+import type { AnswerStep } from "@/lib/member-state";
 import type { ChatTurn } from "@/lib/extract";
 import {
   AccessError,
@@ -116,6 +117,7 @@ export type ChatState = {
   messages: ChatTurn[];
   summary: string[];
   missing: MissingField[];
+  progress: AnswerStep[];
   error?: string;
 };
 
@@ -128,8 +130,13 @@ export async function sendMessageAction(
   try {
     const { messages, constraints, scenario } = await sendMessage(eventId, user.id, text);
     revalidatePath(`/e/${inviteCode}`);
-    const { describeConstraints, missingFields } = scenarioFor(scenario);
-    return { messages, summary: describeConstraints(constraints), missing: missingFields(constraints) };
+    const { describeConstraints, missingFields, answerProgress } = scenarioFor(scenario);
+    return {
+      messages,
+      summary: describeConstraints(constraints),
+      missing: missingFields(constraints),
+      progress: answerProgress(constraints),
+    };
   } catch (err) {
     return { error: friendly(err) };
   }

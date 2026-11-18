@@ -71,7 +71,8 @@ export function PlanOptions({
             {tiles.map((t, i) => (
               <li
                 key={t.key}
-                className={`rounded-xl border p-4 ${i === 0 ? "border-moss/30 bg-moss-soft" : "border-line"}`}
+                className={`rounded-xl border p-4 ${i === 0 ? "border-moss/30 bg-moss-soft" : "border-line"} rise`}
+                style={{ "--d": `${i * 0.06}s` } as React.CSSProperties}
               >
                 <div className="flex items-baseline justify-between gap-3">
                   <div className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
