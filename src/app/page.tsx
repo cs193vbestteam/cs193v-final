@@ -29,17 +29,29 @@ export default async function Home() {
 
       <section className="card rise mt-8" style={{ "--d": "0.15s" } as React.CSSProperties}>
         <p className="eyebrow mb-3">New plan</p>
-        <CreateEventForm
-          minDate={todayPacific()}
-          maxDate={latestPlanDate()}
-          sizes={Array.from({ length: MAX_PLAN_SIZE - MIN_PLAN_SIZE + 1 }, (_, i) => MIN_PLAN_SIZE + i)}
-          defaultSize={DEFAULT_PLAN_SIZE}
-        />
-        <p className="mt-3 text-xs text-ink-3">
-          {realPlaces
-            ? "Add a place to choose from real restaurants nearby. Leave it blank and the plan uses made-up sample restaurants."
-            : "Sample data: plans in this version pick from made-up sample restaurants, not real places."}
-        </p>
+        {user.guest ? (
+          <p className="text-sm text-ink-2">
+            You are here as a guest, and guests can join plans but not start them.{" "}
+            <Link className="link text-ink" href="/signup">
+              Add an email and password
+            </Link>{" "}
+            to start your own. The plans you have joined stay with you.
+          </p>
+        ) : (
+          <>
+            <CreateEventForm
+              minDate={todayPacific()}
+              maxDate={latestPlanDate()}
+              sizes={Array.from({ length: MAX_PLAN_SIZE - MIN_PLAN_SIZE + 1 }, (_, i) => MIN_PLAN_SIZE + i)}
+              defaultSize={DEFAULT_PLAN_SIZE}
+            />
+            <p className="mt-3 text-xs text-ink-3">
+              {realPlaces
+                ? "Add a place to choose from real restaurants nearby. Leave it blank and the plan uses made-up sample restaurants."
+                : "Sample data: plans in this version pick from made-up sample restaurants, not real places."}
+            </p>
+          </>
+        )}
       </section>
 
       <section className="rise mt-12" style={{ "--d": "0.25s" } as React.CSSProperties}>
