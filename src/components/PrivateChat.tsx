@@ -43,7 +43,7 @@ type ChatSnapshot = {
 
 const NO_PROGRESS: AnswerStep[] = [];
 
-/** Ready-made answers for the question a person has not answered yet. A tap adds one to the message box. */
+/** Ready-made answers for each question. A tap adds one to the message box. */
 const QUICK: Record<AnswerStep["topic"], string[]> = {
   time: ["Dinner after 7", "Lunch", "Any time works"],
   budget: ["Around $30", "Up to $50", "No budget limit"],
@@ -67,6 +67,8 @@ export function PrivateChat({
   const [localReply, setLocalReply] = useState<ChatSnapshot | null>(null);
   const [submission, setSubmission] = useState<ChatSnapshot | null>(null);
   const [text, setText] = useState("");
+  /** A question the person chose to answer out of turn. Cleared when they send. */
+  const [picked, setPicked] = useState<AnswerStep["topic"] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const bottom = useRef<HTMLDivElement>(null);
@@ -93,8 +95,11 @@ export function PrivateChat({
   const askedToFinish = !ready && missing.length === 0 && /\bI['’]m done\b/i.test(lastAssistant);
 
   const answered = progress.filter((s) => s.done).length;
-  // The needed questions come first, then the optional ones, in the order the assistant asks them.
-  const nextStep = progress.find((s) => !s.done && s.required) ?? progress.find((s) => !s.done);
+  // The ready-made answers belong to the question the assistant just asked, or to the one the
+  // person picked themselves. After an open question ("what are you hoping for?") there is no
+  // single topic, so one answer is offered for each thing still unanswered.
+  const shortcuts = progress.find((s) => s.topic === picked) ?? progress.find((s) => s.asking);
+  const quick = shortcuts ? QUICK[shortcuts.topic] : progress.filter((s) => !s.done).map((s) => QUICK[s.topic][0]);
 
   function addQuick(answer: string) {
     setText((draft) => (draft.trim() ? `${draft.trim().replace(/[,.]$/, "")}, ${answer.toLowerCase()}` : answer));
@@ -110,6 +115,7 @@ export function PrivateChat({
     const msg = text.trim();
     if (!msg || pending) return;
     setText("");
+    setPicked(null);
     setError(null);
     setSubmission({ eventId, messages: [...messages, { role: "user", content: msg }], summary, missing, progress });
     startTransition(async () => {
@@ -215,44 +221,6 @@ export function PrivateChat({
 
       {/* Where the conversation ends: what is still missing, the way to finish, and what happens after. */}
       <div className={`border-t px-5 py-3 ${ready ? "border-moss/30 bg-moss-soft" : "border-line"}`}>
-        {/* How far through the questions they are, so nobody has to guess whether they have finished. */}
-        {!ready && progress.length > 0 && (
-          <div className="mb-3 flex items-center gap-4">
-            <AnswerDial progress={progress} />
-            <div className="min-w-0 flex-1">
-              <p className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
-                <span id="answers-label" className="sr-only">
-                  Your answers
-                </span>
-                {answered} of {progress.length} answered
-              </p>
-              <ol aria-labelledby="answers-label" className="mt-2 flex flex-wrap gap-1.5">
-                {progress.map((s) => (
-                  <li
-                    key={s.topic}
-                    className="answer-chip"
-                    data-done={s.done || undefined}
-                    data-needed={(!s.done && s.required) || undefined}
-                  >
-                    {s.done && (
-                      <span aria-hidden className="answer-chip-check">
-                        ✓{" "}
-                      </span>
-                    )}
-                    {s.label}
-                    <span className="sr-only">
-                      {s.done
-                        ? ": answered"
-                        : s.required
-                          ? ": needed before you can finish"
-                          : ": optional, not answered"}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-        )}
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           {ready ? (
             <p role="status" className="min-w-0 flex-1 basis-64 text-sm text-ink-2">
@@ -300,17 +268,6 @@ export function PrivateChat({
       </div>
 
       <div className="border-t border-line px-4 py-3">
-        {/* A head start on the next unanswered question. Nothing is sent until they press Send. */}
-        {!ready && nextStep && (
-          <div className="mb-2.5 flex flex-wrap items-center gap-1.5" role="group" aria-label="Quick answers">
-            <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">{nextStep.label}?</span>
-            {QUICK[nextStep.topic].map((answer) => (
-              <button key={answer} type="button" className="quick-chip" onClick={() => addQuick(answer)}>
-                {answer}
-              </button>
-            ))}
-          </div>
-        )}
         <form onSubmit={send} className="prompt-bar" data-busy={pending || undefined}>
           <input
             ref={input}
@@ -343,15 +300,65 @@ export function PrivateChat({
         </p>
       )}
 
-      {/* The words are AI-CONSENT.md's: what leaves, who gets it, and for how long, said where people type. */}
-      <p className="px-4 pb-3 text-xs leading-relaxed text-ink-3">
-        Your messages and meal preferences are sent to Anthropic&apos;s Claude. Anthropic does not use API chats for
-        training by default. Its standard retention policy is up to 30 days, with longer retention for flagged content
-        or legal requirements. Your group sees the plan, not your chat.{" "}
-        <a className="link link-small" href="/privacy" target="_blank" rel="noopener">
-          How your data is used<span className="sr-only"> (opens in a new tab)</span>
-        </a>
-      </p>
+      {/* Under the message box: how far through the questions they are, which one the assistant is
+          on, and ready-made answers to that one. Nothing is sent until they press Send. */}
+      {!ready && progress.length > 0 && (
+        <div className="border-t border-line px-5 py-3">
+          <div className="flex items-center gap-4">
+            <AnswerDial progress={progress} />
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
+                <span id="answers-label" className="sr-only">
+                  Your answers
+                </span>
+                {answered} of {progress.length} answered
+              </p>
+              <ol aria-labelledby="answers-label" className="mt-2 flex flex-wrap gap-1.5">
+                {progress.map((s) => (
+                  <li key={s.topic}>
+                    <button
+                      type="button"
+                      className="answer-chip"
+                      data-done={s.done || undefined}
+                      data-asking={s.asking || undefined}
+                      aria-pressed={shortcuts?.topic === s.topic}
+                      onClick={() => setPicked(picked === s.topic ? null : s.topic)}
+                    >
+                      {s.done && (
+                        <span aria-hidden className="answer-chip-check">
+                          ✓{" "}
+                        </span>
+                      )}
+                      {s.label}
+                      <span className="sr-only">
+                        {s.asking
+                          ? ": the assistant is asking this now"
+                          : s.done
+                            ? ": answered"
+                            : s.required
+                              ? ": needed before you can finish"
+                              : ": optional, not answered"}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+          {quick.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Quick answers">
+              <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
+                {shortcuts ? `${shortcuts.label}?` : "Try"}
+              </span>
+              {quick.map((answer) => (
+                <button key={answer} type="button" className="quick-chip" onClick={() => addQuick(answer)}>
+                  {answer}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="border-t border-line bg-paper-2/40 px-5 py-4">
         <div className="eyebrow">What your assistant knows</div>
