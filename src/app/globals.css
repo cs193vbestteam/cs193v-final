@@ -264,33 +264,7 @@ summary:focus-visible {
   color: var(--color-ink-2);
 }
 
-/* The new-plan form: one-press choices, the size slider, and the plan drawn as a ticket. */
-.pick {
-  min-height: 1.875rem;
-  border: 1px solid var(--color-line-control);
-  border-radius: 999px;
-  padding: 0 0.8rem;
-  font-size: 0.8125rem;
-  color: var(--color-ink-2);
-  transition:
-    transform 0.3s var(--ease-out-expo),
-    background-color 0.25s ease,
-    color 0.25s ease,
-    border-color 0.25s ease;
-}
-.pick:hover {
-  transform: translateY(-1px);
-  border-color: var(--color-ink);
-  color: var(--color-ink);
-}
-.pick:active {
-  transform: scale(0.96);
-}
-.pick[aria-pressed="true"] {
-  border-color: var(--color-ink);
-  background: var(--color-ink);
-  color: var(--color-paper);
-}
+/* The new-plan form: the size control and the plan drawn as a ticket. */
 /* The size: a number on two rolling tiles, a button either side, and a thin slider that swells when used. */
 .size-step {
   display: grid;
@@ -1652,7 +1626,6 @@ form:focus-within .plan-ticket {
   .size-roll {
     animation: none;
   }
-  .pick,
   .size-step,
   .odometer-reel,
   .plan-ticket,
