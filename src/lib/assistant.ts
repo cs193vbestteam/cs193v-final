@@ -342,6 +342,25 @@ function closingLine(state: MemberState): string {
     : "You can add anything else, or press \"I'm done\" when you're finished.";
 }
 
+/** Words that show a question is about a variable, in the two languages the code can tell apart. */
+const TOPIC_WORDS: Record<Variable, RegExp> = {
+  time: /\b(what time|when|which day|lunch or dinner|available)\b|几点|什么时候|时间/i,
+  budget: /\b(budget|spend|price|per person)\b|预算|人均|价位/i,
+  travel: /\b(travel|far|distance|drive|walk|minutes away|commute)\b|多远|路程|距离|车程/i,
+  diet: /\b(can(?:'|’)?t eat|cannot eat|allerg\w*|dietary|diet|avoid)\b|忌口|过敏|不能吃/i,
+  cuisine: /\b(cuisine|kind of food|type of food|craving|in the mood for)\b|菜系|想吃什么|口味/i,
+};
+
+/** The variables a reply's questions mention besides the one it declared, among those it may ask. */
+export function alsoAskedIn(reply: string, asked: Variable | null, allowed: Variable[]): Variable[] {
+  if (!asked) return [];
+  const questions = reply
+    .split(SENTENCE_BREAK)
+    .filter((sentence) => QUESTION_END.test(sentence.trim()))
+    .join(" ");
+  return allowed.filter((v) => v !== asked && TOPIC_WORDS[v].test(questions));
+}
+
 /** Count the reply, remember what it asked, and stop the questions once the cap is reached. */
 function finishTurn(
   before: MemberState,
@@ -359,6 +378,7 @@ function finishTurn(
       ...after.chat,
       asked: asked ? uniq([...after.chat.asked, asked]) : after.chat.asked,
       lastAsked: asked,
+      alsoAsked: alsoAskedIn(reply, asked, allowed),
       turns: before.chat.turns + 1,
     },
   };

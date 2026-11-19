@@ -72,6 +72,19 @@ export function PrivateChat({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const bottom = useRef<HTMLDivElement>(null);
+  const log = useRef<HTMLDivElement>(null);
+  /** Messages the page loaded with. Only replies that arrive after that write themselves in. */
+  const [loadedWith] = useState(initialMessages.length);
+  /** Whether there is conversation hidden above or below, for the faded edges and the way back down. */
+  const [hidden, setHidden] = useState({ above: false, below: false });
+
+  function measure() {
+    const el = log.current;
+    if (!el) return;
+    const above = el.scrollTop > 8;
+    const below = el.scrollHeight - el.clientHeight - el.scrollTop > 48;
+    setHidden((was) => (was.above === above && was.below === below ? was : { above, below }));
+  }
   const input = useRef<HTMLInputElement>(null);
 
   const serverSnapshot: ChatSnapshot = {
@@ -95,11 +108,18 @@ export function PrivateChat({
   const askedToFinish = !ready && missing.length === 0 && /\bI['’]m done\b/i.test(lastAssistant);
 
   const answered = progress.filter((s) => s.done).length;
-  // The ready-made answers belong to the question the assistant just asked, or to the one the
-  // person picked themselves. After an open question ("what are you hoping for?") there is no
-  // single topic, so one answer is offered for each thing still unanswered.
-  const shortcuts = progress.find((s) => s.topic === picked) ?? progress.find((s) => s.asking);
-  const quick = shortcuts ? QUICK[shortcuts.topic] : progress.filter((s) => !s.done).map((s) => QUICK[s.topic][0]);
+  // The ready-made answers belong to what the assistant just asked, or to the question the person
+  // picked themselves. A reply can ask about two things at once ("a budget, or a travel time?"):
+  // then both are shown, two answers each. After an open question ("what are you hoping for?")
+  // there is no topic at all, so one answer is offered for each thing still unanswered.
+  const pickedStep = progress.find((s) => s.topic === picked);
+  const shown = pickedStep ? [pickedStep] : progress.filter((s) => s.asking);
+  const quick =
+    shown.length === 1
+      ? QUICK[shown[0].topic]
+      : shown.length > 1
+        ? shown.flatMap((s) => QUICK[s.topic].slice(0, 2))
+        : progress.filter((s) => !s.done).map((s) => QUICK[s.topic][0]);
 
   function addQuick(answer: string) {
     setText((draft) => (draft.trim() ? `${draft.trim().replace(/[,.]$/, "")}, ${answer.toLowerCase()}` : answer));
@@ -171,52 +191,76 @@ export function PrivateChat({
         </span>
       </header>
 
-      <div
-        className="scroll-quiet max-h-[26rem] min-h-[16rem] flex-1 space-y-3 overflow-y-auto px-5 py-4 lg:max-h-none lg:min-h-[8rem]"
-        role="log"
-        aria-label="Conversation with your assistant"
-        aria-live="polite"
-        tabIndex={0}
-      >
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={`bubble-in flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {/* The assistant's mark, on the first of its messages in a row. */}
-            {m.role === "assistant" && (
-              <span aria-hidden className="chat-mark" data-quiet={messages[i - 1]?.role === "assistant" || undefined}>
-                <LockIcon />
-              </span>
-            )}
-            <p
-              className={`max-w-[85%] whitespace-pre-wrap text-[0.9375rem] leading-relaxed ${
-                m.role === "user"
-                  ? "bubble-mine rounded-2xl rounded-br-md bg-ink px-3.5 py-2 text-paper"
-                  : "bubble-theirs rounded-2xl rounded-bl-md bg-paper-2 px-3.5 py-2 text-ink"
-              }`}
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        <div
+          ref={log}
+          onScroll={measure}
+          data-above={hidden.above || undefined}
+          data-below={hidden.below || undefined}
+          className="chat-log scroll-quiet max-h-[26rem] min-h-[16rem] flex-1 space-y-3 overflow-y-auto px-5 py-4 lg:max-h-none lg:min-h-[8rem]"
+          role="log"
+          aria-label="Conversation with your assistant"
+          aria-live="polite"
+          tabIndex={0}
+        >
+          {messages.map((m, i) => (
+            <div
+              key={i}
+              className={`bubble-in flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}
             >
-              {m.content}
+              {/* The assistant's mark, on the first of its messages in a row. */}
+              {m.role === "assistant" && (
+                <span aria-hidden className="chat-mark" data-quiet={messages[i - 1]?.role === "assistant" || undefined}>
+                  <LockIcon />
+                </span>
+              )}
+              <p
+                className={`max-w-[85%] whitespace-pre-wrap text-[0.9375rem] leading-relaxed ${
+                  m.role === "user"
+                    ? "bubble-mine rounded-2xl rounded-br-md bg-ink px-3.5 py-2 text-paper"
+                    : "bubble-theirs rounded-2xl rounded-bl-md bg-paper-2 px-3.5 py-2 text-ink"
+                }`}
+              >
+                {m.role === "assistant" && i >= loadedWith ? <Written text={m.content} /> : m.content}
+              </p>
+            </div>
+          ))}
+          {pending && (
+            <p className="flex items-center gap-2.5 pl-9 text-xs text-ink-3">
+              {finding ? (
+                <span aria-hidden className="lattice">
+                  {Array.from({ length: 9 }, (_, k) => (
+                    <i key={k} style={{ "--i": (k % 3) + Math.floor(k / 3) } as React.CSSProperties} />
+                  ))}
+                </span>
+              ) : (
+                <svg aria-hidden className="thought-line" viewBox="0 0 44 12" width="44" height="12">
+                  <path d="M1 6 Q 6.25 0 11.5 6 T 22 6 T 32.5 6 T 43 6" pathLength={1} />
+                </svg>
+              )}
+              <span className="shiny">{finding ? "Everyone's done. Finding a plan…" : "Assistant is thinking…"}</span>
             </p>
-          </div>
-        ))}
-        {pending && (
-          <p className="flex items-center gap-2.5 pl-9 text-xs text-ink-3">
-            {finding ? (
-              <span aria-hidden className="lattice">
-                {Array.from({ length: 9 }, (_, k) => (
-                  <i key={k} style={{ "--i": (k % 3) + Math.floor(k / 3) } as React.CSSProperties} />
-                ))}
-              </span>
-            ) : (
-              <svg aria-hidden className="thought-line" viewBox="0 0 44 12" width="44" height="12">
-                <path d="M1 6 Q 6.25 0 11.5 6 T 22 6 T 32.5 6 T 43 6" pathLength={1} />
-              </svg>
-            )}
-            <span className="shiny">{finding ? "Everyone's done. Finding a plan…" : "Assistant is thinking…"}</span>
-          </p>
+          )}
+          <div ref={bottom} />
+        </div>
+        {hidden.below && (
+          <button
+            type="button"
+            className="chat-latest"
+            onClick={() => bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })}
+          >
+            <svg aria-hidden viewBox="0 0 16 16" width="12" height="12" fill="none">
+              <path
+                d="M8 3v10M3.5 8.5 8 13l4.5-4.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            Latest
+          </button>
         )}
-        <div ref={bottom} />
       </div>
 
       {/* Where the conversation ends: what is still missing, the way to finish, and what happens after. */}
@@ -300,6 +344,23 @@ export function PrivateChat({
         </p>
       )}
 
+      {/* The words are AI-CONSENT.md's: what leaves, who gets it, and for how long. Kept where
+          people type, folded under a title so it is there for whoever wants it. */}
+      <details className="notice px-4 pb-3">
+        <summary>
+          <LockIcon />
+          Where your messages go
+        </summary>
+        <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
+          Your messages and meal preferences are sent to Anthropic&apos;s Claude. Anthropic does not use API chats for
+          training by default. Its standard retention policy is up to 30 days, with longer retention for flagged content
+          or legal requirements. Your group sees the plan, not your chat.{" "}
+          <a className="link link-small" href="/privacy" target="_blank" rel="noopener">
+            How your data is used<span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </p>
+      </details>
+
       {/* Under the message box: how far through the questions they are, which one the assistant is
           on, and ready-made answers to that one. Nothing is sent until they press Send. */}
       {!ready && progress.length > 0 && (
@@ -321,7 +382,7 @@ export function PrivateChat({
                       className="answer-chip"
                       data-done={s.done || undefined}
                       data-asking={s.asking || undefined}
-                      aria-pressed={shortcuts?.topic === s.topic}
+                      aria-pressed={shown.includes(s)}
                       onClick={() => setPicked(picked === s.topic ? null : s.topic)}
                     >
                       {s.done && (
@@ -346,12 +407,24 @@ export function PrivateChat({
             </div>
           </div>
           {quick.length > 0 && (
-            <div className="mt-3 flex flex-wrap items-center gap-1.5" role="group" aria-label="Quick answers">
+            <div
+              // A new set of answers comes in one after another, so the change of question is seen.
+              key={quick.join("|")}
+              className="mt-3 flex flex-wrap items-center gap-1.5"
+              role="group"
+              aria-label="Quick answers"
+            >
               <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
-                {shortcuts ? `${shortcuts.label}?` : "Try"}
+                {shown.length ? `${shown.map((s) => s.label).join(" or ")}?` : "Try"}
               </span>
-              {quick.map((answer) => (
-                <button key={answer} type="button" className="quick-chip" onClick={() => addQuick(answer)}>
+              {quick.map((answer, n) => (
+                <button
+                  key={answer}
+                  type="button"
+                  className="quick-chip"
+                  style={{ "--i": n } as React.CSSProperties}
+                  onClick={() => addQuick(answer)}
+                >
                   {answer}
                 </button>
               ))}
@@ -381,6 +454,26 @@ export function PrivateChat({
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * A reply that has just arrived, written in a word at a time. All of the words are in the page
+ * from the start (a screen reader hears the reply once, whole); only their ink comes in.
+ */
+function Written({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(\s+)/).map((part, k) =>
+        part.trim() ? (
+          <span key={k} className="word-in" style={{ "--w": Math.min(k / 2, 70) } as React.CSSProperties}>
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )}
+    </>
   );
 }
 

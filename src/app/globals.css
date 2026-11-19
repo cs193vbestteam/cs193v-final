@@ -1072,6 +1072,31 @@ form:focus-within .plan-ticket {
   animation: spring-check 0.5s var(--ease-out-expo) 0.3s both;
 }
 
+/* The data notice under the message box: a title that opens. */
+.notice > summary {
+  display: inline-flex;
+  min-height: 1.5rem;
+  cursor: pointer;
+  list-style: none;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--color-ink-3);
+}
+.notice > summary::-webkit-details-marker {
+  display: none;
+}
+.notice > summary::after {
+  content: "+";
+  font-family: var(--font-mono);
+}
+.notice[open] > summary::after {
+  content: "−";
+}
+.notice > summary:hover {
+  color: var(--color-ink);
+}
+
 /* The chat: the assistant's mark, the waiting line, the message bar and the quick answers. */
 .chat-mark {
   display: grid;
@@ -1088,10 +1113,134 @@ form:focus-within .plan-ticket {
   visibility: hidden;
 }
 .bubble-theirs {
+  border: 1px solid rgb(22 20 15 / 0.07);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.45), transparent 60%);
   box-shadow: 0 1px 0 rgb(22 20 15 / 0.06);
 }
 .bubble-mine {
-  box-shadow: 0 8px 18px -12px rgb(22 20 15 / 0.7);
+  background-image: linear-gradient(155deg, rgb(255 255 255 / 0.14), transparent 55%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 8px 18px -12px rgb(22 20 15 / 0.7);
+}
+
+/* The conversation fades out at an edge that has more behind it, like a page under another. */
+.chat-log {
+  --fade-top: 0px;
+  --fade-bottom: 0px;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bottom)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent,
+    #000 var(--fade-top),
+    #000 calc(100% - var(--fade-bottom)),
+    transparent
+  );
+}
+.chat-log[data-above] {
+  --fade-top: 2.25rem;
+}
+.chat-log[data-below] {
+  --fade-bottom: 2.25rem;
+}
+/* The way back to the newest message, shown only while it is out of sight. */
+.chat-latest {
+  position: absolute;
+  bottom: 0.625rem;
+  left: 50%;
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-line-control);
+  border-radius: 999px;
+  background: var(--color-surface);
+  box-shadow: 0 8px 20px -12px rgb(22 20 15 / 0.6);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  translate: -50% 0;
+  animation: bubble-in 0.35s var(--ease-out-expo) both;
+}
+.chat-latest:hover {
+  border-color: var(--color-ink);
+}
+/* A reply that has just arrived is written in, a word at a time. */
+@keyframes word-in {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+.word-in {
+  display: inline-block;
+  animation: word-in 0.4s ease-out both;
+  animation-delay: calc(var(--w) * 28ms + 120ms);
+}
+/* The message box: on focus a light runs once round its edge and stops. */
+@property --beam {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes beam {
+  from {
+    --beam: 0deg;
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  to {
+    --beam: 360deg;
+    opacity: 0;
+  }
+}
+.prompt-bar {
+  position: relative;
+}
+.prompt-bar::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border: 2px solid transparent;
+  border-radius: inherit;
+  background: conic-gradient(from var(--beam), transparent 0 78%, var(--color-seal) 92%, transparent) border-box;
+  -webkit-mask:
+    linear-gradient(#000 0 0) padding-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) padding-box exclude,
+    linear-gradient(#000 0 0);
+  opacity: 0;
+  pointer-events: none;
+}
+.prompt-bar:focus-within::before {
+  animation: beam 1.4s ease-in-out 1;
+}
+@keyframes chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.quick-chip {
+  animation: chip-in 0.4s var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
 }
 @keyframes thought-line {
   from {
@@ -1735,7 +1884,11 @@ form:focus-within .plan-ticket {
   .thinking span,
   .marquee,
   .stamp,
-  .bubble-in {
+  .bubble-in,
+  .word-in,
+  .chat-latest,
+  .quick-chip,
+  .prompt-bar:focus-within::before {
     animation: none;
   }
   .btn,
