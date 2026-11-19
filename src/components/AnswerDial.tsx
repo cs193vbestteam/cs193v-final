@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import type { AnswerStep } from "@/lib/member-state";
 
 /**
- * The answer progress as a ring of five ticks, one per question, with the count in the middle.
- * When a question is settled its tick fills and a comet runs round the ring to it. The ring is
- * a picture of the list beside it and says nothing the list does not, so it is hidden from
- * screen readers.
+ * The answer progress as a ring of five ticks with the count in the middle. The ring counts:
+ * two answers light the first two ticks, whichever two questions they were, so the green is
+ * always one unbroken run. Which questions are answered is said by the list beside it. When the
+ * count goes up, a comet runs round the ring to the newest tick. The ring says nothing the list
+ * does not, so it is hidden from screen readers.
  */
 
 const SWEEP = 300; // degrees the ring covers; the gap sits at the bottom
@@ -25,18 +26,16 @@ const arc = (from: number, to: number) => `M ${point(from)} A ${R} ${R} 0 ${to -
 export function AnswerDial({ progress }: { progress: AnswerStep[] }) {
   const span = SWEEP / progress.length;
   const done = progress.filter((s) => s.done).length;
-  const doneKey = progress.map((s) => (s.done ? "1" : "0")).join("");
-  const seen = useRef(doneKey);
+  const seen = useRef(done);
   const [comet, setComet] = useState<{ run: number; to: number } | null>(null);
 
   useEffect(() => {
     const before = seen.current;
-    seen.current = doneKey;
-    // The furthest tick that has just been filled is where the comet lands.
-    const fresh = [...doneKey].map((d, i) => d === "1" && before[i] !== "1").lastIndexOf(true);
-    if (fresh < 0) return;
-    setComet((c) => ({ run: (c?.run ?? 0) + 1, to: (fresh + 1) * span - GAP / 2 }));
-  }, [doneKey, span]);
+    seen.current = done;
+    // The newest lit tick is where the comet lands.
+    if (done <= before) return;
+    setComet((c) => ({ run: (c?.run ?? 0) + 1, to: done * span - GAP / 2 }));
+  }, [done, span]);
 
   return (
     <svg
@@ -48,7 +47,7 @@ export function AnswerDial({ progress }: { progress: AnswerStep[] }) {
       {progress.map((s, i) => {
         const d = arc(START + i * span + GAP / 2, START + (i + 1) * span - GAP / 2);
         return (
-          <g key={s.topic} data-done={s.done || undefined} data-needed={(!s.done && s.required) || undefined}>
+          <g key={s.topic} data-done={i < done || undefined}>
             <path d={d} className="answer-dial-track" />
             <path d={d} pathLength={1} className="answer-dial-fill" />
           </g>
