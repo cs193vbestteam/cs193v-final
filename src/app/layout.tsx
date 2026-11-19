@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { logoutAction } from "./actions";
 import { AuthNav } from "@/components/AuthNav";
+import { PointerEffects } from "@/components/Effects";
 import { Wordmark } from "@/components/Wordmark";
 import { currentUser } from "@/lib/session";
 import "./globals.css";
@@ -58,6 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" data-scroll-behavior="smooth" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
       <body className="flex min-h-dvh flex-col">
+        <PointerEffects />
         <a href="#main" className="skip-link">
           Skip to content
         </a>
