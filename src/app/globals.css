@@ -640,6 +640,98 @@ summary:focus-visible {
   animation: bubble-in 0.45s var(--ease-out-expo) both;
 }
 
+/* "Notify me": a press rings the bell and the label changes over (NotifyToggle.tsx). */
+.bell-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  padding: 0 1rem 0 0.8rem;
+  border: 1px solid var(--color-line-control);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-ink);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    transform 0.3s var(--ease-out-expo);
+}
+.bell-toggle:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-ink);
+}
+.bell-toggle:active {
+  transform: scale(0.97);
+}
+.bell-toggle[aria-pressed="true"] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.bell {
+  flex: none;
+  overflow: visible;
+  transform-origin: 50% 16%;
+}
+.bell path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bell-toggle[aria-pressed="true"] .bell path:first-child {
+  fill: currentColor;
+}
+/* Five swings, each smaller than the last, then still. */
+@keyframes bell-ring {
+  0% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(17deg);
+  }
+  32% {
+    transform: rotate(-13deg);
+  }
+  50% {
+    transform: rotate(9deg);
+  }
+  68% {
+    transform: rotate(-5deg);
+  }
+  84% {
+    transform: rotate(2deg);
+  }
+  100% {
+    transform: rotate(0);
+  }
+}
+.bell[data-ring] {
+  animation: bell-ring 0.82s ease-out;
+}
+/* Both labels share one cell, so the pill is as wide as the longer one and nothing beside it shifts. */
+.bell-toggle-labels {
+  display: grid;
+}
+.bell-toggle-labels > span {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(0.35em);
+  transition:
+    opacity 0.2s ease,
+    transform 0.3s var(--ease-out-expo);
+}
+.bell-toggle-labels > span[data-show] {
+  opacity: 1;
+  transform: none;
+}
+.bell-toggle-labels > span:not([data-show]) {
+  visibility: hidden;
+}
+
 /* Stamp: the moment a plan is sealed. */
 @keyframes stamp {
   0% {
@@ -879,6 +971,13 @@ summary:focus-visible {
   .demo-ring {
     animation: none;
     opacity: 0;
+  }
+  .bell[data-ring] {
+    animation: none;
+  }
+  .bell-toggle,
+  .bell-toggle-labels > span {
+    transition: none;
   }
   .demo-pivot {
     color: var(--color-ink);
