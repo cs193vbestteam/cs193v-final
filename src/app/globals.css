@@ -1072,13 +1072,30 @@ form:focus-within .plan-ticket {
   animation: spring-check 0.5s var(--ease-out-expo) 0.3s both;
 }
 
+/* The conversation lies on dotted paper: something for the glass above it to bend. */
+.chat-log {
+  background-image: radial-gradient(circle, rgb(22 20 15 / 0.16) 1px, transparent 1.4px);
+  background-size: 18px 18px;
+  background-attachment: local;
+  padding-bottom: 5.5rem;
+}
+.chat-end {
+  scroll-margin-bottom: 5.5rem;
+}
+/* The message box floats over the end of the conversation. */
+.composer {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 0.75rem 1rem;
+}
+
 /* Clear white glass, for the message box and the messages: a pale, see-through body, light caught
    on the top lip and thrown back from the bottom one, and a soft shadow under it. */
 .composer .prompt-bar,
 .bubble-mine,
 .bubble-theirs {
   border: 1px solid rgb(255 255 255 / 0.85);
-  background: linear-gradient(180deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.38) 50%, rgb(255 255 255 / 0.56));
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.62), rgb(255 255 255 / 0.3) 50%, rgb(255 255 255 / 0.48));
   -webkit-backdrop-filter: blur(14px) saturate(160%) brightness(1.05);
   backdrop-filter: blur(14px) saturate(160%) brightness(1.05);
   box-shadow:
@@ -1094,6 +1111,8 @@ form:focus-within .plan-ticket {
   background: linear-gradient(180deg, rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.2) 50%, rgb(255 255 255 / 0.36));
 }
 .composer .prompt-bar {
+  /* Frosted more than the messages are: what is typed must read cleanly over what passes under. */
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0.6) 50%, rgb(255 255 255 / 0.72));
   /* a firmer hairline of ink here, so the box is still found by its edge */
   box-shadow:
     0 0 0 1px rgb(22 20 15 / 0.42),
@@ -1390,12 +1409,13 @@ form:focus-within .plan-ticket {
   --fade-top: 2.25rem;
 }
 .chat-log[data-below] {
-  --fade-bottom: 2.25rem;
+  /* Nothing fades at the bottom: what is below passes under the message box instead. */
+  --fade-bottom: 0px;
 }
 /* The way back to the newest message, shown only while it is out of sight. */
 .chat-latest {
   position: absolute;
-  bottom: 0.625rem;
+  bottom: 5rem;
   left: 50%;
   display: inline-flex;
   min-height: 1.75rem;

@@ -7,6 +7,7 @@ import type { MissingField } from "@/lib/constraints";
 import type { ChatTurn } from "@/lib/extract";
 import type { AnswerStep } from "@/lib/member-state";
 import { AnswerDial } from "./AnswerDial";
+import { useLiquidGlass } from "./LiquidGlass";
 
 type Props = {
   eventId: string;
@@ -76,6 +77,7 @@ export function PrivateChat({
   const [pending, startTransition] = useTransition();
   const bottom = useRef<HTMLDivElement>(null);
   const log = useRef<HTMLDivElement>(null);
+  const chat = useRef<HTMLElement>(null);
   /** Messages the page loaded with. Only replies that arrive after that write themselves in. */
   const [loadedWith] = useState(initialMessages.length);
   /** Whether there is conversation hidden above or below, for the faded edges and the way back down. */
@@ -141,6 +143,9 @@ export function PrivateChat({
         ? shown.flatMap((s) => QUICK[s.topic].slice(0, 2))
         : progress.filter((s) => !s.done).map((s) => QUICK[s.topic][0]);
 
+  // The glass is cut to each element's size, so it is recut when messages arrive or the greeting goes.
+  useLiquidGlass(chat, `${messages.length}:${welcome}:${pending}`);
+
   function addQuick(answer: string) {
     setText((draft) => (draft.trim() ? `${draft.trim().replace(/[,.]$/, "")}, ${answer.toLowerCase()}` : answer));
     input.current?.focus();
@@ -204,6 +209,7 @@ export function PrivateChat({
 
   return (
     <section
+      ref={chat}
       onPointerMove={lean}
       className="chat card flex flex-col !p-0 lg:h-[min(46rem,calc(100dvh-10rem))] lg:min-h-[34rem]"
     >
@@ -256,8 +262,8 @@ export function PrivateChat({
                 <p
                   className={`whitespace-pre-wrap text-[0.9375rem] leading-relaxed ${
                     m.role === "user"
-                      ? "bubble-mine max-w-[80%] rounded-[1.25rem] rounded-br-md px-4 py-2.5 text-ink"
-                      : "bubble-theirs max-w-[85%] rounded-[1.25rem] rounded-bl-md px-4 py-2.5 text-ink"
+                      ? "bubble-mine liquid max-w-[80%] rounded-[1.25rem] rounded-br-md px-4 py-2.5 text-ink"
+                      : "bubble-theirs liquid max-w-[85%] rounded-[1.25rem] rounded-bl-md px-4 py-2.5 text-ink"
                   }`}
                 >
                   {m.role === "assistant" && i >= loadedWith ? <Written text={m.content} /> : m.content}
@@ -281,7 +287,7 @@ export function PrivateChat({
               <span className="shiny">{finding ? "Everyone's done. Finding a plan…" : "Assistant is thinking…"}</span>
             </p>
           )}
-          <div ref={bottom} />
+          <div ref={bottom} className="chat-end" />
         </div>
         {hidden.below && !opening && (
           <button
@@ -301,35 +307,42 @@ export function PrivateChat({
             Latest
           </button>
         )}
+        {/* The message box floats over the end of the conversation, so messages pass under its glass. */}
+        <div className="composer">
+          <form
+            onSubmit={send}
+            className="prompt-bar liquid"
+            data-liquid="44"
+            data-liquid-blur="7"
+            data-busy={pending || undefined}
+          >
+            <input
+              ref={input}
+              className="prompt-input"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder='Try: "dinner after 7, around $30, vegetarian"'
+              maxLength={MAX_MESSAGE_CHARS}
+              aria-label="Message your assistant"
+              aria-describedby={text.length >= MESSAGE_HINT_FROM ? "message-room" : undefined}
+              autoComplete="off"
+            />
+            <button className="prompt-send" disabled={pending || !text.trim()}>
+              <span className="sr-only">Send</span>
+              <svg aria-hidden viewBox="0 0 16 16" width="16" height="16" fill="none">
+                <path
+                  d="M8 13V3M3.5 7.5 8 3l4.5 4.5"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </form>
+        </div>
       </div>
 
-      <div className="composer border-t border-line px-4 py-3">
-        <form onSubmit={send} className="prompt-bar" data-busy={pending || undefined}>
-          <input
-            ref={input}
-            className="prompt-input"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder='Try: "dinner after 7, around $30, vegetarian"'
-            maxLength={MAX_MESSAGE_CHARS}
-            aria-label="Message your assistant"
-            aria-describedby={text.length >= MESSAGE_HINT_FROM ? "message-room" : undefined}
-            autoComplete="off"
-          />
-          <button className="prompt-send" disabled={pending || !text.trim()}>
-            <span className="sr-only">Send</span>
-            <svg aria-hidden viewBox="0 0 16 16" width="16" height="16" fill="none">
-              <path
-                d="M8 13V3M3.5 7.5 8 3l4.5 4.5"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </form>
-      </div>
       {text.length >= MESSAGE_HINT_FROM && (
         <p id="message-room" className="px-4 pb-2 text-xs text-ink-3">
           {MAX_MESSAGE_CHARS - text.length} characters left. Messages are short on purpose.
