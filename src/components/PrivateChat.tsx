@@ -312,8 +312,8 @@ export function PrivateChat({
           <form
             onSubmit={send}
             className="prompt-bar liquid"
-            data-liquid="44"
-            data-liquid-blur="7"
+            data-liquid="64"
+            data-liquid-blur="5"
             data-busy={pending || undefined}
           >
             <input
