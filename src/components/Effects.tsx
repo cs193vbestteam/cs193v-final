@@ -200,8 +200,11 @@ export function DecryptedText({ text, duration = 900 }: { text: string; duration
 }
 
 /**
- * A field of dots behind the dark section; the ones near the pointer swell and warm. It is drawn
- * once and then only while the pointer moves over the section, so nothing animates unattended.
+ * A field of dots behind the dark section, treated as the surface of water: the dots near the
+ * pointer swell and warm, and the pointer leaves rings that travel outward, push the dots aside
+ * and die away. A press makes a bigger ring. Only the dots move, never the words in front of them.
+ * It is drawn once, then only while the pointer moves and for the second or so a ring lasts, so
+ * nothing animates unattended.
  */
 export function DotGrid() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -212,7 +215,13 @@ export function DotGrid() {
     if (!canvas || !host || !ctx) return;
     const GAP = 26;
     const REACH = 130;
+    /** How long a ring lasts (ms), how fast it spreads (px/ms), and how wide its crest is (px). */
+    const LIFE = 1500;
+    const SPEED = 0.32;
+    const CREST = 26;
     let pointer: { x: number; y: number } | null = null;
+    let rings: { x: number; y: number; born: number; power: number }[] = [];
+    let dropped = { x: -999, y: -999 };
     let frame = 0;
 
     function draw() {
@@ -225,21 +234,53 @@ export function DotGrid() {
       }
       ctx!.setTransform(ratio, 0, 0, ratio, 0, 0);
       ctx!.clearRect(0, 0, width, height);
+      const now = performance.now();
+      rings = rings.filter((r) => now - r.born < LIFE);
       for (let y = GAP / 2; y < height; y += GAP) {
         for (let x = GAP / 2; x < width; x += GAP) {
           const near = pointer ? Math.max(0, 1 - Math.hypot(x - pointer.x, y - pointer.y) / REACH) : 0;
+          // Each ring pushes a dot outward as its crest passes, less and less as the ring ages.
+          let dx = 0;
+          let dy = 0;
+          let lift = 0;
+          for (const ring of rings) {
+            const age = now - ring.born;
+            const away = Math.hypot(x - ring.x, y - ring.y) || 1;
+            const off = (away - age * SPEED) / CREST;
+            if (off > 3 || off < -3) continue;
+            const push = Math.exp(-off * off) * (1 - age / LIFE) * ring.power;
+            dx += ((x - ring.x) / away) * push * 9;
+            dy += ((y - ring.y) / away) * push * 9;
+            lift += push;
+          }
+          const glow = Math.min(1, near + lift * 0.7);
           ctx!.beginPath();
-          ctx!.arc(x, y, 1 + near * 2.2, 0, Math.PI * 2);
-          ctx!.fillStyle = near > 0 ? `rgb(240 138 102 / ${0.14 + near * 0.6})` : "rgb(243 238 227 / 0.1)";
+          ctx!.arc(x + dx, y + dy, 1 + near * 2.2 + Math.min(lift, 1.5) * 1.4, 0, Math.PI * 2);
+          ctx!.fillStyle = glow > 0.02 ? `rgb(240 138 102 / ${0.14 + glow * 0.6})` : "rgb(243 238 227 / 0.1)";
           ctx!.fill();
         }
       }
+      if (rings.length) queue();
     }
-    const queue = () => (frame ||= requestAnimationFrame(draw));
+    function queue() {
+      frame ||= requestAnimationFrame(draw);
+    }
 
+    function drop(x: number, y: number, power: number) {
+      rings.push({ x, y, born: performance.now(), power });
+      if (rings.length > 14) rings.shift();
+      dropped = { x, y };
+    }
     function move(e: PointerEvent) {
       const r = host!.getBoundingClientRect();
       pointer = { x: e.clientX - r.left, y: e.clientY - r.top };
+      // A new ring every so often along the pointer's path: that trail of rings is the wake.
+      if (Math.hypot(pointer.x - dropped.x, pointer.y - dropped.y) > 46) drop(pointer.x, pointer.y, 0.6);
+      queue();
+    }
+    function press(e: PointerEvent) {
+      const r = host!.getBoundingClientRect();
+      drop(e.clientX - r.left, e.clientY - r.top, 1.5);
       queue();
     }
     function leave() {
@@ -253,11 +294,13 @@ export function DotGrid() {
     if (!reducedMotion() && finePointer()) {
       host.addEventListener("pointermove", move, { passive: true });
       host.addEventListener("pointerleave", leave);
+      host.addEventListener("pointerdown", press);
     }
     return () => {
       resized?.disconnect();
       host.removeEventListener("pointermove", move);
       host.removeEventListener("pointerleave", leave);
+      host.removeEventListener("pointerdown", press);
       cancelAnimationFrame(frame);
     };
   }, []);
