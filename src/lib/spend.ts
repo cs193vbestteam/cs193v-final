@@ -1,3 +1,4 @@
+import { blindIndex } from "./crypto";
 import { db } from "./db";
 import { chargeTo, type Usage } from "./spend-context";
 
@@ -21,6 +22,14 @@ export type { Usage };
 
 /** The row that holds the whole app's total; user ids are UUIDs, so it can't collide. */
 export const GLOBAL_PAYER = "*";
+
+/**
+ * How a person appears in llm_spend: a keyed hash of their id, not the id, so a copy of the
+ * database does not show how much each account used the chat. The whole app's row stays "*".
+ */
+export function payerKey(payer: string): string {
+  return payer === GLOBAL_PAYER ? payer : blindIndex(payer, "spend");
+}
 
 function envNumber(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -71,7 +80,7 @@ async function totalMicros(payer: string, month: string): Promise<number> {
   const client = await db();
   const { rows } = await client.execute({
     sql: "SELECT micros FROM llm_spend WHERE payer = ? AND month = ?",
-    args: [payer, month],
+    args: [payerKey(payer), month],
   });
   return rows[0] ? Number(rows[0].micros) : 0;
 }
@@ -92,7 +101,7 @@ export async function recordSpend(payer: string, micros: number, now = Date.now(
     await client.execute({
       sql: `INSERT INTO llm_spend (payer, month, micros) VALUES (?, ?, ?)
             ON CONFLICT (payer, month) DO UPDATE SET micros = llm_spend.micros + EXCLUDED.micros`,
-      args: [who, month, micros],
+      args: [payerKey(who), month, micros],
     });
   }
 }

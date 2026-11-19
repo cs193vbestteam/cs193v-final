@@ -38,10 +38,12 @@ Everything is in one Postgres database.
 |---|---|
 | `users` | Display name and email (both encrypted) and password hash. |
 | `sessions` | A hash of each login cookie and when it expires (30 days). |
-| `events` | One row per plan: name, invite code, location, date, group size, the restaurant list, and the result. |
-| `members` | Who is in which plan, whether they are done and when, and their preferences (encrypted). |
-| `messages` | Every private-chat message (encrypted). |
-| `rate_limits`, `llm_spend` | Counters for the abuse limits and the spending caps. |
+| `events` | One row per plan: name, location, date, group size, creation time, the restaurant list and the result (all encrypted), the invite code (encrypted, plus a keyed hash to look it up), and who created it. |
+| `members` | Who is in which plan; whether they are done, when they joined, finished and last changed an answer, and their preferences (all encrypted). |
+| `messages` | Every private-chat message (encrypted, padded), stored with the day only. |
+| `rate_limits`, `llm_spend` | Counters for the abuse limits and the spending caps, keyed by hashes rather than user or plan ids. |
+
+Every encrypted value is padded to a multiple of 256 bytes first, so its length doesn't give away how much someone wrote. What stays in plaintext is what the database needs to find rows: random ids, which ids share a plan, session expiry, and the counters.
 
 A plan's name, location, date, members, restaurants and result are visible to the group. A person's chat, preferences and starting point are visible only to them. The stored result holds the place, the time, the other places and one count, never anyone's preferences or scores.
 

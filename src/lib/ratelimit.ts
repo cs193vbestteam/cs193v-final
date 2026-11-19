@@ -5,9 +5,8 @@ import { db } from "./db";
  * Fixed-window rate limits stored in the database, so they hold across serverless
  * instances (#4). One row per key: when the window started and how many hits it has.
  *
- * Keys never contain an email or IP address in the clear: those go through the same
- * keyed HMAC as the email lookup index (`blindIndex`). User and plan ids are random
- * UUIDs, so they are stored as-is.
+ * Keys never contain an email, IP address, user id or plan id in the clear: they go
+ * through a keyed HMAC (`blindIndex`), like the email lookup index.
  */
 
 export type Limit = { max: number; windowMs: number };
@@ -43,12 +42,18 @@ export const LIMITS = {
   runsPerPlan: { max: 6, windowMs: DAY },
 } satisfies Record<string, Limit>;
 
+/**
+ * Keys never name a user or a plan either: their ids go through the same keyed hash, so the
+ * table does not show who has been chatting or which plans were run, only anonymous counters.
+ */
+const anon = (id: string) => blindIndex(id, "ratelimit");
+
 export const rateKey = {
-  chat: (userId: string) => `chat:${userId}`,
-  llm: (eventId: string) => `llm:${eventId}`,
-  createPlan: (userId: string) => `create-plan:${userId}`,
-  autoNegotiate: (eventId: string) => `auto-negotiate:${eventId}`,
-  runs: (eventId: string) => `runs:${eventId}`,
+  chat: (userId: string) => `chat:${anon(userId)}`,
+  llm: (eventId: string) => `llm:${anon(eventId)}`,
+  createPlan: (userId: string) => `create-plan:${anon(userId)}`,
+  autoNegotiate: (eventId: string) => `auto-negotiate:${anon(eventId)}`,
+  runs: (eventId: string) => `runs:${anon(eventId)}`,
   loginEmail: (email: string) => `login-email:${blindIndex(email, "ratelimit")}`,
   loginIp: (ip: string) => `login-ip:${blindIndex(ip, "ratelimit")}`,
   signupIp: (ip: string) => `signup-ip:${blindIndex(ip, "ratelimit")}`,

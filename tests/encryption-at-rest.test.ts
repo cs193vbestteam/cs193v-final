@@ -98,7 +98,10 @@ describe("migrating data stored before per-scope keys", () => {
 
   it("re-encrypts every row with its own key, keeps it readable, and can run twice", async () => {
     await legacyRows();
-    expect(await migrateEncryption()).toEqual({ users: 1, members: 1, messages: 1, events: 1 });
+    expect(await migrateEncryption()).toMatchObject({ users: 1, members: 1, messages: 1, events: 1 });
+    // The old invite code still works, but only a hash of it is stored now.
+    expect(await dump("SELECT * FROM events")).not.toContain("oldcode1");
+    expect((await joinEvent("oldcode1", "old-user")).inviteCode).toBe("oldcode1");
 
     const client = await db();
     const user = (await client.execute("SELECT * FROM users")).rows[0];
@@ -118,6 +121,13 @@ describe("migrating data stored before per-scope keys", () => {
     expect((await getMyMessages("old-plan", "old-user"))[0].content).toBe("hello from before");
     expect(await getMyConstraints("old-plan", "old-user")).toEqual(EMPTY);
 
-    expect(await migrateEncryption()).toEqual({ users: 0, members: 0, messages: 0, events: 0 });
+    expect(await migrateEncryption()).toEqual({
+      users: 0,
+      members: 0,
+      messages: 0,
+      events: 0,
+      spend: 0,
+      rateLimits: 0,
+    });
   });
 });
