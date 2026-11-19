@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { db, isUniqueViolation } from "./db";
+import { dayOf, db, isUniqueViolation } from "./db";
 import { blindIndex, decrypt, decryptOrPlain, encrypt, legacyBlindIndex, randomToken, scope, sha256 } from "./crypto";
 import { hit, LIMITS, rateKey, waitText } from "./ratelimit";
 
@@ -70,7 +70,7 @@ export async function createUser(input: z.input<typeof SignupSchema>): Promise<U
         encrypt(email, scope.email(id)),
         encrypt(displayName, scope.displayName(id)),
         await hashPassword(password),
-        Date.now(),
+        dayOf(), // only the day: kept for housekeeping, not to tell when someone signed up
       ],
     });
   } catch (err) {
@@ -99,7 +99,7 @@ export async function createGuest(input: z.input<typeof GuestSchema>): Promise<U
       encrypt(email, scope.email(id)),
       encrypt(displayName, scope.displayName(id)),
       NO_PASSWORD,
-      Date.now(),
+      dayOf(),
     ],
   });
   return { id, displayName, email: "", guest: true };

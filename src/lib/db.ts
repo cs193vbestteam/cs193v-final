@@ -57,6 +57,13 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS scenario TEXT NOT NULL DEFAULT 'meal
 ALTER TABLE events ADD COLUMN IF NOT EXISTS event_date TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS pool_meta TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS max_members INTEGER NOT NULL DEFAULT 12;
+-- invite_code holds a keyed hash of the code (crypto.ts blindIndex), so a copy of the database
+-- cannot be used to join a plan; invite_enc is the code itself, encrypted, to show to members.
+-- meta_enc is the plan's bookkeeping, encrypted: when it was created and how many people fit.
+-- For rows written since, created_at is only the day, decided_at is NULL and max_members is 0:
+-- the result (encrypted) carries when it was decided.
+ALTER TABLE events ADD COLUMN IF NOT EXISTS invite_enc TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS meta_enc TEXT;
 
 CREATE TABLE IF NOT EXISTS members (
   event_id        TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -72,6 +79,9 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS ready_at BIGINT;
 -- When the member last changed what they want. A plan is only run again once this, or someone's
 -- joined_at, is later than the stored result (#118). NULL until they first say something that counts.
 ALTER TABLE members ADD COLUMN IF NOT EXISTS changed_at BIGINT;
+-- The four columns above, encrypted together per member (member-status.ts). New rows write
+-- ready = 0, joined_at = 0 and NULL times, so only status_enc says who did what when.
+ALTER TABLE members ADD COLUMN IF NOT EXISTS status_enc TEXT;
 
 CREATE TABLE IF NOT EXISTS messages (
   id          BIGSERIAL PRIMARY KEY,
@@ -79,7 +89,7 @@ CREATE TABLE IF NOT EXISTS messages (
   user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role        TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
   content_enc TEXT NOT NULL,            -- AES-GCM encrypted
-  created_at  BIGINT NOT NULL
+  created_at  BIGINT NOT NULL           -- the day only (dayOf); the id gives the order
 );
 
 CREATE INDEX IF NOT EXISTS messages_by_chat ON messages (event_id, user_id, id);
@@ -92,7 +102,7 @@ CREATE TABLE IF NOT EXISTS rate_limits (
 );
 
 -- Model spending per calendar month (src/lib/spend.ts), in millionths of a dollar.
--- payer is a user id, or '*' for the whole app's total.
+-- payer is a keyed hash of a user id (spend.ts), or '*' for the whole app's total.
 CREATE TABLE IF NOT EXISTS llm_spend (
   payer  TEXT NOT NULL,
   month  TEXT NOT NULL,
@@ -100,6 +110,15 @@ CREATE TABLE IF NOT EXISTS llm_spend (
   PRIMARY KEY (payer, month)
 );
 `;
+
+/**
+ * The start of the UTC day `ms` falls in. Timestamps kept in plaintext only for housekeeping
+ * (when an account or a message was created) are stored to the day, so a copy of the
+ * database cannot line them up with when someone was seen using their phone.
+ */
+export function dayOf(ms = Date.now()): number {
+  return ms - (ms % 86_400_000);
+}
 
 export type Row = Record<string, unknown>;
 export type Statement = string | { sql: string; args?: unknown[] };

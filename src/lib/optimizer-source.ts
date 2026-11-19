@@ -1,6 +1,7 @@
 import "server-only";
 import { decryptJson, decryptOrPlain, scope } from "./crypto";
 import { db } from "./db";
+import { byJoinOrder, readStatus, STATUS_COLUMNS } from "./member-status";
 import { assembleOptimizerInput, type OptimizerInput } from "./optimizer-handoff";
 import { todayPacific } from "./plan-date";
 import { poolForEvent } from "./pool";
@@ -26,15 +27,19 @@ export async function loadOptimizerInput(
   });
   if (event.rows.length === 0) throw new Error("No such plan");
   const { rows } = await client.execute({
-    sql: "SELECT user_id, constraints_enc, ready, ready_at FROM members WHERE event_id = ? ORDER BY joined_at",
+    sql: `SELECT user_id, constraints_enc, ${STATUS_COLUMNS} FROM members WHERE event_id = ?`,
     args: [eventId],
   });
   if (rows.length === 0) throw new Error("The plan has no members");
+  // In the order they joined, which is encrypted with each member's status (member-status.ts).
+  const ordered = byJoinOrder(
+    rows.map((row) => ({ row, userId: String(row.user_id), status: readStatus(row, eventId, String(row.user_id)) })),
+  );
   const { places: restaurants, scenario } = await poolForEvent(eventId);
   const parse = scenarioFor(scenario).parseConstraints;
-  const members = rows.map((row) => {
-    const state = parse(decryptJson(String(row.constraints_enc), scope.constraints(eventId, String(row.user_id))));
-    const finishedAt = Number(row.ready) === 1 && row.ready_at != null ? Number(row.ready_at) : null;
+  const members = ordered.map(({ row, userId, status }) => {
+    const state = parse(decryptJson(String(row.constraints_enc), scope.constraints(eventId, userId)));
+    const finishedAt = status.ready && status.readyAt !== null ? status.readyAt : null;
     return { prefs: state.prefs, startPoint: state.startPoint, finishedAt };
   });
   // Each value opens only with this plan's key for that field (crypto.ts).
@@ -47,5 +52,5 @@ export async function loadOptimizerInput(
     restaurants,
     members,
   });
-  return { input, members: rows.length, ready: rows.filter((r) => Number(r.ready) === 1).length };
+  return { input, members: ordered.length, ready: ordered.filter((m) => m.status.ready).length };
 }
