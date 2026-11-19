@@ -641,11 +641,6 @@ summary:focus-visible {
   stroke: var(--color-line-strong);
   stroke-width: 6;
 }
-/* Still needed before "I'm done": a thin dark tick, told apart by weight and not by colour alone. */
-.answer-dial [data-needed] .answer-dial-track {
-  stroke: var(--color-ink-2);
-  stroke-width: 2.5;
-}
 .answer-dial-fill {
   stroke: var(--color-moss);
   stroke-width: 6;
