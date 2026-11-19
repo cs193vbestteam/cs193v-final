@@ -174,7 +174,7 @@ export function ResultCard({
         )}
       </div>
 
-      <div className="my-4 border-t border-dashed border-line-strong" />
+      <div className="ticket-tear my-4 border-t border-dashed border-line-strong" />
 
       {byOptimizer ? (
         <div className="px-4 pb-4 text-xs text-ink-2">

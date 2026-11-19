@@ -6,6 +6,7 @@ import { MAX_MESSAGE_CHARS, MESSAGE_HINT_FROM } from "@/lib/chat-limits";
 import type { MissingField } from "@/lib/constraints";
 import type { ChatTurn } from "@/lib/extract";
 import type { AnswerStep } from "@/lib/member-state";
+import { AnswerDial } from "./AnswerDial";
 
 type Props = {
   eventId: string;
@@ -41,6 +42,15 @@ type ChatSnapshot = {
 };
 
 const NO_PROGRESS: AnswerStep[] = [];
+
+/** Ready-made answers for the question a person has not answered yet. A tap adds one to the message box. */
+const QUICK: Record<AnswerStep["topic"], string[]> = {
+  time: ["Dinner after 7", "Lunch", "Any time works"],
+  budget: ["Around $30", "Up to $50", "No budget limit"],
+  travel: ["15 minutes at most", "30 minutes at most", "Any distance"],
+  diet: ["Nothing I can't eat", "Vegetarian", "No spicy food"],
+  cuisine: ["Thai", "Japanese", "No preference on food"],
+};
 
 export function PrivateChat({
   eventId,
@@ -83,6 +93,13 @@ export function PrivateChat({
   const askedToFinish = !ready && missing.length === 0 && /\bI['’]m done\b/i.test(lastAssistant);
 
   const answered = progress.filter((s) => s.done).length;
+  // The needed questions come first, then the optional ones, in the order the assistant asks them.
+  const nextStep = progress.find((s) => !s.done && s.required) ?? progress.find((s) => !s.done);
+
+  function addQuick(answer: string) {
+    setText((draft) => (draft.trim() ? `${draft.trim().replace(/[,.]$/, "")}, ${answer.toLowerCase()}` : answer));
+    input.current?.focus();
+  }
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -156,12 +173,21 @@ export function PrivateChat({
         tabIndex={0}
       >
         {messages.map((m, i) => (
-          <div key={i} className={`bubble-in flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div
+            key={i}
+            className={`bubble-in flex items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}
+          >
+            {/* The assistant's mark, on the first of its messages in a row. */}
+            {m.role === "assistant" && (
+              <span aria-hidden className="chat-mark" data-quiet={messages[i - 1]?.role === "assistant" || undefined}>
+                <LockIcon />
+              </span>
+            )}
             <p
               className={`max-w-[85%] whitespace-pre-wrap text-[0.9375rem] leading-relaxed ${
                 m.role === "user"
-                  ? "rounded-2xl rounded-br-md bg-ink px-3.5 py-2 text-paper"
-                  : "rounded-2xl rounded-bl-md bg-paper-2 px-3.5 py-2 text-ink"
+                  ? "bubble-mine rounded-2xl rounded-br-md bg-ink px-3.5 py-2 text-paper"
+                  : "bubble-theirs rounded-2xl rounded-bl-md bg-paper-2 px-3.5 py-2 text-ink"
               }`}
             >
               {m.content}
@@ -169,12 +195,18 @@ export function PrivateChat({
           </div>
         ))}
         {pending && (
-          <p className="flex items-center gap-2 text-xs text-ink-3">
-            <span className="thinking inline-flex gap-1">
-              <span />
-              <span />
-              <span />
-            </span>
+          <p className="flex items-center gap-2.5 pl-9 text-xs text-ink-3">
+            {finding ? (
+              <span aria-hidden className="lattice">
+                {Array.from({ length: 9 }, (_, k) => (
+                  <i key={k} style={{ "--i": (k % 3) + Math.floor(k / 3) } as React.CSSProperties} />
+                ))}
+              </span>
+            ) : (
+              <svg aria-hidden className="thought-line" viewBox="0 0 44 12" width="44" height="12">
+                <path d="M1 6 Q 6.25 0 11.5 6 T 22 6 T 32.5 6 T 43 6" pathLength={1} />
+              </svg>
+            )}
             <span className="shiny">{finding ? "Everyone's done. Finding a plan…" : "Assistant is thinking…"}</span>
           </p>
         )}
@@ -185,26 +217,28 @@ export function PrivateChat({
       <div className={`border-t px-5 py-3 ${ready ? "border-moss/30 bg-moss-soft" : "border-line"}`}>
         {/* How far through the questions they are, so nobody has to guess whether they have finished. */}
         {!ready && progress.length > 0 && (
-          <div className="mb-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <span id="answers-label" className="eyebrow">
-                Your answers
-              </span>
-              <span className="font-mono text-[0.75rem] text-ink-3">
+          <div className="mb-3 flex items-center gap-4">
+            <AnswerDial progress={progress} />
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
+                <span id="answers-label" className="sr-only">
+                  Your answers
+                </span>
                 {answered} of {progress.length} answered
-              </span>
-            </div>
-            <ol aria-labelledby="answers-label" className="mt-2 grid grid-cols-5 gap-1.5">
-              {progress.map((s) => (
-                <li
-                  key={s.topic}
-                  className="answer-step"
-                  data-done={s.done || undefined}
-                  data-needed={(!s.done && s.required) || undefined}
-                >
-                  <span aria-hidden className="answer-step-bar" />
-                  <span className="answer-step-label">
-                    {s.done && <span aria-hidden>✓ </span>}
+              </p>
+              <ol aria-labelledby="answers-label" className="mt-2 flex flex-wrap gap-1.5">
+                {progress.map((s) => (
+                  <li
+                    key={s.topic}
+                    className="answer-chip"
+                    data-done={s.done || undefined}
+                    data-needed={(!s.done && s.required) || undefined}
+                  >
+                    {s.done && (
+                      <span aria-hidden className="answer-chip-check">
+                        ✓{" "}
+                      </span>
+                    )}
                     {s.label}
                     <span className="sr-only">
                       {s.done
@@ -213,15 +247,19 @@ export function PrivateChat({
                           ? ": needed before you can finish"
                           : ": optional, not answered"}
                     </span>
-                  </span>
-                </li>
-              ))}
-            </ol>
+                  </li>
+                ))}
+              </ol>
+            </div>
           </div>
         )}
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
           {ready ? (
             <p role="status" className="min-w-0 flex-1 basis-64 text-sm text-ink-2">
+              <svg aria-hidden className="status-mark" viewBox="0 0 20 20" width="20" height="20">
+                <circle cx="10" cy="10" r="8.5" pathLength={1} />
+                <path d="M6 10.4 8.8 13 14 7.4" pathLength={1} />
+              </svg>{" "}
               <strong className="font-medium text-moss">Your part is done.</strong>
               {next && (
                 <>
@@ -261,22 +299,44 @@ export function PrivateChat({
         </div>
       </div>
 
-      <form onSubmit={send} className="flex gap-2 border-t border-line px-4 py-3">
-        <input
-          ref={input}
-          className="input"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder='Try: "dinner after 7, around $30, vegetarian"'
-          maxLength={MAX_MESSAGE_CHARS}
-          aria-label="Message your assistant"
-          aria-describedby={text.length >= MESSAGE_HINT_FROM ? "message-room" : undefined}
-          autoComplete="off"
-        />
-        <button className="btn" disabled={pending || !text.trim()}>
-          Send
-        </button>
-      </form>
+      <div className="border-t border-line px-4 py-3">
+        {/* A head start on the next unanswered question. Nothing is sent until they press Send. */}
+        {!ready && nextStep && (
+          <div className="mb-2.5 flex flex-wrap items-center gap-1.5" role="group" aria-label="Quick answers">
+            <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">{nextStep.label}?</span>
+            {QUICK[nextStep.topic].map((answer) => (
+              <button key={answer} type="button" className="quick-chip" onClick={() => addQuick(answer)}>
+                {answer}
+              </button>
+            ))}
+          </div>
+        )}
+        <form onSubmit={send} className="prompt-bar" data-busy={pending || undefined}>
+          <input
+            ref={input}
+            className="prompt-input"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder='Try: "dinner after 7, around $30, vegetarian"'
+            maxLength={MAX_MESSAGE_CHARS}
+            aria-label="Message your assistant"
+            aria-describedby={text.length >= MESSAGE_HINT_FROM ? "message-room" : undefined}
+            autoComplete="off"
+          />
+          <button className="prompt-send" disabled={pending || !text.trim()}>
+            <span className="sr-only">Send</span>
+            <svg aria-hidden viewBox="0 0 16 16" width="16" height="16" fill="none">
+              <path
+                d="M8 13V3M3.5 7.5 8 3l4.5 4.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </form>
+      </div>
       {text.length >= MESSAGE_HINT_FROM && (
         <p id="message-room" className="px-4 pb-2 text-xs text-ink-3">
           {MAX_MESSAGE_CHARS - text.length} characters left. Messages are short on purpose.

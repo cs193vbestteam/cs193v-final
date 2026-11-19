@@ -626,52 +626,304 @@ summary:focus-visible {
   animation-delay: 0.3s;
 }
 
-/* The answer bar: five short bars that fill as each question is settled. */
-.answer-step {
-  min-width: 0;
+/* The answer dial (AnswerDial.tsx): a ring of five ticks with the count in the middle. */
+.answer-dial {
+  width: 4.5rem;
+  height: 4.5rem;
+  flex: none;
+  overflow: visible;
 }
-.answer-step-bar {
-  position: relative;
-  display: block;
-  height: 6px;
-  overflow: hidden;
+.answer-dial path {
+  fill: none;
+  stroke-linecap: round;
+}
+.answer-dial-track {
+  stroke: var(--color-line-strong);
+  stroke-width: 6;
+}
+/* Still needed before "I'm done": a thin dark tick, told apart by weight and not by colour alone. */
+.answer-dial [data-needed] .answer-dial-track {
+  stroke: var(--color-ink-2);
+  stroke-width: 2.5;
+}
+.answer-dial-fill {
+  stroke: var(--color-moss);
+  stroke-width: 6;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  opacity: 0;
+  transition:
+    stroke-dashoffset 0.7s var(--ease-out-expo) 0.25s,
+    opacity 0.1s linear 0.25s;
+}
+.answer-dial [data-done] .answer-dial-fill {
+  stroke-dashoffset: 0;
+  opacity: 1;
+}
+@keyframes comet {
+  from {
+    stroke-dashoffset: calc(var(--tail) * 1px);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    stroke-dashoffset: calc(var(--land) * 1px);
+    opacity: 0;
+  }
+}
+.answer-dial-comet {
+  stroke: var(--color-seal);
+  stroke-width: 7;
+  stroke-dasharray: calc(var(--tail) * 1px) calc(var(--sweep) * 1px);
+  opacity: 0;
+  filter: drop-shadow(0 0 3px var(--color-seal));
+  animation: comet 0.8s var(--ease-out-expo) both;
+}
+.answer-dial-count {
+  font-family: var(--font-serif);
+  font-size: 38px;
+  fill: var(--color-ink);
+}
+@keyframes dial-done {
+  40% {
+    transform: scale(1.08);
+  }
+}
+.answer-dial[data-complete] {
+  transform-origin: center;
+  animation: dial-done 0.6s var(--ease-out-expo) 0.9s;
+}
+
+/* The same five questions as words, beside the dial. */
+.answer-chip {
+  border: 1px solid var(--color-line-strong);
   border-radius: 999px;
-  background: var(--color-line-strong);
-}
-/* Still needed before "I'm done": outlined, so it is told apart by shape and not by colour alone. */
-.answer-step[data-needed] .answer-step-bar {
-  background: transparent;
-  box-shadow: inset 0 0 0 1.5px var(--color-ink-2);
-}
-.answer-step-bar::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--color-moss);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.6s var(--ease-out-expo);
-}
-.answer-step[data-done] .answer-step-bar::after {
-  transform: scaleX(1);
-}
-.answer-step-label {
-  display: block;
-  margin-top: 0.375rem;
-  overflow: hidden;
+  padding: 0.125rem 0.625rem;
   font-size: 0.75rem;
-  line-height: 1.3;
+  line-height: 1.5;
   color: var(--color-ink-3);
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
-.answer-step[data-needed] .answer-step-label {
+.answer-chip[data-needed] {
+  border-color: var(--color-ink-2);
   font-weight: 500;
   color: var(--color-ink);
 }
-.answer-step[data-done] .answer-step-label {
+.answer-chip[data-done] {
+  border-color: rgb(47 106 76 / 0.35);
+  background: var(--color-moss-soft);
   color: var(--color-moss);
+}
+@keyframes spring-check {
+  from {
+    transform: scale(0) rotate(-30deg);
+  }
+  60% {
+    transform: scale(1.35) rotate(6deg);
+  }
+  to {
+    transform: none;
+  }
+}
+.answer-chip-check {
+  display: inline-block;
+  animation: spring-check 0.5s var(--ease-out-expo) 0.3s both;
+}
+
+/* The chat: the assistant's mark, the waiting line, the message bar and the quick answers. */
+.chat-mark {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-ink-2);
+}
+.chat-mark[data-quiet] {
+  visibility: hidden;
+}
+.bubble-theirs {
+  box-shadow: 0 1px 0 rgb(22 20 15 / 0.06);
+}
+.bubble-mine {
+  box-shadow: 0 8px 18px -12px rgb(22 20 15 / 0.7);
+}
+@keyframes thought-line {
+  from {
+    stroke-dashoffset: 1.4;
+  }
+  to {
+    stroke-dashoffset: -1.4;
+  }
+}
+.thought-line path {
+  fill: none;
+  stroke: var(--color-ink-2);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 0.4 1;
+  animation: thought-line 1.6s linear infinite;
+}
+@keyframes lattice {
+  0%,
+  60%,
+  100% {
+    transform: scale(0.45);
+    opacity: 0.35;
+  }
+  30% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.lattice {
+  display: inline-grid;
+  grid-template-columns: repeat(3, 5px);
+  gap: 3px;
+}
+.lattice i {
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--color-seal);
+  animation: lattice 1.2s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.12s);
+}
+.prompt-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3125rem 0.3125rem 0.3125rem 1rem;
+  border: 1px solid var(--color-line-control);
+  border-radius: 999px;
+  background: var(--color-surface);
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.prompt-bar:focus-within {
+  border-color: var(--color-ink);
+  box-shadow:
+    0 0 0 1px var(--color-ink),
+    0 10px 24px -16px rgb(22 20 15 / 0.6);
+}
+.prompt-input {
+  min-width: 0;
+  flex: 1;
+  min-height: 2.25rem;
+  background: transparent;
+  font-size: 1rem;
+  color: var(--color-ink);
+  outline: none;
+}
+.prompt-input::placeholder {
+  color: var(--color-ink-3);
+}
+.prompt-send {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  transition:
+    transform 0.35s var(--ease-out-expo),
+    background-color 0.25s ease;
+}
+.prompt-send:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.06);
+}
+.prompt-send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.prompt-send:disabled {
+  cursor: not-allowed;
+  background: var(--color-line-strong);
+  color: var(--color-ink-2);
+}
+@keyframes send-off {
+  to {
+    transform: translateY(-140%);
+    opacity: 0;
+  }
+}
+.prompt-bar[data-busy] .prompt-send svg {
+  animation: send-off 0.45s var(--ease-out-expo) both;
+}
+.quick-chip {
+  min-height: 1.75rem;
+  border: 1px dashed var(--color-line-control);
+  border-radius: 999px;
+  padding: 0 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-2);
+  transition:
+    transform 0.3s var(--ease-out-expo),
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+.quick-chip:hover {
+  transform: translateY(-1px);
+  border-style: solid;
+  border-color: var(--color-ink);
+  background: var(--color-surface);
+  color: var(--color-ink);
+}
+.quick-chip:active {
+  transform: scale(0.96);
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.status-mark {
+  display: inline-block;
+  vertical-align: -0.25em;
+}
+.status-mark * {
+  fill: none;
+  stroke: var(--color-moss);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  animation: draw 0.6s var(--ease-out-expo) both;
+}
+.status-mark path {
+  animation-delay: 0.35s;
+}
+
+/* The plan as a ticket: two notches where the stub tears off. */
+.ticket-tear {
+  position: relative;
+}
+.ticket-tear::before,
+.ticket-tear::after {
+  content: "";
+  position: absolute;
+  top: -0.5625rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background: var(--color-surface);
+}
+.ticket-tear::before {
+  left: -0.5625rem;
+}
+.ticket-tear::after {
+  right: -0.5625rem;
 }
 
 /* A slow sheen across the waiting line. The text underneath keeps its own colour and contrast. */
@@ -971,6 +1223,34 @@ summary:focus-visible {
   .demo-toggle {
     display: none;
   }
+  .answer-dial-fill,
+  .prompt-bar,
+  .prompt-send,
+  .quick-chip {
+    transition: none;
+  }
+  .answer-dial-comet {
+    display: none;
+  }
+  .answer-dial[data-complete],
+  .answer-chip-check,
+  .thought-line path,
+  .lattice i,
+  .prompt-bar[data-busy] .prompt-send svg,
+  .status-mark * {
+    animation: none;
+  }
+  .status-mark * {
+    stroke-dashoffset: 0;
+  }
+  .lattice i {
+    transform: scale(0.8);
+  }
+  .shiny {
+    animation: none;
+    background: none;
+    color: var(--color-ink-3);
+  }
   .blur-words > * {
     animation: none;
   }
@@ -987,14 +1267,6 @@ summary:focus-visible {
   .card,
   .spot {
     background-image: none;
-  }
-  .answer-step-bar::after {
-    transition: none;
-  }
-  .shiny {
-    animation: none;
-    background: none;
-    color: var(--color-ink-3);
   }
   .dot-live,
   .thinking span,
