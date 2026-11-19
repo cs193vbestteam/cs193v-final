@@ -264,6 +264,148 @@ summary:focus-visible {
   color: var(--color-ink-2);
 }
 
+/* The new-plan form: one-press choices, the size slider, and the plan drawn as a ticket. */
+.pick {
+  min-height: 1.875rem;
+  border: 1px solid var(--color-line-control);
+  border-radius: 999px;
+  padding: 0 0.8rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink-2);
+  transition:
+    transform 0.3s var(--ease-out-expo),
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+}
+.pick:hover {
+  transform: translateY(-1px);
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+.pick:active {
+  transform: scale(0.96);
+}
+.pick[aria-pressed="true"] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.size-range {
+  width: 100%;
+  height: 1.75rem;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.size-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-ink) var(--fill), var(--color-line-strong) var(--fill));
+}
+.size-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-line-strong);
+}
+.size-range::-moz-range-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--color-ink);
+}
+.size-range::-webkit-slider-thumb {
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: calc(3px - 0.75rem);
+  appearance: none;
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-surface);
+  box-shadow: 0 6px 14px -8px rgb(22 20 15 / 0.7);
+  transition: transform 0.3s var(--ease-out-expo);
+}
+.size-range::-moz-range-thumb {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 2px solid var(--color-ink);
+  border-radius: 999px;
+  background: var(--color-surface);
+}
+.size-range:hover::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+.size-range:active::-webkit-slider-thumb {
+  transform: scale(1.25, 0.9);
+}
+.size-range:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+@keyframes size-roll {
+  from {
+    transform: translateY(0.5em);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+.size-roll {
+  display: inline-block;
+  animation: size-roll 0.35s var(--ease-out-expo);
+}
+.size-seat {
+  height: 0.5rem;
+  flex: 1;
+  border: 1px solid var(--color-line-control);
+  border-radius: 999px;
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.35s var(--ease-out-expo);
+}
+.size-seat[data-on] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+}
+.plan-ticket {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.1rem;
+  background: var(--color-ink);
+  padding: 1.25rem;
+  color: var(--color-paper);
+  box-shadow: var(--shadow-lift);
+  rotate: 1.2deg;
+  transition: rotate 0.5s var(--ease-out-expo);
+}
+form:focus-within .plan-ticket {
+  rotate: 0deg;
+}
+.plan-ticket-tear {
+  position: relative;
+  margin: 1rem -1.25rem;
+  border-top: 1px dashed rgb(243 238 228 / 0.4);
+}
+.plan-ticket-tear::before,
+.plan-ticket-tear::after {
+  content: "";
+  position: absolute;
+  top: -0.5rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: var(--color-surface);
+}
+.plan-ticket-tear::before {
+  left: -0.5rem;
+}
+.plan-ticket-tear::after {
+  right: -0.5rem;
+}
+
 /* Status pills (mono) */
 .pill {
   display: inline-flex;
@@ -1390,6 +1532,15 @@ summary:focus-visible {
   .strike-draw::after {
     animation: none;
     transform: rotate(-2deg) scaleX(1);
+  }
+  .size-roll {
+    animation: none;
+  }
+  .pick,
+  .size-seat,
+  .plan-ticket,
+  .size-range::-webkit-slider-thumb {
+    transition: none;
   }
   .demo-result,
   .demo-seal {
