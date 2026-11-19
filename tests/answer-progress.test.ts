@@ -3,6 +3,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PrivateChat } from "@/components/PrivateChat";
+import { alsoAskedIn } from "@/lib/assistant";
 import { answerProgress, emptyMemberState, missingRequired, type AnswerStep } from "@/lib/member-state";
 
 /**
@@ -44,8 +45,29 @@ describe("answerProgress", () => {
         .filter((s) => s.asking)
         .map((s) => s.topic),
     ).toEqual(["budget"]);
+    state.chat.alsoAsked = ["travel"];
+    expect(
+      answerProgress(state)
+        .filter((s) => s.asking)
+        .map((s) => s.topic),
+    ).toEqual(["budget", "travel"]);
     state.prefs.budget = { max: 30, strength: "strong" };
-    expect(answerProgress(state).some((s) => s.asking)).toBe(false);
+    expect(
+      answerProgress(state)
+        .filter((s) => s.asking)
+        .map((s) => s.topic),
+    ).toEqual(["travel"]);
+  });
+
+  it("finds the second thing a reply asks about, in its questions only", () => {
+    const reply =
+      "Got it, nothing you can't eat. Would you like to share a rough budget per person, or a travel time you'd be comfortable with?";
+    expect(alsoAskedIn(reply, "budget", ["budget", "travel", "cuisine"])).toEqual(["travel"]);
+    // Mentioned in a statement, not asked: not marked.
+    expect(alsoAskedIn("I noted your travel time. What is your budget?", "budget", ["budget", "travel"])).toEqual([]);
+    // Something it may no longer ask about is never marked, and nothing is without a declared question.
+    expect(alsoAskedIn(reply, "budget", ["budget"])).toEqual([]);
+    expect(alsoAskedIn(reply, null, ["budget", "travel"])).toEqual([]);
   });
 
   it("counts a budget the person brought up without being asked", () => {
@@ -132,9 +154,19 @@ describe("the bar in the chat", () => {
     expect(quickAnswers(el)).toEqual(["Nothing I can't eat", "Vegetarian", "No spicy food"]);
   });
 
-  it("leaves what Anthropic keeps to the privacy page", async () => {
+  it("offers both sets of answers when the assistant asked about two things at once", async () => {
+    const el = await render(steps([]).map((s) => ({ ...s, asking: s.topic === "budget" || s.topic === "travel" })));
+    expect(el.querySelector("[aria-label='Quick answers']")?.textContent).toContain("Budget or Distance?");
+    expect(quickAnswers(el)).toEqual(["Around $30", "Up to $50", "15 minutes at most", "30 minutes at most"]);
+  });
+
+  it("keeps what Anthropic does with the chat under a title that opens", async () => {
     const el = await render(steps([]));
-    expect(el.textContent).not.toContain("retention");
+    const notice = el.querySelector("details")!;
+    expect(notice.open).toBe(false);
+    expect(notice.querySelector("summary")?.textContent).toBe("Where your messages go");
+    expect(notice.textContent).toContain("standard retention policy is up to 30 days");
+    expect(notice.querySelector("a")?.getAttribute("href")).toBe("/privacy");
   });
 
   it("is put away once the person is done", async () => {

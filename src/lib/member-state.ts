@@ -44,6 +44,11 @@ const ChatStateSchema = z.object({
   turns: z.number().int().min(0).default(0),
   /** The variable the last reply asked about, so a short answer is read against it. */
   lastAsked: z.enum(VARIABLES).nullable().default(null),
+  /**
+   * Other variables the same reply asked about in passing ("a budget, or a travel time?").
+   * For display only: it marks them in the progress. It does not count them as asked.
+   */
+  alsoAsked: z.array(z.enum(VARIABLES)).default([]),
   /** Bookkeeping for the rule-based fallback only (extract-rules.ts). The model path ignores it. */
   rules: z
     .object({
@@ -66,7 +71,14 @@ export function emptyMemberState(): MemberState {
   return {
     version: 2,
     prefs: { version: 1 },
-    chat: { asked: [], answered: [], turns: 0, lastAsked: null, rules: { pending: null, probesAsked: [] } },
+    chat: {
+      asked: [],
+      answered: [],
+      turns: 0,
+      lastAsked: null,
+      alsoAsked: [],
+      rules: { pending: null, probesAsked: [] },
+    },
     startPoint: null,
   };
 }
@@ -119,7 +131,7 @@ export function answerProgress(state: MemberState): AnswerStep[] {
       required: REQUIRED.includes(topic),
       done,
       // An answered question is no longer the open one, even if it was the last one asked.
-      asking: chat.lastAsked === topic && !done,
+      asking: (chat.lastAsked === topic || chat.alsoAsked.includes(topic)) && !done,
     };
   });
 }
