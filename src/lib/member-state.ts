@@ -83,8 +83,11 @@ export function missingRequired(state: MemberState): MissingField[] {
   return missing;
 }
 
-/** One of the five things the assistant asks about, and whether this person has answered it. */
-export type AnswerStep = { topic: Variable; label: string; required: boolean; done: boolean };
+/**
+ * One of the five things the assistant asks about, whether this person has answered it, and
+ * whether it is the one the assistant's last message asked about.
+ */
+export type AnswerStep = { topic: Variable; label: string; required: boolean; done: boolean; asking: boolean };
 
 const STEP_LABEL: Record<Variable, string> = {
   time: "When",
@@ -108,12 +111,17 @@ export function answerProgress(state: MemberState): AnswerStep[] {
     travel: !!prefs.travel,
     cuisine: !!(Object.keys(prefs.cuisine?.scores ?? {}).length || prefs.cuisine?.excluded?.length),
   };
-  return VARIABLES.map((topic) => ({
-    topic,
-    label: STEP_LABEL[topic],
-    required: REQUIRED.includes(topic),
-    done: chat.answered.includes(topic) || recorded[topic],
-  }));
+  return VARIABLES.map((topic) => {
+    const done = chat.answered.includes(topic) || recorded[topic];
+    return {
+      topic,
+      label: STEP_LABEL[topic],
+      required: REQUIRED.includes(topic),
+      done,
+      // An answered question is no longer the open one, even if it was the last one asked.
+      asking: chat.lastAsked === topic && !done,
+    };
+  });
 }
 
 /**

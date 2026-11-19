@@ -35,6 +35,19 @@ describe("answerProgress", () => {
     expect(missingRequired(state)).toEqual([]);
   });
 
+  it("marks the question the assistant asked last, until it is answered", () => {
+    const state = emptyMemberState();
+    expect(answerProgress(state).some((s) => s.asking)).toBe(false);
+    state.chat.lastAsked = "budget";
+    expect(
+      answerProgress(state)
+        .filter((s) => s.asking)
+        .map((s) => s.topic),
+    ).toEqual(["budget"]);
+    state.prefs.budget = { max: 30, strength: "strong" };
+    expect(answerProgress(state).some((s) => s.asking)).toBe(false);
+  });
+
   it("counts a budget the person brought up without being asked", () => {
     const state = emptyMemberState();
     state.prefs.budget = { max: 30, strength: "strong" };
@@ -93,6 +106,35 @@ describe("the bar in the chat", () => {
     const all = await render(steps(["time", "budget", "travel", "diet", "cuisine"]));
     expect(all.textContent).toContain("5 of 5 answered");
     expect(all.textContent).not.toContain("optional");
+  });
+
+  const quickAnswers = (el: HTMLElement) =>
+    [...el.querySelectorAll("[aria-label='Quick answers'] button")].map((b) => b.textContent);
+
+  it("offers answers to the question the assistant is asking, not to the first unanswered one", async () => {
+    const el = await render(steps([]).map((s) => ({ ...s, asking: s.topic === "budget" })));
+    expect(el.querySelector("[aria-label='Quick answers']")?.textContent).toContain("Budget?");
+    expect(quickAnswers(el)).toEqual(["Around $30", "Up to $50", "No budget limit"]);
+    const chips = [...el.querySelectorAll("ol[aria-labelledby='answers-label'] button")];
+    expect(chips[1].textContent).toContain("Budget: the assistant is asking this now");
+    expect(chips.map((c) => c.getAttribute("aria-pressed"))).toEqual(["false", "true", "false", "false", "false"]);
+  });
+
+  it("after an open question, offers one answer for each thing still unanswered", async () => {
+    const el = await render(steps(["time"]));
+    expect(quickAnswers(el)).toEqual(["Around $30", "15 minutes at most", "Nothing I can't eat", "Thai"]);
+  });
+
+  it("shows another question's answers when the person presses that question", async () => {
+    const el = await render(steps([]).map((s) => ({ ...s, asking: s.topic === "budget" })));
+    const diet = el.querySelectorAll<HTMLButtonElement>("ol[aria-labelledby='answers-label'] button")[3];
+    await act(async () => diet.click());
+    expect(quickAnswers(el)).toEqual(["Nothing I can't eat", "Vegetarian", "No spicy food"]);
+  });
+
+  it("leaves what Anthropic keeps to the privacy page", async () => {
+    const el = await render(steps([]));
+    expect(el.textContent).not.toContain("retention");
   });
 
   it("is put away once the person is done", async () => {
