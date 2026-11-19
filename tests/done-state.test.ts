@@ -39,7 +39,12 @@ async function render(props: { ready: boolean; missing?: MissingField[]; next?: 
       createElement(PrivateChat, {
         eventId: "event-1",
         inviteCode: "invite-1",
-        initialMessages: [{ role: "assistant", content: "Hi" }],
+        // Past the greeting: the progress and the way to finish come with the first message.
+        initialMessages: [
+          { role: "assistant", content: "Hi" },
+          { role: "user", content: "dinner" },
+          { role: "assistant", content: "Noted." },
+        ],
         initialSummary: ["Budget: up to $40/person"],
         initialMissing: props.missing ?? [],
         ready: props.ready,
@@ -54,7 +59,7 @@ const button = (el: HTMLElement, name: string) =>
   [...el.querySelectorAll("button")].find((b) => b.textContent === name);
 
 describe("finishing, and what comes after", () => {
-  it("puts the way to finish between the conversation and the message box, not under the summary", async () => {
+  it("puts the way to finish right under the message box, above the progress and the summary", async () => {
     const el = await render({ ready: false });
     const done = button(el, "I'm done")!;
     const log = el.querySelector('[role="log"]')!;
@@ -62,7 +67,7 @@ describe("finishing, and what comes after", () => {
     const summary = [...el.querySelectorAll("div")].find((d) => d.textContent === "What your assistant knows")!;
     const after = (a: Node, b: Node) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
     expect(after(log, done)).toBe(true);
-    expect(after(done, message)).toBe(true);
+    expect(after(message, done)).toBe(true);
     expect(after(done, summary)).toBe(true);
   });
 

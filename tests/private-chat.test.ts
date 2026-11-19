@@ -59,7 +59,8 @@ describe("PrivateChat auto-scroll", () => {
           }),
         ),
       );
-      expect(scroll).toHaveBeenCalledWith({ behavior: "smooth", block: "nearest" });
+      // The greeting is read from its top: nothing scrolls until there is a conversation to follow.
+      expect(scroll).not.toHaveBeenCalled();
       const initialScrollCount = scroll.mock.calls.length;
 
       const input = container.querySelector("input")!;
@@ -74,6 +75,7 @@ describe("PrivateChat auto-scroll", () => {
       expect(sendMessageAction).toHaveBeenCalledWith("event-1", "invite-1", "Saturday dinner");
       expect(container.textContent).toContain("What is your budget?");
       expect(scroll.mock.calls.length).toBeGreaterThan(initialScrollCount);
+      expect(scroll).toHaveBeenCalledWith({ behavior: "smooth", block: "nearest" });
 
       await act(async () => root!.unmount());
       root = undefined;

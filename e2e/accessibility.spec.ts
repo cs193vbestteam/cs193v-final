@@ -60,8 +60,9 @@ test("the plan form has visible labels, the plan page is named after the plan, a
   await expect(chat).toBeFocused();
 
   // Where people type, a title opens what is sent, to whom and for how long, with a link to the rest (#111).
-  await expect(chat.getByText(/processed by Anthropic's Claude/)).toBeVisible();
-  await page.getByText("Where your messages go").click();
+  const notice = page.getByText("Processed by Anthropic's Claude. Where your messages go");
+  await expect(notice).toBeVisible();
+  await notice.click();
   await expect(page.getByText(/sent to Anthropic's Claude/)).toBeVisible();
   await expect(page.getByText(/standard retention policy is up to 30 days/)).toBeVisible();
   await expect(page.getByRole("link", { name: /How your data is used/ })).toHaveAttribute("href", "/privacy");

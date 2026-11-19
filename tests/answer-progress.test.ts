@@ -98,7 +98,12 @@ describe("the bar in the chat", () => {
         createElement(PrivateChat, {
           eventId: "event-1",
           inviteCode: "invite-1",
-          initialMessages: [{ role: "assistant", content: "Hi" }],
+          // Past the greeting: the progress and the way to finish come with the first message.
+          initialMessages: [
+            { role: "assistant", content: "Hi" },
+            { role: "user", content: "dinner" },
+            { role: "assistant", content: "Noted." },
+          ],
           initialSummary: [],
           initialMissing: progress.filter((s) => s.required && !s.done).map((s) => s.topic as "time" | "diet"),
           initialProgress: progress,
@@ -164,9 +169,43 @@ describe("the bar in the chat", () => {
     const el = await render(steps([]));
     const notice = el.querySelector("details")!;
     expect(notice.open).toBe(false);
-    expect(notice.querySelector("summary")?.textContent).toBe("Where your messages go");
+    expect(notice.querySelector("summary")?.textContent).toBe(
+      "Processed by Anthropic's Claude. Where your messages go",
+    );
     expect(notice.textContent).toContain("standard retention policy is up to 30 days");
     expect(notice.querySelector("a")?.getAttribute("href")).toBe("/privacy");
+  });
+
+  it("opens on a greeting: the orb, the name, two short lines, and no progress yet", async () => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () =>
+      root!.render(
+        createElement(PrivateChat, {
+          eventId: "event-1",
+          inviteCode: "invite-1",
+          name: "Alex",
+          initialMessages: [{ role: "assistant", content: "This chat is processed by Anthropic's Claude." }],
+          initialSummary: [],
+          initialMissing: ["time", "diet"],
+          initialProgress: steps([]),
+          ready: false,
+        }),
+      ),
+    );
+    const log = container.querySelector('[role="log"]')!;
+    expect(log.querySelector(".orb")).not.toBeNull();
+    expect(log.textContent).toContain("Hello, Alex");
+    expect(log.textContent).toContain("I can help with your plan today.");
+    expect(log.textContent).toContain("Nobody else in the group sees this chat or your numbers.");
+    // Who processes the chat is named under the message box before anything is typed.
+    expect(container.querySelector("details summary")?.textContent).toContain("Processed by Anthropic's Claude");
+    expect(container.querySelector("ol[aria-labelledby='answers-label']")).toBeNull();
+    expect([...container.querySelectorAll("button")].some((b) => b.textContent === "I'm done")).toBe(false);
+    // The ready-made answers and the data notice are there from the start.
+    expect(quickAnswers(container)).toHaveLength(5);
+    expect(container.querySelector("details")).not.toBeNull();
   });
 
   it("is put away once the person is done", async () => {
