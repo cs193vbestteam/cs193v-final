@@ -239,7 +239,10 @@ export function PrivateChat({
             </div>
           ) : (
             messages.map((m, i) => (
-              <div key={i} className={`bubble-in flex gap-2.5 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div
+                key={i}
+                className={`bubble-in flex items-end gap-2.5 ${m.role === "user" ? "justify-end" : "justify-start"}`}
+              >
                 {/* The assistant's mark, on the first of its messages in a row. */}
                 {m.role === "assistant" && (
                   <span
@@ -253,8 +256,8 @@ export function PrivateChat({
                 <p
                   className={`whitespace-pre-wrap text-[0.9375rem] leading-relaxed ${
                     m.role === "user"
-                      ? "bubble-mine max-w-[80%] rounded-[1.25rem] rounded-br-md bg-ink px-4 py-2.5 text-paper"
-                      : "bubble-theirs max-w-[88%] text-ink"
+                      ? "bubble-mine max-w-[80%] rounded-[1.25rem] rounded-br-md px-4 py-2.5 text-ink"
+                      : "bubble-theirs max-w-[85%] rounded-[1.25rem] rounded-bl-md px-4 py-2.5 text-ink"
                   }`}
                 >
                   {m.role === "assistant" && i >= loadedWith ? <Written text={m.content} /> : m.content}
@@ -300,7 +303,7 @@ export function PrivateChat({
         )}
       </div>
 
-      <div className="border-t border-line px-4 py-3">
+      <div className="composer border-t border-line px-4 py-3">
         <form onSubmit={send} className="prompt-bar" data-busy={pending || undefined}>
           <input
             ref={input}
