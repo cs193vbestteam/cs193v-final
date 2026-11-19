@@ -34,7 +34,7 @@ async function signUp(browser: Browser, who: Person, next = "/"): Promise<Page> 
 test("the creator sets the size, makes room, removes someone and replaces the link", async ({ browser }) => {
   const creator = await signUp(browser, person("Faye"));
   await creator.getByLabel("Plan name").fill("Small table");
-  await creator.getByLabel("Maximum group size").selectOption("2");
+  await creator.getByLabel("Maximum group size").fill("2");
   await creator.getByRole("button", { name: "Start a plan" }).click();
   await expect(creator.getByRole("heading", { name: "Small table" })).toBeVisible();
   const planPath = new URL(creator.url()).pathname;
