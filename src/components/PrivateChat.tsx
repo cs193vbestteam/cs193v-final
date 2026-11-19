@@ -262,7 +262,7 @@ export function PrivateChat({
                 <p
                   className={`whitespace-pre-wrap text-[0.9375rem] leading-relaxed ${
                     m.role === "user"
-                      ? "bubble-mine liquid max-w-[80%] rounded-[1.25rem] rounded-br-md px-4 py-2.5 text-ink"
+                      ? "bubble-mine liquid max-w-[80%] rounded-[1.25rem] rounded-br-md px-4 py-2.5"
                       : "bubble-theirs liquid max-w-[85%] rounded-[1.25rem] rounded-bl-md px-4 py-2.5 text-ink"
                   }`}
                 >
