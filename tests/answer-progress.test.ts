@@ -100,12 +100,12 @@ describe("the bar in the chat", () => {
 
   it("says the rest is optional once the needed two are in, and stops saying so when all five are", async () => {
     const some = await render(steps(["time", "diet"]));
-    expect(some.textContent).toContain("All set ✓ The rest is optional");
+    expect(some.textContent).toContain("All set ✓ I'm fine with anything else");
     await act(async () => root!.unmount());
     some.remove();
     const all = await render(steps(["time", "budget", "travel", "diet", "cuisine"]));
     expect(all.textContent).toContain("5 of 5 answered");
-    expect(all.textContent).not.toContain("optional");
+    expect(all.textContent).not.toContain("anything else");
   });
 
   const quickAnswers = (el: HTMLElement) =>

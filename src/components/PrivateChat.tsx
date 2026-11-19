@@ -251,7 +251,7 @@ export function PrivateChat({
               {missing.length
                 ? `Still needs: ${missing.map((m) => MISSING_LABEL[m]).join(", ")}`
                 : answered < progress.length
-                  ? "All set ✓ The rest is optional"
+                  ? "All set ✓ I'm fine with anything else"
                   : "All set ✓"}
             </span>
           )}
