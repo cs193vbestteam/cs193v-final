@@ -291,55 +291,129 @@ summary:focus-visible {
   background: var(--color-ink);
   color: var(--color-paper);
 }
+/* The size: a number on two rolling tiles, a button either side, and a thin slider that swells when used. */
+.size-step {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--color-line-control);
+  border-radius: 999px;
+  color: var(--color-ink);
+  transition:
+    transform 0.3s var(--ease-out-expo),
+    background-color 0.25s ease,
+    border-color 0.25s ease;
+}
+.size-step path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.size-step:hover:not(:disabled) {
+  border-color: var(--color-ink);
+  background: var(--color-surface);
+  transform: translateY(-1px);
+}
+.size-step:active:not(:disabled) {
+  transform: scale(0.9);
+}
+.size-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.odometer {
+  display: inline-flex;
+  gap: 0.25rem;
+}
+.odometer-tile {
+  position: relative;
+  width: 2.1rem;
+  height: 2.9rem;
+  overflow: hidden;
+  border-radius: 0.6rem;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-serif);
+  font-size: 1.9rem;
+  line-height: 2.9rem;
+  text-align: center;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.1) inset,
+    0 10px 18px -12px rgb(22 20 15 / 0.8);
+}
+/* A soft shade top and bottom, so a digit seems to roll round a drum. */
+.odometer-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgb(22 20 15 / 0.75), transparent 28%, transparent 72%, rgb(22 20 15 / 0.75));
+  pointer-events: none;
+}
+.odometer-reel {
+  display: block;
+  transform: translateY(calc(var(--digit) * -2.9rem));
+  transition: transform 0.55s var(--ease-out-expo);
+}
+.odometer-reel > span {
+  display: block;
+  height: 2.9rem;
+}
 .size-range {
-  width: 100%;
   height: 1.75rem;
   appearance: none;
   background: transparent;
   cursor: pointer;
 }
 .size-range::-webkit-slider-runnable-track {
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
   background: linear-gradient(to right, var(--color-ink) var(--fill), var(--color-line-strong) var(--fill));
+  transition: height 0.3s var(--ease-out-expo);
+}
+.size-range:hover::-webkit-slider-runnable-track,
+.size-range:focus-visible::-webkit-slider-runnable-track {
+  height: 10px;
 }
 .size-range::-moz-range-track {
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
   background: var(--color-line-strong);
 }
 .size-range::-moz-range-progress {
-  height: 6px;
+  height: 4px;
   border-radius: 999px;
   background: var(--color-ink);
 }
 .size-range::-webkit-slider-thumb {
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-top: calc(3px - 0.75rem);
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: calc(2px - 0.5625rem);
   appearance: none;
-  border: 2px solid var(--color-ink);
   border-radius: 999px;
-  background: var(--color-surface);
-  box-shadow: 0 6px 14px -8px rgb(22 20 15 / 0.7);
-  transition: transform 0.3s var(--ease-out-expo);
+  background: var(--color-ink);
+  box-shadow: 0 0 0 3px var(--color-surface);
+  transition:
+    transform 0.3s var(--ease-out-expo),
+    margin-top 0.3s var(--ease-out-expo);
+}
+.size-range:hover::-webkit-slider-thumb,
+.size-range:focus-visible::-webkit-slider-thumb {
+  margin-top: calc(5px - 0.5625rem);
+  transform: scale(1.15);
 }
 .size-range::-moz-range-thumb {
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 2px solid var(--color-ink);
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 3px solid var(--color-surface);
   border-radius: 999px;
-  background: var(--color-surface);
-}
-.size-range:hover::-webkit-slider-thumb {
-  transform: scale(1.12);
-}
-.size-range:active::-webkit-slider-thumb {
-  transform: scale(1.25, 0.9);
+  background: var(--color-ink);
 }
 .size-range:focus-visible {
   outline: 2px solid var(--color-ink);
-  outline-offset: 2px;
+  outline-offset: 4px;
   border-radius: 999px;
 }
 @keyframes size-roll {
@@ -356,54 +430,96 @@ summary:focus-visible {
   display: inline-block;
   animation: size-roll 0.35s var(--ease-out-expo);
 }
-.size-seat {
-  height: 0.5rem;
-  flex: 1;
-  border: 1px solid var(--color-line-control);
-  border-radius: 999px;
-  transition:
-    background-color 0.25s ease,
-    border-color 0.25s ease,
-    transform 0.35s var(--ease-out-expo);
-}
-.size-seat[data-on] {
-  border-color: var(--color-ink);
-  background: var(--color-ink);
-}
+
+/* The plan as a ticket: the plan on the left, a perforated stub on the right. */
 .plan-ticket {
-  position: relative;
-  overflow: hidden;
-  border-radius: 1.1rem;
-  background: var(--color-ink);
-  padding: 1.25rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6.25rem;
+  rotate: -2deg;
   color: var(--color-paper);
-  box-shadow: var(--shadow-lift);
-  rotate: 1.2deg;
-  transition: rotate 0.5s var(--ease-out-expo);
+  filter: drop-shadow(0 22px 22px rgb(22 20 15 / 0.28));
+  transition:
+    rotate 0.6s var(--ease-out-expo),
+    transform 0.5s var(--ease-out-expo);
 }
 form:focus-within .plan-ticket {
   rotate: 0deg;
 }
-.plan-ticket-tear {
-  position: relative;
-  margin: 1rem -1.25rem;
-  border-top: 1px dashed rgb(243 238 228 / 0.4);
+.plan-ticket-main,
+.plan-ticket-stub {
+  background: var(--color-ink);
+  background-image: radial-gradient(120% 90% at 0% 0%, rgb(255 255 255 / 0.09), transparent 60%);
 }
-.plan-ticket-tear::before,
-.plan-ticket-tear::after {
+.plan-ticket-main {
+  min-height: 11rem;
+  padding: 1.15rem 1.1rem 1.1rem 1.25rem;
+  border-radius: 1rem 0.5rem 0.5rem 1rem;
+}
+/* The stub is its own piece: the two round corners where they meet are the notches, and the dots are the perforation. */
+.plan-ticket-stub {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 0.5rem;
+  border-radius: 0.5rem 1rem 1rem 0.5rem;
+  text-align: center;
+}
+.plan-ticket-stub::before {
   content: "";
   position: absolute;
-  top: -0.5rem;
-  width: 1rem;
-  height: 1rem;
-  border-radius: 999px;
-  background: var(--color-surface);
+  top: 0.75rem;
+  bottom: 0.75rem;
+  left: -1px;
+  border-left: 2px dotted rgb(243 238 228 / 0.45);
 }
-.plan-ticket-tear::before {
-  left: -0.5rem;
+.plan-ticket-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgb(243 238 228 / 0.7);
 }
-.plan-ticket-tear::after {
-  right: -0.5rem;
+.plan-ticket-title {
+  margin-top: 0.6rem;
+  overflow-wrap: anywhere;
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+.plan-ticket-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.1rem;
+  font-size: 0.875rem;
+}
+.plan-ticket-facts dt {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgb(243 238 228 / 0.7);
+}
+.plan-ticket-facts dd {
+  margin-top: 0.15rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-ticket-count {
+  font-family: var(--font-serif);
+  font-size: 2.6rem;
+  line-height: 1.05;
+  color: var(--color-seal-bright);
+}
+.plan-ticket-code {
+  margin-top: 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  color: rgb(243 238 228 / 0.7);
 }
 
 /* Status pills (mono) */
@@ -1443,10 +1559,15 @@ form:focus-within .plan-ticket {
     animation: none;
   }
   .pick,
-  .size-seat,
+  .size-step,
+  .odometer-reel,
   .plan-ticket,
-  .size-range::-webkit-slider-thumb {
+  .size-range::-webkit-slider-thumb,
+  .size-range::-webkit-slider-runnable-track {
     transition: none;
+  }
+  .plan-ticket {
+    rotate: none;
   }
   .demo-result,
   .demo-seal {
