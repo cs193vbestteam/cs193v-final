@@ -67,7 +67,10 @@ describe('D. highlighting "I\'m done"', () => {
 
   it("stays plain while essentials are missing, even if the message mentions it", async () => {
     const button = await render({
-      messages: [{ role: "assistant", content: ASKS_TO_FINISH }],
+      messages: [
+        { role: "user", content: "dinner" },
+        { role: "assistant", content: ASKS_TO_FINISH },
+      ],
       missing: ["budget"],
       ready: false,
     });
