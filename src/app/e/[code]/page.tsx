@@ -5,6 +5,7 @@ import { AutoRefresh, CopyInvite, NegotiateButton, ShareMessage } from "@/compon
 import { CreatorControls } from "@/components/CreatorControls";
 import { PlanCode } from "@/components/CodeSlots";
 import { DecryptedText } from "@/components/Effects";
+import { NotifyToggle, PlanReadyWatcher } from "@/components/NotifyToggle";
 import { PrivateChat } from "@/components/PrivateChat";
 import { ResultCard } from "@/components/ResultCard";
 import { joinEventAction } from "@/app/actions";
@@ -178,6 +179,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
   return (
     <div className="mt-6 sm:mt-10">
       <AutoRefresh />
+      <PlanReadyWatcher eventId={event.id} title={event.title} ready={!!result} />
       <div className="rise flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-line pb-5">
         <div className="min-w-0">
           <p className="eyebrow">
@@ -321,6 +323,9 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
               <p className="mt-3 rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
                 No plan yet. As soon as everyone&apos;s done, the plan is worked out. Nobody has to press anything.
               </p>
+              <div className="mt-4 text-center">
+                <NotifyToggle eventId={event.id} />
+              </div>
               <div className="mt-4">{planActions}</div>
             </section>
           )}
