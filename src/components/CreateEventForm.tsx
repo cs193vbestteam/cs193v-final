@@ -2,15 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { createEventAction } from "@/app/actions";
-import { addDays, formatPlanDate } from "@/lib/plan-date";
-
-/** Names to start from. A press fills the field; it can still be edited. */
-const NAME_IDEAS = ["Saturday dinner", "Birthday lunch", "Team dinner", "Sunday brunch"];
-/** How many days are offered as one-press choices. Later dates use the date field. */
-const DAY_CHOICES = 7;
-
-const dayLabel = (date: string, i: number) =>
-  i === 0 ? "Today" : i === 1 ? "Tomorrow" : formatPlanDate(date).replace(/^(\w+), \w+ (\d+)$/, "$1 $2");
+import { formatPlanDate } from "@/lib/plan-date";
 
 /** `minDate` and `maxDate` (YYYY-MM-DD) come from the server, which checks the date again on submit. */
 export function CreateEventForm({
@@ -36,7 +28,6 @@ export function CreateEventForm({
   const [date, setDate] = useState(minDate);
   const [size, setSize] = useState(defaultSize);
 
-  const days = Array.from({ length: DAY_CHOICES }, (_, i) => addDays(minDate, i)).filter((d) => d <= maxDate);
   const smallest = sizes[0];
   const largest = sizes[sizes.length - 1];
   const real = realPlaces && location.trim().length > 0;
@@ -60,48 +51,23 @@ export function CreateEventForm({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />
-          <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Name ideas">
-            {NAME_IDEAS.map((idea) => (
-              <button key={idea} type="button" className="pick" onClick={() => setTitle(idea)}>
-                {idea}
-              </button>
-            ))}
-          </div>
         </div>
 
         <div>
-          <span id="plan-day-label" className="label">
-            When
-          </span>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby="plan-day-label">
-            {days.map((d, i) => (
-              <button
-                key={d}
-                type="button"
-                className="pick pick-day"
-                aria-pressed={d === date}
-                onClick={() => setDate(d)}
-              >
-                {dayLabel(d, i)}
-              </button>
-            ))}
-          </div>
-          <div className="mt-2.5 flex items-center gap-3">
-            <label htmlFor="plan-date" className="label !mb-0 shrink-0">
-              Date
-            </label>
-            <input
-              id="plan-date"
-              className="input sm:w-[11rem]"
-              type="date"
-              name="date"
-              required
-              min={minDate}
-              max={maxDate}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
+          <label htmlFor="plan-date" className="label">
+            Date
+          </label>
+          <input
+            id="plan-date"
+            className="input sm:w-[11rem]"
+            type="date"
+            name="date"
+            required
+            min={minDate}
+            max={maxDate}
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
         </div>
 
         <div>
