@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PlanDangerZone } from "@/components/DangerActions";
 import { AutoRefresh, CopyInvite, NegotiateButton, ShareMessage } from "@/components/GroupActions";
 import { CreatorControls } from "@/components/CreatorControls";
+import { PlanCode } from "@/components/CodeSlots";
 import { DecryptedText } from "@/components/Effects";
 import { PrivateChat } from "@/components/PrivateChat";
 import { ResultCard } from "@/components/ResultCard";
@@ -270,6 +271,18 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             </ul>
             <div className="mt-4">
               <CopyInvite url={planUrl} />
+            </div>
+            <div className="mt-3 text-center">
+              <p className="eyebrow">Plan code</p>
+              <div className="mt-2">
+                <PlanCode code={code} />
+              </div>
+              <p className="mt-2 text-xs text-ink-3">
+                Friends can join with this code and a name, no account needed, at{" "}
+                <a className="link link-small" href={`/guest?code=${code}`}>
+                  {origin.replace(/^https?:\/\//, "")}/guest
+                </a>
+              </p>
             </div>
             {nudge && (
               <div className="mt-2">

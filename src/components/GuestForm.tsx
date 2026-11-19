@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { guestAction, type FormState } from "@/app/actions";
+import { CodeSlots } from "./CodeSlots";
 
 /** Joining with a plan code and a name, no account (#160). */
 export function GuestForm({ code }: { code: string }) {
@@ -34,18 +35,13 @@ export function GuestForm({ code }: { code: string }) {
             <label className="label" htmlFor="code">
               Plan code
             </label>
-            <input
-              className="input font-mono uppercase tracking-widest"
+            <CodeSlots
               id="code"
               name="code"
-              required
               value={typedCode}
-              onChange={(e) => setTypedCode(e.target.value)}
-              maxLength={200}
-              autoComplete="off"
-              autoCapitalize="characters"
-              spellCheck={false}
-              aria-describedby="code-hint"
+              onChange={setTypedCode}
+              invalid={!!state.error && /code/i.test(state.error)}
+              describedBy="code-hint"
             />
             <p id="code-hint" className="mt-1.5 text-xs text-ink-3">
               The letters and numbers at the end of the invite link. You can paste the whole link.
