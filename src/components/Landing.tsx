@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CountUp, DotGrid } from "./Effects";
 import { HeroDemo } from "./HeroDemo";
 import { Reveal } from "./Reveal";
 
@@ -36,11 +37,15 @@ const STEPS = [
     body: "Once everyone is done, a program scores every place and start time against what each person said. No AI picks the plan, and nobody's answers are shown to anyone.",
     demo: (
       <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
-        <span className="rounded-md border border-line-strong bg-paper-2 px-2 py-1 text-ink-2">60 places</span>
+        <span className="rounded-md border border-line-strong bg-paper-2 px-2 py-1 text-ink-2">
+          <CountUp to={60} /> places
+        </span>
         <span aria-hidden className="text-ink-3">
           ×
         </span>
-        <span className="rounded-md border border-line-strong bg-paper-2 px-2 py-1 text-ink-2">14 start times</span>
+        <span className="rounded-md border border-line-strong bg-paper-2 px-2 py-1 text-ink-2">
+          <CountUp to={14} /> start times
+        </span>
         <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">
           every open option scored
         </span>
@@ -86,6 +91,7 @@ const KEPT_SAFE = [
 ];
 
 const d = (s: number) => ({ "--d": `${s}s` }) as React.CSSProperties;
+const w = (i: number) => ({ "--i": i }) as React.CSSProperties;
 
 export function Landing() {
   return (
@@ -101,8 +107,13 @@ export function Landing() {
           <p className="eyebrow">Group decisions · private constraints</p>
           <p className="eyebrow hidden sm:block">First edition · dinner</p>
         </div>
-        <h1 className="display hero-title rise mt-5" style={d(0.08)}>
-          Group plans, <em>without</em> the <span className="strike-draw">group chat</span>.
+        {/* Each word comes into focus in turn. The words themselves are plain text, in order. */}
+        <h1 className="display hero-title blur-words mt-5">
+          <span style={w(0)}>Group</span> <span style={w(1)}>plans,</span> <em style={w(2)}>without</em>{" "}
+          <span style={w(3)}>the</span>{" "}
+          <span style={w(4)}>
+            <span className="strike-draw">group chat</span>.
+          </span>
         </h1>
 
         <div className="mt-10 grid gap-12 lg:mt-14 lg:grid-cols-12 lg:gap-8">
@@ -113,7 +124,7 @@ export function Landing() {
               through it.
             </p>
             <div className="rise mt-8 flex flex-wrap items-center gap-3" style={d(0.3)}>
-              <Link href="/signup" className="btn btn-lg">
+              <Link href="/signup" className="btn btn-lg" data-magnet>
                 Start a plan
                 <Arrow />
               </Link>
@@ -138,7 +149,9 @@ export function Landing() {
             </dl>
           </div>
           <div className="rise lg:col-span-6 lg:col-start-7" style={d(0.35)}>
-            <HeroDemo />
+            <div data-tilt>
+              <HeroDemo />
+            </div>
           </div>
         </div>
       </section>
@@ -155,6 +168,7 @@ export function Landing() {
 
       {/* Why it happens: the one dark page in the book. */}
       <Reveal as="section" className="inked mt-24 sm:mt-32">
+        <DotGrid />
         <div className="grid gap-10 lg:grid-cols-12">
           <p className="eyebrow !text-paper/65 lg:col-span-3">The problem</p>
           <p className="font-serif text-[clamp(1.75rem,3.4vw,2.75rem)] leading-[1.14] tracking-[-0.01em] lg:col-span-9">

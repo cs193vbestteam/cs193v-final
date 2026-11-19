@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PlanDangerZone } from "@/components/DangerActions";
 import { AutoRefresh, CopyInvite, NegotiateButton, ShareMessage } from "@/components/GroupActions";
 import { CreatorControls } from "@/components/CreatorControls";
+import { DecryptedText } from "@/components/Effects";
 import { PrivateChat } from "@/components/PrivateChat";
 import { ResultCard } from "@/components/ResultCard";
 import { joinEventAction } from "@/app/actions";
@@ -179,7 +180,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       <div className="rise flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-line pb-5">
         <div className="min-w-0">
           <p className="eyebrow">
-            Plan · {code}
+            Plan · <DecryptedText text={code} />
             {event.date ? ` · ${formatPlanDate(event.date)}` : ""}
             {event.location ? ` · near ${event.location}` : ""}
             {/* Real places arrive in two batches: a first search, then the rest once everyone is done.
@@ -211,7 +212,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         <section
           id="plan"
           aria-labelledby="plan-heading"
-          className="card rise mt-6 scroll-mt-24"
+          className="card rise sealed-trace mt-6 scroll-mt-24"
           style={{ "--d": "0.06s" } as React.CSSProperties}
         >
           <h2 id="plan-heading" className="font-serif text-2xl">
