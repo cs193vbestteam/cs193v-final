@@ -19,6 +19,33 @@ export type OptionTile = {
 };
 
 /**
+ * The flag of the country a cuisine is named after, to scan the list by (#161). Only where the
+ * cuisine names one country: "Mediterranean" or "restaurant" gets no flag rather than a wrong one.
+ */
+const FLAGS: [RegExp, string][] = [
+  [/\bmexican\b/, "🇲🇽"],
+  [/\bitalian\b/, "🇮🇹"],
+  [/\bjapanese\b/, "🇯🇵"],
+  [/\bkorean\b/, "🇰🇷"],
+  [/\bchinese\b/, "🇨🇳"],
+  [/\bthai\b/, "🇹🇭"],
+  [/\bvietnamese\b/, "🇻🇳"],
+  [/\bindian\b/, "🇮🇳"],
+  [/\bamerican\b/, "🇺🇸"],
+  [/\bfrench\b/, "🇫🇷"],
+  [/\bgreek\b/, "🇬🇷"],
+  [/\bspanish\b/, "🇪🇸"],
+  [/\bturkish\b/, "🇹🇷"],
+  [/\blebanese\b/, "🇱🇧"],
+  [/\bbrazilian\b/, "🇧🇷"],
+  [/\bindonesian\b/, "🇮🇩"],
+];
+function flagFor(kind: string): string | null {
+  const words = kind.toLowerCase();
+  return FLAGS.find(([pattern]) => pattern.test(words))?.[1] ?? null;
+}
+
+/**
  * The plan as a pop-out: a button on the page, and a window listing every option on the shortlist,
  * one tile each, best fit for the group at the top. The window is a native <dialog>, so Escape and
  * the backdrop close it and the page behind it cannot be clicked while it is open.
@@ -74,43 +101,57 @@ export function PlanOptions({
                 className={`rounded-xl border p-4 ${i === 0 ? "border-moss/30 bg-moss-soft" : "border-line"} rise`}
                 style={{ "--d": `${i * 0.06}s` } as React.CSSProperties}
               >
-                <div className="flex items-baseline justify-between gap-3">
-                  <div className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
-                    {i === 0 ? "1 · Best fit" : `${i + 1}`}
-                  </div>
-                  {t.everyoneIn === true && (
-                    <div className="font-mono text-[0.75rem] uppercase tracking-wider text-moss">
-                      Everyone&apos;s in
+                <div className="flex items-start gap-3.5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <div className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
+                        {i === 0 ? "1 · Best fit" : `${i + 1}`}
+                      </div>
+                      {t.everyoneIn === true && (
+                        <div className="font-mono text-[0.75rem] uppercase tracking-wider text-moss">
+                          Everyone&apos;s in
+                        </div>
+                      )}
+                      {t.everyoneIn === false && (
+                        <div className="font-mono text-[0.75rem] uppercase tracking-wider text-amber-ink">
+                          A stretch for some
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {t.everyoneIn === false && (
-                    <div className="font-mono text-[0.75rem] uppercase tracking-wider text-amber-ink">
-                      A stretch for some
-                    </div>
-                  )}
-                </div>
-                <div className="mt-1 font-serif text-xl leading-tight">{t.name}</div>
-                <div className="mt-1 text-sm text-ink-2">
-                  {t.when} · ~${t.pricePerPerson}/person
-                  {t.travelMin !== undefined ? ` · ${t.travelMin} min away` : ""} · {t.cuisine}
-                </div>
-                {t.rating !== undefined && (
-                  <div className="mt-1 text-sm text-ink-2">
-                    {t.rating.toFixed(1)} on Google
-                    {t.ratingCount ? ` (${t.ratingCount.toLocaleString("en-US")} reviews)` : ""}
+                    <div className="mt-0.5 font-serif text-2xl leading-tight">{t.name}</div>
+                    {/* One fact to a chip, so the eye can run down a column of times or of costs. */}
+                    <ul className="mt-2 flex flex-wrap gap-1.5">
+                      <li className="option-fact">{t.when.split(" · ").pop()}</li>
+                      <li className="option-fact">~${t.pricePerPerson}/person</li>
+                      {t.travelMin !== undefined && <li className="option-fact">{t.travelMin} min away</li>}
+                      <li className="option-fact">
+                        {flagFor(t.cuisine) && (
+                          <span aria-hidden className="mr-1">
+                            {flagFor(t.cuisine)}
+                          </span>
+                        )}
+                        {t.cuisine}
+                      </li>
+                      {t.rating !== undefined && (
+                        <li className="option-fact">
+                          ★ {t.rating.toFixed(1)}
+                          {t.ratingCount ? ` (${t.ratingCount.toLocaleString("en-US")})` : ""}
+                          <span className="sr-only"> on Google</span>
+                        </li>
+                      )}
+                    </ul>
+                    {(t.address || (t.mapsUrl && /^https:\/\//.test(t.mapsUrl))) && (
+                      <div className="mt-2 flex flex-wrap items-baseline gap-x-3 text-sm text-ink-2">
+                        {t.address && <span>{t.address}</span>}
+                        {t.mapsUrl && /^https:\/\//.test(t.mapsUrl) && (
+                          <a href={t.mapsUrl} target="_blank" rel="noopener noreferrer" className="py-1 underline">
+                            Open in Google Maps
+                          </a>
+                        )}
+                      </div>
+                    )}
                   </div>
-                )}
-                {t.address && <div className="mt-1 text-sm text-ink-2">{t.address}</div>}
-                {t.mapsUrl && /^https:\/\//.test(t.mapsUrl) && (
-                  <a
-                    href={t.mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-block py-1 text-sm underline"
-                  >
-                    Open in Google Maps
-                  </a>
-                )}
+                </div>
                 {i === 0 && sentence && <p className="mt-2 text-sm italic text-ink-2">{sentence}</p>}
               </li>
             ))}

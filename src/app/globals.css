@@ -1293,6 +1293,32 @@ form:focus-within .plan-ticket {
   font-weight: 500;
   animation: slot-land 0.4s var(--ease-out-expo) both;
 }
+/* An option on the shortlist: one fact to a chip. */
+.option-fact {
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8125rem;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+.code-copy {
+  display: block;
+  /* The slots share whatever width they are given, so the button has to be given one. */
+  width: min(100%, 18rem);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: transform 0.3s var(--ease-out-expo);
+}
+.code-copy:hover {
+  transform: translateY(-1px);
+}
+.code-copy:hover .code-slot {
+  border-color: var(--color-ink);
+}
+.code-copy:active {
+  transform: scale(0.98);
+}
 .code-slots-shown .code-slot b {
   animation-delay: calc(0.3s + var(--i) * 0.07s);
 }
@@ -1659,6 +1685,56 @@ form:focus-within .plan-ticket {
 }
 
 /* The data notice under the message box: a title that opens. */
+/* Under the chat's title: the step the person is on, and where their words go. */
+.chat-guide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  border-bottom: 1px solid var(--color-line);
+  background: color-mix(in srgb, var(--color-paper-2) 40%, transparent);
+  padding: 0.5rem 1.25rem;
+}
+.chat-step {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--color-ink);
+}
+.chat-step-n {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-3);
+}
+.chat-step-dots {
+  display: flex;
+  flex: none;
+  gap: 0.2rem;
+}
+.chat-step-dots i {
+  width: 1.1rem;
+  height: 0.25rem;
+  border-radius: 999px;
+  background: var(--color-line-strong);
+  transition: background-color 0.4s ease;
+}
+.chat-step-dots[data-step="1"] i:nth-child(-n + 1),
+.chat-step-dots[data-step="2"] i:nth-child(-n + 2),
+.chat-step-dots[data-step="3"] i {
+  background: var(--color-ink);
+}
+.chat-guide .notice[open] {
+  flex-basis: 100%;
+}
+.chat-guide .notice > summary {
+  color: var(--color-ink-2);
+}
 .notice > summary {
   display: inline-flex;
   min-height: 1.5rem;
