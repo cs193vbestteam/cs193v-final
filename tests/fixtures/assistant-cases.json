@@ -260,29 +260,27 @@
     {
       "id": "diet-mix-01",
       "about": "allergy becomes a note",
-      "note": "Vegetarian can be checked; spicy cannot and becomes a note; seafood becomes a kind of place to leave out.",
+      "note": "A diet that can be checked, a food ruled out, and spicy food to lean away from, in one message.",
       "turns": [
         {
           "user": "I'm vegetarian, and I can't do spicy food or seafood",
           "model": {
-            "reply": "Vegetarian, and no seafood places. I've noted no spicy food for you, but I can't check restaurants for that. What time works for you?",
+            "reply": "Got it. When can you make it?",
             "onTopic": true,
             "asks": "time",
             "update": {
               "dietary": [
                 "vegetarian"
               ],
-              "notes": [
-                {
-                  "type": "other",
-                  "text": "no spicy food"
-                }
-              ],
               "cuisine": {
                 "excluded": [
                   "seafood"
+                ],
+                "avoided": [
+                  "spicy"
                 ]
-              }
+              },
+              "saidWhatTheyCannotEat": true
             }
           }
         }
@@ -294,12 +292,12 @@
         "prefs.cuisine.excluded": [
           "seafood_restaurant"
         ],
-        "prefs.notes": {
-          "$includes": "spicy"
-        },
         "chat.answered": [
           "diet"
-        ]
+        ],
+        "prefs.cuisine.avoided": {
+          "$includes": "thai_restaurant"
+        }
       }
     },
     {

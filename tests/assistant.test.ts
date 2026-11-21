@@ -1129,6 +1129,34 @@ describe("an update the model wrapped in a string", () => {
     }
   });
 
+  it("uses what the model recorded beside `update` instead of inside it", async () => {
+    stubModel(() => ({
+      reply: "Got it.",
+      asks: "none",
+      budget: { max: 40, strength: "must" },
+      dietary: ["vegetarian"],
+    }));
+    const turn = await assistantTurn(
+      [{ role: "user", content: "40 max, vegetarian" }],
+      emptyMemberState(),
+      RESTAURANTS,
+    );
+    expect(turn.source).toBe("llm");
+    expect(turn.state.prefs.budget).toEqual({ max: 40, strength: "must" });
+    expect(turn.state.prefs.dietary).toEqual(["vegetarian"]);
+  });
+
+  it("a block inside `update` wins over the same block beside it", async () => {
+    stubModel(() => ({
+      reply: "Got it.",
+      asks: "none",
+      budget: { max: 99, strength: "must" },
+      update: { budget: { max: 40, strength: "must" } },
+    }));
+    const turn = await assistantTurn([{ role: "user", content: "40 max" }], emptyMemberState(), RESTAURANTS);
+    expect(turn.state.prefs.budget?.max).toBe(40);
+  });
+
   it("still falls back when the string is not JSON", async () => {
     stubModel(() => ({ reply: "Noted.", asks: "none", update: "budget is 40" }));
     const turn = await assistantTurn([{ role: "user", content: "40 max" }], emptyMemberState(), RESTAURANTS);
