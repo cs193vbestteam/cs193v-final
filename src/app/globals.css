@@ -496,6 +496,293 @@ form:focus-within .plan-ticket {
   color: rgb(243 238 228 / 0.7);
 }
 
+/* A plan in the list of your plans: the same ticket, lying flat. Paper while people are still
+   answering, ink once the plan is decided. */
+.plan-stub {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 8.5rem;
+  overflow: hidden;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  transition:
+    transform 0.5s var(--ease-out-expo),
+    box-shadow 0.5s var(--ease-out-expo);
+}
+.plan-stub:hover {
+  transform: translateY(-3px) rotate(-0.6deg);
+  box-shadow: var(--shadow-lift);
+}
+.plan-stub-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 1rem 1.1rem;
+}
+.plan-stub-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+.plan-stub-title {
+  margin-top: 0.5rem;
+  overflow-wrap: anywhere;
+  font-family: var(--font-serif);
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+.plan-stub-where {
+  margin-top: auto;
+  padding-top: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: var(--color-ink-2);
+}
+.plan-stub-end {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-left: 2px dotted var(--color-line-control);
+  padding: 1rem;
+}
+.plan-stub-go {
+  font-size: 1.25rem;
+  color: var(--color-ink-3);
+  transition: transform 0.5s var(--ease-out-expo);
+}
+.plan-stub:hover .plan-stub-go {
+  transform: translateX(4px);
+}
+.plan-stub[data-decided] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  background-image: radial-gradient(120% 90% at 0% 0%, rgb(255 255 255 / 0.09), transparent 60%);
+  color: var(--color-paper);
+}
+.plan-stub[data-decided] .plan-stub-eyebrow,
+.plan-stub[data-decided] .plan-stub-where,
+.plan-stub[data-decided] .plan-stub-go {
+  color: rgb(243 238 228 / 0.7);
+}
+.plan-stub[data-decided] .plan-stub-end {
+  border-left-color: rgb(243 238 228 / 0.45);
+}
+
+/* The decided plan: the one dark block on the page. Inside it the colour tokens are turned over,
+   so the same buttons, text and rules read light on ink without a second set of classes. */
+.plan-hero {
+  border: 1px solid var(--color-line-strong);
+  border-radius: 1.75rem;
+  background: var(--color-surface);
+  padding: 1.5rem 1.25rem 1.25rem;
+  color: var(--color-ink);
+  box-shadow: var(--shadow-lift);
+}
+.plan-hero[data-tone="ink"] {
+  /* The colours are the ones Apple shows for its iPhone finishes (apple.com, read 2026-11-20):
+     Space Black #000000 and Black #242424 for the sheet, Light Gold #faf2e3 and #fffcf2 for
+     everything on it. Their gold is nearly ivory, and it is used flat, with no gradient. */
+  --gold: #faf2e3;
+  --color-paper: #000000;
+  --color-paper-2: #2e2e2e;
+  --color-surface: #242424;
+  --color-ink: #fffcf2;
+  --color-ink-2: rgb(255 252 242 / 0.8);
+  --color-ink-3: rgb(255 252 242 / 0.62);
+  --color-line: rgb(250 242 227 / 0.18);
+  --color-line-strong: rgb(250 242 227 / 0.38);
+  --color-line-control: rgb(250 242 227 / 0.58);
+  --color-moss: var(--gold);
+  --color-amber: #e0a23e;
+  --color-amber-ink: #e8b06a;
+  --color-seal-ink: #f08a66;
+  border-color: rgb(250 242 227 / 0.3);
+  background: linear-gradient(165deg, #242424 0%, #000000 60%);
+}
+.plan-hero[data-tone="ink"] .plan-hero-facts dt,
+.plan-hero[data-tone="ink"] .plan-hero-label {
+  color: rgb(250 242 227 / 0.72);
+}
+/* The one filled button is the one solid piece of gold. */
+.plan-hero[data-tone="ink"] .btn {
+  border-color: var(--gold);
+  background: var(--gold);
+  box-shadow: none;
+  color: #000000;
+}
+.plan-hero[data-tone="ink"].sealed-trace::after {
+  background: conic-gradient(from var(--trace), transparent 0 78%, var(--gold) 92%, transparent 100%);
+}
+/* The pop-out with every option is a paper window again, whatever it was opened from. */
+.plan-hero[data-tone="ink"] dialog {
+  --color-paper: #f3eee4;
+  --color-paper-2: #e9e2d3;
+  --color-surface: #fbf8f1;
+  --color-ink: #16140f;
+  --color-ink-2: #4b473d;
+  --color-ink-3: #686255;
+  --color-line: rgb(22 20 15 / 0.12);
+  --color-line-strong: rgb(22 20 15 / 0.28);
+  --color-line-control: rgb(22 20 15 / 0.5);
+  --color-moss: #2f6a4c;
+  --color-amber: #b8771c;
+  --color-amber-ink: #8a5610;
+  --color-seal-ink: #ad3a17;
+}
+.plan-hero[data-tone="ink"] dialog .btn {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+.plan-hero-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+.plan-hero-body {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+}
+.plan-hero-main {
+  min-width: 0;
+}
+.plan-hero-verdict {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.plan-hero-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  flex: none;
+  border-radius: 999px;
+  background: currentColor;
+}
+.plan-hero-name {
+  margin-top: 0.75rem;
+  font-family: var(--font-serif);
+  font-size: clamp(3rem, 2rem + 6.2vw, 7rem);
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.plan-hero-none {
+  margin-top: 0.9rem;
+  max-width: 40rem;
+  font-family: var(--font-serif);
+  font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem);
+  line-height: 1.25;
+}
+/* Where, when and what it costs: one fact to a cell, each under its own small label. */
+.plan-hero-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1.75rem;
+  border-top: 1px solid var(--color-line-strong);
+}
+.plan-hero-facts > div {
+  border-bottom: 1px solid var(--color-line);
+  padding: 0.85rem 0.75rem 0.85rem 0;
+}
+.plan-hero-facts > div:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+.plan-hero-facts dt {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+.plan-hero-facts dd {
+  margin-top: 0.3rem;
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+.plan-hero-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.plan-hero-how {
+  border-top: 1px solid var(--color-line);
+  padding-top: 1rem;
+}
+@media (min-width: 640px) {
+  .plan-hero {
+    padding: 2rem 2rem 1.5rem;
+  }
+  .plan-hero-facts {
+    grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  }
+  .plan-hero-facts > div:last-child:nth-child(odd) {
+    grid-column: auto;
+  }
+  .plan-hero-facts > div {
+    border-bottom: 0;
+    border-left: 1px solid var(--color-line);
+    padding: 1rem 1rem 0.25rem;
+  }
+  .plan-hero-facts > div:first-child {
+    border-left: 0;
+    padding-left: 0;
+  }
+}
+@media (min-width: 1024px) {
+  .plan-hero {
+    padding: 2.25rem 2.5rem 1.5rem;
+  }
+  .plan-hero-body {
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    column-gap: 3rem;
+  }
+  .plan-hero-how {
+    grid-column: 1 / -1;
+  }
+}
+/* A person in the group: their initial, ringed in green once they are done. Says nothing the
+   word beside it does not. */
+.member-mark {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 999px;
+  background: var(--color-paper-2);
+  font-family: var(--font-serif);
+  font-size: 0.9375rem;
+  line-height: 1;
+  color: var(--color-ink-2);
+}
+.member-mark[data-ready] {
+  border-color: var(--color-moss);
+  background: var(--color-moss-soft);
+  color: var(--color-moss);
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 3px var(--color-moss);
+}
+
 /* Status pills (mono) */
 .pill {
   display: inline-flex;
@@ -582,8 +869,60 @@ form:focus-within .plan-ticket {
   line-height: 1.1;
   color: var(--color-ink-3);
 }
+.excuses-row {
+  display: contents;
+}
 .excuses li {
   text-decoration: line-through 0.055em var(--color-seal);
+}
+.excuses-fill {
+  display: none;
+}
+/* Where motion can be tied to scrolling, the two rows slide past each other as the page moves,
+   and stop when it stops: nothing here moves on its own. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .excuses {
+      display: block;
+      overflow: hidden;
+      padding-block: 0.15em;
+      -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+      mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+    }
+    .excuses-row {
+      display: flex;
+      width: max-content;
+      gap: 1.1em;
+      white-space: nowrap;
+      animation: excuses-left linear both;
+      animation-timeline: view();
+    }
+    .excuses-row + .excuses-row {
+      margin-top: 0.3em;
+    }
+    .excuses-row[data-dir="right"] {
+      animation-name: excuses-right;
+    }
+    .excuses-fill {
+      display: block;
+    }
+  }
+}
+@keyframes excuses-left {
+  from {
+    transform: translateX(-4%);
+  }
+  to {
+    transform: translateX(-36%);
+  }
+}
+@keyframes excuses-right {
+  from {
+    transform: translateX(-40%);
+  }
+  to {
+    transform: translateX(-8%);
+  }
 }
 .inked {
   background: var(--color-ink);
@@ -595,12 +934,6 @@ form:focus-within .plan-ticket {
 .inked em {
   color: var(--color-seal-bright);
 }
-.step {
-  display: grid;
-  gap: 1.25rem;
-  padding: 2.25rem 0;
-  border-bottom: 1px solid var(--color-line-strong);
-}
 .step-num {
   font-family: var(--font-serif);
   font-style: italic;
@@ -608,20 +941,135 @@ form:focus-within .plan-ticket {
   line-height: 0.8;
   color: var(--color-seal);
 }
-.step-demo {
-  border: 1px solid var(--color-line);
-  border-radius: 1.25rem;
+/* How it works: three sheets. Each stays where it is while the next slides up over it, a little
+   lower than the last, so the edges of the ones underneath stay in view. Plain sticky positioning:
+   it moves only with the page. */
+.stack {
+  display: grid;
+  gap: 1.5rem;
+}
+.stack-card {
+  display: grid;
+  gap: 2rem;
+  border: 1px solid var(--color-line-strong);
+  border-radius: 2rem;
   background: var(--color-surface);
-  padding: 1.25rem;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  box-shadow:
+    0 -1px 0 rgb(255 255 255 / 0.6) inset,
+    0 -18px 40px -24px rgb(22 20 15 / 0.35),
+    var(--shadow-card);
+}
+.stack-card[data-tone="paper"] {
+  background: var(--color-paper-2);
+}
+.stack-card[data-tone="ink"] {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  background-image: radial-gradient(90% 70% at 100% 0%, rgb(240 138 102 / 0.16), transparent 60%);
+  color: var(--color-paper);
+}
+.stack-body {
+  color: var(--color-ink-2);
+}
+.stack-card[data-tone="ink"] .stack-body {
+  color: rgb(243 238 228 / 0.75);
+}
+.stack-card[data-tone="ink"] .step-num {
+  color: var(--color-seal-bright);
+}
+.stack-scene {
+  min-width: 0;
+  align-self: center;
+}
+@media (min-width: 900px) and (min-height: 620px) {
+  .stack {
+    gap: 5rem;
+    padding-bottom: 3rem;
+  }
+  .stack-card {
+    position: sticky;
+    top: calc(5.5rem + var(--i) * 1.4rem);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 3.5rem;
+    min-height: min(31rem, calc(100dvh - 11rem));
+  }
+}
+/* Step one: the first screen of the private chat, as it really looks. */
+.scene-chat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid var(--color-line);
+  border-radius: 1.5rem;
+  background: radial-gradient(70% 50% at 50% 0%, rgb(240 138 102 / 0.14), transparent 70%), var(--color-paper);
+  padding: 1.75rem 1.25rem 1.5rem;
+  text-align: center;
   box-shadow: var(--shadow-card);
 }
-@media (min-width: 768px) {
-  .step {
-    grid-template-columns: 9rem minmax(0, 1fr) minmax(0, 21rem);
-    align-items: center;
-    gap: 2.5rem;
-    padding: 3rem 0;
-  }
+/* Step two: places down, start times across, each cell filled by how many could come. */
+.score-grid {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, auto) repeat(5, minmax(0, 1fr));
+  gap: 0.4rem;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+.score-head {
+  text-align: center;
+  color: var(--color-ink-3);
+}
+.score-place {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-ink-2);
+}
+.score-cell {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1.5;
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--color-moss) calc(var(--fill) * 62%), var(--color-surface));
+  color: var(--color-ink);
+  animation: chip-in 0.5s var(--ease-out-expo) backwards;
+  animation-delay: calc(var(--i) * 35ms);
+}
+.score-cell[data-best] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+  outline: 2px solid var(--color-seal);
+  outline-offset: 2px;
+}
+/* Step three: the answer, on the same ticket a plan starts as. On the dark sheet the ticket is paper. */
+.scene-result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.scene-result .plan-ticket {
+  width: min(100%, 24rem);
+}
+.plan-ticket-paper {
+  color: var(--color-ink);
+  filter: drop-shadow(0 22px 26px rgb(22 20 15 / 0.5));
+}
+.plan-ticket-paper .plan-ticket-main,
+.plan-ticket-paper .plan-ticket-stub {
+  background: var(--color-surface);
+  background-image: none;
+}
+.plan-ticket-paper .plan-ticket-eyebrow,
+.plan-ticket-paper .plan-ticket-facts dt {
+  color: var(--color-ink-3);
+}
+.plan-ticket-paper .plan-ticket-stub::before {
+  border-left-color: var(--color-line-control);
+}
+.plan-ticket-paper .plan-ticket-count {
+  color: var(--color-seal-ink);
 }
 .seal {
   width: clamp(9rem, 20vw, 14rem);
@@ -944,8 +1392,8 @@ form:focus-within .plan-ticket {
 
 /* The answer dial (AnswerDial.tsx): a ring of five ticks with the count in the middle. */
 .answer-dial {
-  width: 4.5rem;
-  height: 4.5rem;
+  width: 3rem;
+  height: 3rem;
   flex: none;
   overflow: visible;
 }
@@ -1074,16 +1522,16 @@ form:focus-within .plan-ticket {
 
 /* Room at the end of the conversation for the message box that floats over it. */
 .chat-log {
-  padding-bottom: 5.5rem;
+  padding-bottom: 4.5rem;
 }
 .chat-end {
-  scroll-margin-bottom: 5.5rem;
+  scroll-margin-bottom: 4.5rem;
 }
 /* The message box floats over the end of the conversation. */
 .composer {
   position: absolute;
   inset: auto 0 0;
-  padding: 0.75rem 1rem;
+  padding: 0.5rem 0.875rem 0.625rem;
 }
 
 /* Thick clear glass, for the message box and the messages. What makes it read as glass on plain
@@ -1457,7 +1905,7 @@ form:focus-within .plan-ticket {
 /* The way back to the newest message, shown only while it is out of sight. */
 .chat-latest {
   position: absolute;
-  bottom: 5rem;
+  bottom: 4rem;
   left: 50%;
   display: inline-flex;
   min-height: 1.75rem;
@@ -1592,7 +2040,7 @@ form:focus-within .plan-ticket {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4375rem 0.4375rem 0.4375rem 1.25rem;
+  padding: 0.25rem 0.25rem 0.25rem 1.1rem;
   border: 1px solid var(--color-line-control);
   border-radius: 999px;
   background: var(--color-surface);
@@ -1612,7 +2060,7 @@ form:focus-within .plan-ticket {
 .prompt-input {
   min-width: 0;
   flex: 1;
-  min-height: 2.25rem;
+  min-height: 2rem;
   background: transparent;
   font-size: 1rem;
   color: var(--color-ink);
@@ -1623,8 +2071,8 @@ form:focus-within .plan-ticket {
 }
 .prompt-send {
   display: grid;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2rem;
+  height: 2rem;
   flex: none;
   place-items: center;
   border-radius: 999px;
@@ -1653,6 +2101,74 @@ form:focus-within .plan-ticket {
 }
 .prompt-bar[data-busy] .prompt-send svg {
   animation: send-off 0.45s var(--ease-out-expo) both;
+}
+/* Ready-made answers, in one row right above the message box. The row scrolls sideways rather
+   than wrapping, so the box below it never moves. */
+.quick-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.4rem;
+  padding: 0.2rem 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+.quick-row {
+  transition:
+    opacity 0.25s ease,
+    transform 0.35s var(--ease-out-expo),
+    visibility 0s;
+}
+.quick-row[data-away] {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0s 0.2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .quick-row,
+  .quick-row[data-away] {
+    transform: none;
+    transition: none;
+  }
+}
+.quick-row::-webkit-scrollbar {
+  display: none;
+}
+.quick-row-label {
+  flex: none;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
+  padding: 0.15rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-3);
+}
+.quick-row .quick-chip {
+  flex: none;
+  /* Messages pass under the row, so each answer carries its own ground. */
+  background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+/* With the row there, the conversation ends a row higher. */
+.chat:has(.quick-row) .chat-log {
+  padding-bottom: 7rem;
+}
+.chat:has(.quick-row) .chat-end {
+  scroll-margin-bottom: 7rem;
+}
+.chat:has(.quick-row) .chat-latest {
+  bottom: 6.5rem;
+}
+.chat:has(.quick-row[data-away]) .chat-latest {
+  bottom: 4rem;
 }
 .quick-chip {
   min-height: 1.75rem;
@@ -1699,28 +2215,6 @@ form:focus-within .plan-ticket {
 }
 .status-mark path {
   animation-delay: 0.35s;
-}
-
-/* The plan as a ticket: two notches where the stub tears off. */
-.ticket-tear {
-  position: relative;
-}
-.ticket-tear::before,
-.ticket-tear::after {
-  content: "";
-  position: absolute;
-  top: -0.5625rem;
-  width: 1.125rem;
-  height: 1.125rem;
-  border: 1px solid var(--color-line-strong);
-  border-radius: 999px;
-  background: var(--color-surface);
-}
-.ticket-tear::before {
-  left: -0.5625rem;
-}
-.ticket-tear::after {
-  right: -0.5625rem;
 }
 
 /* A slow sheen across the waiting line. The text underneath keeps its own colour and contrast. */
@@ -2065,6 +2559,17 @@ form:focus-within .plan-ticket {
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
+  }
+  .score-cell {
+    animation: none;
+  }
+  .plan-stub,
+  .plan-stub-go {
+    transition: none;
+  }
+  .plan-stub:hover,
+  .plan-stub:hover .plan-stub-go {
+    transform: none;
   }
   .code-slot {
     transition: none;
