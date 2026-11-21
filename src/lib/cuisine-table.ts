@@ -856,22 +856,34 @@ export function excludedFor(match: CuisineMatch): string[] {
  * of its own types is that type, or is a dish of it: a place tagged only `hot_pot_restaurant`
  * matches a wish for, or a ban on, `chinese_restaurant`. The score is the best match found.
  */
+/**
+ * The types a wish to AVOID something covers. A cuisine or dish covers what ruling it out
+ * would; a leaning ("spicy") covers the kinds of food known for it, which is why it may only
+ * ever be avoided, never ruled out.
+ */
+export function avoidedFor(match: CuisineMatch): string[] {
+  return match.level === "leaning" ? [...(LEANING_BY_ID.get(match.id)?.types ?? [])] : excludedFor(match);
+}
+
 export function matchCuisine(
   types: readonly string[],
-  cuisine: { scores?: Record<string, number>; excluded?: readonly string[] },
-): { excluded: boolean; score: number } {
+  cuisine: { scores?: Record<string, number>; excluded?: readonly string[]; avoided?: readonly string[] },
+): { excluded: boolean; avoided: boolean; score: number } {
   // A Map, not a property lookup: a type named like something every object has ("constructor")
   // must read as "not scored", not as that built-in.
   const scores = new Map(Object.entries(cuisine.scores ?? {}));
   const banned = new Set(cuisine.excluded ?? []);
+  const disliked = new Set(cuisine.avoided ?? []);
   let excluded = false;
+  let avoided = false;
   let score = 0;
   for (const type of types) {
     const parent = parentCuisine(type);
     if (banned.has(type) || (parent !== undefined && banned.has(parent))) excluded = true;
+    if (disliked.has(type) || (parent !== undefined && disliked.has(parent))) avoided = true;
     score = Math.max(score, scores.get(type) ?? (parent !== undefined ? (scores.get(parent) ?? 0) : 0));
   }
-  return { excluded, score };
+  return { excluded, avoided, score };
 }
 
 /** What a word was taken to mean, to say back: "Japanese, Chinese, Korean, …". */

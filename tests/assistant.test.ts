@@ -498,7 +498,11 @@ describe("cuisines: the model passes the words on, the table in code says what t
     const r = apply(state(), out({ cuisine: { liked: ["Chinese"] } }));
     expect(scoresOf(r).chinese_restaurant).toBe(1);
     expect(scoresOf(r).hot_pot_restaurant).toBeUndefined();
-    expect(matchCuisine(["hot_pot_restaurant"], r.state.prefs.cuisine!)).toEqual({ excluded: false, score: 1 });
+    expect(matchCuisine(["hot_pot_restaurant"], r.state.prefs.cuisine!)).toEqual({
+      excluded: false,
+      avoided: false,
+      score: 1,
+    });
   });
 
   it("fits two whole halves of the world, and keeps the highest scores if a list is ever too long", () => {
@@ -568,7 +572,11 @@ describe("cuisines: the model passes the words on, the table in code says what t
     const before = state({ cuisine: { excluded: ["chinese_restaurant"], strength: "mild" } });
     const r = apply(before, out({ cuisine: { liked: ["hot pot"] } }));
     expect(r.state.prefs.cuisine?.excluded).toBeUndefined();
-    expect(matchCuisine(["hot_pot_restaurant"], r.state.prefs.cuisine!)).toEqual({ excluded: false, score: 1 });
+    expect(matchCuisine(["hot_pot_restaurant"], r.state.prefs.cuisine!)).toEqual({
+      excluded: false,
+      avoided: false,
+      score: 1,
+    });
   });
 });
 
@@ -675,13 +683,45 @@ describe("wishes about what the food is like are understood, not turned away (#1
     expect(r.reply).not.toMatch(/can't look for/);
   });
 
-  it("'nothing spicy' is a note and rules nothing out", () => {
-    const r = apply(state(), out({ cuisine: { excluded: ["spicy"] } }, { reply: "Got it." }));
-    expect(r.state.prefs.cuisine?.excluded).toBeUndefined();
-    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would rather not have: spicy" }]);
-    expect(r.reply).toBe(
-      `Got it. (Restaurants aren't listed by that, so "spicy" stays a note for you and won't rule places out.)`,
-    );
+  it("'nothing spicy' leans away from food known for it and rules nothing out, however the model files it", () => {
+    for (const update of [{ cuisine: { avoided: ["spicy"] } }, { cuisine: { excluded: ["spicy"] } }]) {
+      const r = apply(state(), out(update, { reply: "Got it." }));
+      expect(r.state.prefs.cuisine?.excluded).toBeUndefined();
+      expect(r.state.prefs.cuisine?.avoided).toEqual([
+        "thai_restaurant",
+        "indian_restaurant",
+        "korean_restaurant",
+        "mexican_restaurant",
+        "hot_pot_restaurant",
+      ]);
+      expect(r.reply).toBe(
+        "Got it. (Restaurants aren't listed by how spicy the food is, so I'll lean away from food known for it: Thai, Indian, Korean, Mexican, hot pot. It won't rule those places out.)",
+      );
+    }
+  });
+
+  it("'not a fan of Indian' is avoided, 'no Indian' is ruled out, and the two are kept apart", () => {
+    const soft = apply(state(), out({ cuisine: { avoided: ["Indian"] } }, { reply: "Got it." }));
+    expect(soft.state.prefs.cuisine?.avoided).toContain("indian_restaurant");
+    expect(soft.state.prefs.cuisine?.excluded).toBeUndefined();
+    const firm = apply(soft.state, out({ cuisine: { excluded: ["Indian"] } }, { reply: "Got it." }));
+    expect(firm.state.prefs.cuisine?.excluded).toContain("indian_restaurant");
+    expect(firm.state.prefs.cuisine?.avoided).toBeUndefined();
+  });
+
+  it("asking for a food later takes it off the would-rather-not list", () => {
+    const soft = apply(state(), out({ cuisine: { avoided: ["Indian"] } }, { reply: "Got it." }));
+    const liked = apply(soft.state, out({ cuisine: { liked: ["Indian"] } }, { reply: "Got it." }));
+    expect(liked.state.prefs.cuisine?.avoided).toBeUndefined();
+    expect(liked.state.prefs.cuisine?.scores?.indian_restaurant).toBe(1);
+  });
+
+  it("a food they would rather not have is dropped from an earlier broad wish", () => {
+    const asian = apply(state(), out({ cuisine: { liked: ["Asian"] } }, { reply: "Got it." }));
+    const r = apply(asian.state, out({ cuisine: { avoided: ["Indian"] } }, { reply: "Got it." }));
+    expect(r.state.prefs.cuisine?.scores?.indian_restaurant).toBeUndefined();
+    expect(r.state.prefs.cuisine?.scores?.thai_restaurant).toBe(1);
+    expect(r.state.prefs.cuisine?.avoided).toContain("indian_restaurant");
   });
 
   it("a wish the table does not have: the model's nearest kinds of food are used, at a lower score", () => {

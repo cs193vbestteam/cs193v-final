@@ -473,7 +473,7 @@
     {
       "id": "near-04",
       "category": "near miss",
-      "note": "A message about the meal in Chinese. Not wanting spicy food is a note; the words may be the person's or the table's.",
+      "note": "A message about the meal in Chinese. Not eating spicy food leans away from food known for it.",
       "user": "我晚上七点以后有空，人均三十美元左右，不吃辣",
       "expect": "answer",
       "model": {
@@ -491,13 +491,12 @@
           "budget": {
             "ideal": 30
           },
-          "notes": [
-            {
-              "type": "other",
-              "text": "不吃辣"
-            }
-          ],
-          "saidWhatTheyCannotEat": true
+          "saidWhatTheyCannotEat": true,
+          "cuisine": {
+            "avoided": [
+              "辣"
+            ]
+          }
         }
       },
       "expected": {
@@ -508,8 +507,8 @@
           }
         ],
         "prefs.budget.ideal": 30,
-        "prefs.notes": {
-          "$includes": "other"
+        "prefs.cuisine.avoided": {
+          "$includes": "thai_restaurant"
         }
       }
     },

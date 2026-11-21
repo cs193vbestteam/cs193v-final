@@ -7,6 +7,7 @@ import {
   compactScores,
   describeMatch,
   NEAR_SCORE,
+  avoidedFor,
   excludedFor,
   findCuisine,
   leaningOf,
@@ -107,6 +108,8 @@ const BLOCKS = {
   cuisine: z.object({
     liked: z.array(z.string()).optional(),
     excluded: z.array(z.string()).optional(),
+    // Food they would rather not have but would go along with: a wish, not a rule.
+    avoided: z.array(z.string()).optional(),
     // For a wish about what the food is like ("comfort food"): the ordinary kinds of food the
     // model thinks come closest. Code keeps only the ones the table knows (see `suggested`).
     closest: z
@@ -235,6 +238,8 @@ function dietWord(word: string): DietaryNeed | null {
 type FoodWords = {
   liked: CuisineMatch[];
   excluded: CuisineMatch[];
+  /** Food they would rather not have: lowers a place's score, never rules it out. */
+  avoided: CuisineMatch[];
   styleWanted: Style[];
   styleExcluded: Style[];
   dietary: DietaryNeed[];
@@ -257,6 +262,7 @@ function readFoodWords(cuisine: Blocks["cuisine"], style: Blocks["style"]): Food
   const out: FoodWords = {
     liked: [],
     excluded: [],
+    avoided: [],
     styleWanted: [],
     styleExcluded: [],
     dietary: [],
@@ -289,8 +295,9 @@ function readFoodWords(cuisine: Blocks["cuisine"], style: Blocks["style"]): Food
       const kind = asStyle(word);
       if (kind && (styleFirst || !food)) (wanted ? out.styleWanted : out.styleExcluded).push(kind);
       // "No spicy food" must not rule out every Thai, Indian, Korean and Mexican place: ruling
-      // out is a hard rule, and a leaning is only a guess at where such food is found.
-      else if (food && !wanted && leaningOf(food)) out.unknown.push({ word, wanted });
+      // out is a hard rule, and a leaning is only a guess at where such food is found. It is
+      // avoided instead, which costs those places points and keeps the person in.
+      else if (food && !wanted && leaningOf(food)) out.avoided.push(food);
       else if (food) (wanted ? out.liked : out.excluded).push(food);
       else if (wanted && dietWord(word)) out.dietary.push(dietWord(word)!);
       else if (wanted && closestTo(word).length) out.suggested.push({ word, like: closestTo(word) });
@@ -303,6 +310,13 @@ function readFoodWords(cuisine: Blocks["cuisine"], style: Blocks["style"]): Food
     .filter((w) => !(cuisine?.liked ?? []).some((l) => same(l, w)));
   read([...(cuisine?.liked ?? []), ...extra], true, false);
   read(cuisine?.excluded, false, false);
+  for (const raw of cuisine?.avoided ?? []) {
+    const word = raw.trim();
+    if (!word) continue;
+    const food = findCuisine(word) ?? findCuisine(bare(word));
+    if (food) out.avoided.push(food);
+    else out.unknown.push({ word, wanted: false });
+  }
   read(style?.wanted, true, true);
   read(style?.excluded, false, true);
   return out;
@@ -610,7 +624,7 @@ export function applyAssistantOutput(
   // "No pork", said in passing before the question was ever asked, still answers it.
   if (blocks.nothingTheyCannotEat || blocks.saidWhatTheyCannotEat) answered.add("diet");
 
-  if (words.liked.length || words.excluded.length || words.suggested.length) {
+  if (words.liked.length || words.excluded.length || words.suggested.length || words.avoided.length) {
     // Food the model suggested for a wish counts as a near match, never as what was asked for.
     const suggestedScores = Object.fromEntries(
       words.suggested.flatMap((s) => s.like.map((m) => [m.id, NEAR_SCORE] as const)),
@@ -629,16 +643,26 @@ export function applyAssistantOutput(
       narrow.length && narrow.length === words.liked.length
         ? lowerBroadWish(prefs.cuisine?.scores ?? {}, narrow)
         : (prefs.cuisine?.scores ?? {});
+    // Food they would rather not have. What they ask for now wins over it, a ban outranks it,
+    // and it takes a kind of food off the wish list if it was only there as a near match.
+    const avoided = compactExcluded([
+      ...(prefs.cuisine?.avoided ?? []).filter((t) => !wantedNow(t)),
+      ...words.avoided.flatMap(avoidedFor).filter((t) => !wantedNow(t)),
+    ]).filter((t) => !matchCuisine([t], { excluded: banned }).excluded);
     const scores = compactScores(
       Object.fromEntries(
-        Object.entries(mergeScores(before, likedScores)).filter(
-          ([type]) => !matchCuisine([type], { excluded: banned }).excluded,
-        ),
+        Object.entries(mergeScores(before, likedScores)).filter(([type]) => {
+          const m = matchCuisine([type], { excluded: banned, avoided });
+          return !m.excluded && !m.avoided;
+        }),
       ),
     );
+    // A kind of food cannot be both: a parent they avoid with a child they asked for keeps the child.
+    const avoidedKept = avoided.filter((t) => !(t in scores));
     const block = {
       ...(Object.keys(scores).length ? { scores } : {}),
       ...(banned.length ? { excluded: banned } : {}),
+      ...(avoidedKept.length ? { avoided: avoidedKept } : {}),
       strength: blocks.cuisine?.strength ?? prefs.cuisine?.strength ?? "mild",
     };
     // Being told what someone will not eat does not say what they would like. And a broad wish
@@ -724,7 +748,8 @@ export function applyAssistantOutput(
     put("notes", notes.slice(-LIMITS.notes));
   }
   // An allergy answers "anything you can't eat?". So does a note or an excluded food given in reply to it.
-  const saidWhatTheyAvoid = otherNoted || words.excluded.length > 0 || words.unknown.some((u) => !u.wanted);
+  const saidWhatTheyAvoid =
+    otherNoted || words.excluded.length > 0 || words.avoided.length > 0 || words.unknown.some((u) => !u.wanted);
   if (allergyNoted || (state.chat.lastAsked === "diet" && saidWhatTheyAvoid)) answered.add("diet");
 
   // "I don't mind" settles a question and changes nothing that is already recorded.
@@ -754,6 +779,12 @@ export function applyAssistantOutput(
   // Not a refusal: say what the wish was turned into, so the person can correct it.
   if (leanings.length)
     reply += ` (Restaurants aren't listed by ${leanings.map((l) => l.leaning).join(" or ")}, so I'll lean toward food known for it: ${leanings.map((l) => l.meant).join("; ")}.)`;
+  // "Nothing too spicy": the same guess, the other way round, and said as plainly.
+  const away = uniq(words.avoided.filter((m) => leaningOf(m)).map((m) => m.id)).map((id) =>
+    words.avoided.find((m) => m.id === id)!,
+  );
+  if (away.length)
+    reply += ` (Restaurants aren't listed by ${away.map((m) => leaningOf(m)).join(" or ")}, so I'll lean away from food known for it: ${away.map(describeMatch).join("; ")}. It won't rule those places out.)`;
   for (const s of words.suggested)
     reply += ` (Restaurants aren't listed by "${s.word}", so I'll lean toward ${s.like.map((m) => m.label).join(", ")}. Tell me if that's off.)`;
   const quoted = (wanted: boolean) =>

@@ -178,10 +178,18 @@ const CuisineSchema = z
   .strictObject({
     scores: z.record(PlaceTypeSchema, z.number().gt(0).max(1)).optional(),
     excluded: uniqueList(PlaceTypeSchema, LIMITS.cuisines).optional(),
+    /**
+     * Food they would rather not have but would go along with ("not a fan of Indian", "nothing
+     * too spicy"). A wish, where `excluded` is a rule: it costs the place points and never keeps
+     * the person out of it.
+     */
+    avoided: uniqueList(PlaceTypeSchema, LIMITS.cuisines).optional(),
     strength: StrengthSchema,
   })
   .superRefine((c, ctx) => {
     const scored = Object.keys(c.scores ?? {});
+    const soft = overlap(c.avoided ?? [], [...scored, ...(c.excluded ?? [])]);
+    if (soft.length > 0) ctx.addIssue({ code: "custom", message: `${soft[0]} is avoided and also wanted or excluded` });
     if (scored.length > LIMITS.cuisines) {
       ctx.addIssue({ code: "custom", message: `at most ${LIMITS.cuisines} cuisines can be scored` });
     }

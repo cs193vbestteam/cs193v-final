@@ -262,8 +262,11 @@ export function describeState(state: MemberState): string[] {
   const excluded = prefs.cuisine?.excluded ?? [];
   if (liked.length)
     lines.push(`Would like to eat: ${describeTypes(liked).join(", ")}${STRENGTH_WORDS[prefs.cuisine!.strength]}`);
-  else if (!excluded.length && settled("cuisine")) lines.push("Cuisine: no preference");
+  else if (!excluded.length && !prefs.cuisine?.avoided?.length && settled("cuisine"))
+    lines.push("Cuisine: no preference");
   if (excluded.length) lines.push(`Not for them: ${describeTypes(excluded).join(", ")}`);
+  if (prefs.cuisine?.avoided?.length)
+    lines.push(`Would rather not have: ${describeTypes(prefs.cuisine.avoided).join(", ")}`);
 
   if (prefs.style?.wanted?.length)
     lines.push(
