@@ -164,6 +164,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -206,6 +218,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -244,6 +268,18 @@
         "high": 20
       },
       "servesVegetarian": false,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -291,6 +327,18 @@
         "high": 90
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -328,6 +376,18 @@
       ],
       "price": null,
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -368,6 +428,18 @@
         "high": 40
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -414,6 +486,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -448,6 +532,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -490,6 +586,18 @@
         "high": 70
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -528,6 +636,18 @@
         "high": 90
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -570,6 +690,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -612,6 +744,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -655,6 +799,18 @@
         "high": 100
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -697,6 +853,18 @@
         "high": 60
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -732,6 +900,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -774,6 +954,18 @@
         "high": 20
       },
       "servesVegetarian": false,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -820,6 +1012,18 @@
         "high": 100
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -855,6 +1059,18 @@
         "high": 100
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "12:00",
@@ -894,6 +1110,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -934,6 +1162,18 @@
         "high": 100
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -981,6 +1221,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1025,6 +1277,18 @@
         "high": 100
       },
       "servesVegetarian": false,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "17:00",
         "18:00",
@@ -1056,6 +1320,18 @@
         "high": 50
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "17:00",
         "18:00",
@@ -1089,6 +1365,18 @@
         "high": 100
       },
       "servesVegetarian": false,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -1127,6 +1415,18 @@
         "high": 80
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "18:00",
         "19:00",
@@ -1162,6 +1462,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1207,6 +1519,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1247,6 +1571,18 @@
         "high": 40
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -1290,6 +1626,18 @@
         "high": 40
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -1324,6 +1672,18 @@
         "high": 40
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1367,6 +1727,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1408,6 +1780,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1442,6 +1826,18 @@
         "high": 100
       },
       "servesVegetarian": false,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -1476,6 +1872,18 @@
         "high": 100
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -1512,6 +1920,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -1552,6 +1972,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1590,6 +2022,18 @@
         "high": 30
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1633,6 +2077,18 @@
         "high": 30
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -1671,6 +2127,18 @@
         "high": 40
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1707,6 +2175,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1750,6 +2230,18 @@
         "high": 20
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -1791,6 +2283,18 @@
         "high": 80
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1835,6 +2339,18 @@
         "high": 20
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1874,6 +2390,18 @@
         "high": 40
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -1920,6 +2448,18 @@
         "high": 20
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -1963,6 +2503,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -1998,6 +2550,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2042,6 +2606,18 @@
       ],
       "price": null,
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2076,6 +2652,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -2112,6 +2700,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2151,6 +2751,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2185,6 +2797,18 @@
         "high": 40
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2223,6 +2847,18 @@
         "high": 100
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "17:00",
@@ -2260,6 +2896,18 @@
         "high": 100
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2295,6 +2943,18 @@
         "high": 90
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -2333,6 +2993,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -2370,6 +3042,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -2405,6 +3089,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2448,6 +3144,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -2484,6 +3192,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2531,6 +3251,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2574,6 +3306,18 @@
         "high": 90
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2621,6 +3365,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2668,6 +3424,18 @@
         "high": 20
       },
       "servesVegetarian": false,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -2710,6 +3478,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -2754,6 +3534,18 @@
         "high": 50
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -2800,6 +3592,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2843,6 +3647,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -2881,6 +3697,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -2929,6 +3757,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -2973,6 +3813,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -3015,6 +3867,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -3054,6 +3918,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -3102,6 +3978,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -3138,6 +4026,18 @@
       ],
       "price": null,
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -3179,6 +4079,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -3224,6 +4136,18 @@
         "high": 20
       },
       "servesVegetarian": false,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -3266,6 +4190,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -3304,6 +4240,18 @@
         "high": 40
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "17:00",
         "18:00",
@@ -3342,6 +4290,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -3387,6 +4347,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -3424,6 +4396,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -3463,6 +4447,18 @@
         "high": 70
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "17:00",
         "18:00",
@@ -3504,6 +4500,18 @@
         "high": 90
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "16:00",
         "17:00",
@@ -3545,6 +4553,18 @@
         "high": 60
       },
       "servesVegetarian": false,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -3585,6 +4605,18 @@
         "high": 70
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -3624,6 +4656,18 @@
         "high": 70
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "17:00",
         "18:00",
@@ -3660,6 +4704,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -3704,6 +4760,18 @@
         "high": 60
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -3740,6 +4808,18 @@
         "high": 50
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "16:00",
         "17:00",
@@ -3780,6 +4860,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",
@@ -3823,6 +4915,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -3861,6 +4965,18 @@
         "high": 60
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "17:00",
         "18:00",
@@ -3897,6 +5013,18 @@
         "high": 30
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -3950,6 +5078,18 @@
         "high": 20
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -3991,6 +5131,18 @@
         "high": 50
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "12:00",
         "13:00",
@@ -4026,6 +5178,18 @@
         "high": 80
       },
       "servesVegetarian": true,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "11:00",
         "12:00",
@@ -4068,6 +5232,18 @@
         "high": 20
       },
       "servesVegetarian": null,
+      "features": {
+        "groups": null,
+        "kids": null,
+        "outdoor": null,
+        "wheelchair": null,
+        "reservable": null,
+        "alcohol": null,
+        "parking": null,
+        "dogs": null,
+        "live_music": null,
+        "well_rated": null
+      },
       "openAt": [
         "10:00",
         "11:00",

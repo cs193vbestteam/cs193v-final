@@ -171,6 +171,7 @@ export function toCandidate(r: Place, travelMin: Record<string, number>): Candid
     name: r.name,
     types,
     ...(r.primaryType && TYPE_NAME.test(r.primaryType) ? { primaryType: r.primaryType } : {}),
+    ...(r.features ? { features: r.features } : {}),
     style: uniq(r.style ?? []),
     price,
     servesVegetarian,

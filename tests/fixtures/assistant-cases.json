@@ -964,7 +964,7 @@
     {
       "id": "brief-01",
       "about": "short replies",
-      "note": "From the user test (#156): the first message is not repeated back.",
+      "note": "From the user test (#156): the first message is not repeated back, and \"taste good\" is read as wanting a well-reviewed place.",
       "turns": [
         {
           "user": "Chinese restaurant under 70 per person, taste good.",
@@ -981,6 +981,11 @@
               "budget": {
                 "max": 70,
                 "strength": "must"
+              },
+              "features": {
+                "wanted": [
+                  "well_rated"
+                ]
               }
             }
           }
@@ -988,7 +993,10 @@
       ],
       "expected": {
         "prefs.cuisine.scores.chinese_restaurant": 1,
-        "prefs.budget.max": 70
+        "prefs.budget.max": 70,
+        "prefs.features.wanted": {
+          "$includes": "well_rated"
+        }
       },
       "replyMustNotMatch": [
         "Chinese food",
@@ -1082,6 +1090,110 @@
       },
       "absent": [
         "prefs.cuisine.avoided"
+      ]
+    },
+    {
+      "id": "feature-01",
+      "about": "what the place offers",
+      "note": "Access is a need; a table outside is a wish.",
+      "turns": [
+        {
+          "user": "My dad uses a wheelchair, and it'd be nice to sit outside",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "features": {
+                "needed": [
+                  "wheelchair"
+                ],
+                "wanted": [
+                  "outdoor"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.features.needed": [
+          "wheelchair"
+        ],
+        "prefs.features.wanted": {
+          "$includes": "outdoor"
+        }
+      }
+    },
+    {
+      "id": "feature-02",
+      "about": "what the place offers",
+      "note": "A child who is coming is a need; a drink is a wish.",
+      "turns": [
+        {
+          "user": "We're bringing our two-year-old, and I'd love a glass of wine with dinner",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "features": {
+                "needed": [
+                  "kids"
+                ],
+                "wanted": [
+                  "alcohol"
+                ]
+              },
+              "time": {
+                "preferred": [
+                  {
+                    "meal": "dinner"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.features.needed": [
+          "kids"
+        ],
+        "prefs.features.wanted": {
+          "$includes": "alcohol"
+        }
+      }
+    },
+    {
+      "id": "feature-03",
+      "about": "what the place offers",
+      "note": "Something about the place that Google has no answer for is kept as a note, not forced onto the list.",
+      "turns": [
+        {
+          "user": "Somewhere quiet and a bit romantic would be lovely",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "notes": [
+                {
+                  "type": "other",
+                  "text": "quiet and a bit romantic"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.notes": {
+          "$includes": "quiet"
+        }
+      },
+      "absent": [
+        "prefs.features"
       ]
     }
   ]

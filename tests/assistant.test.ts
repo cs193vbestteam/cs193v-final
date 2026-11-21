@@ -650,6 +650,31 @@ describe("restaurants named by the person", () => {
   });
 });
 
+describe("what the place should offer", () => {
+  it("records a need and a wish, and says once what an unanswered place counts as", () => {
+    const r = apply(state(), out({ features: { needed: ["wheelchair"], wanted: ["outdoor"] } }, { reply: "Got it." }));
+    expect(r.state.prefs.features).toEqual({ needed: ["wheelchair"], wanted: ["outdoor"], strength: "mild" });
+    expect(r.reply).toBe(
+      "Got it. (I'll look for places that have a step-free entrance and have outdoor seating. Google doesn't say for every place; one it says nothing about counts as a maybe.)",
+    );
+    // Said again later, nothing new is announced.
+    const again = apply(r.state, out({ features: { wanted: ["outdoor"] } }, { reply: "Sure." }));
+    expect(again.reply).toBe("Sure.");
+  });
+
+  it("a need outranks a wish for the same thing, and later messages add to the list", () => {
+    const first = apply(state(), out({ features: { wanted: ["kids", "outdoor"] } }, { reply: "Got it." }));
+    const r = apply(first.state, out({ features: { needed: ["kids"], wanted: ["alcohol"] } }, { reply: "Got it." }));
+    expect(r.state.prefs.features).toEqual({ needed: ["kids"], wanted: ["outdoor", "alcohol"], strength: "mild" });
+  });
+
+  it("only takes names from the list: anything else is dropped and said so", () => {
+    const r = apply(state(), out({ features: { wanted: ["a nice view"] } }, { reply: "Got it." }));
+    expect(r.state.prefs.features).toBeUndefined();
+    expect(r.dropped).toContain("features");
+  });
+});
+
 describe("wishes about what the food is like are understood, not turned away (#158)", () => {
   it("'spicy' leans toward food known for it, says which, and searches nothing it cannot", () => {
     const r = apply(state(), out({ cuisine: { liked: ["spicy"] } }, { reply: "Got it." }));

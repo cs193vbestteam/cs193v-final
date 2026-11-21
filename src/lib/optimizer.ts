@@ -11,6 +11,7 @@ import {
   type PersonPreferences,
   type PriorityDim,
   type StartTime,
+  type Strength,
 } from "./optimizer-input";
 
 /**
@@ -89,6 +90,8 @@ export const STRENGTH_COST = { must: 3, strong: 1, mild: 0.5 } as const;
  * limit comes before one that could cost anything.
  */
 export const UNKNOWN_SATISFACTION = 0.4;
+/** Taken off for each thing a person needs that Google does not confirm the place has (and does not deny). */
+export const UNSURE_NEED_PENALTY = 0.1;
 /** What a match is worth at a place that is also a kind of food the person would rather not have. */
 export const AVOIDED_FACTOR = 0.5;
 /** Taken off when a vegetarian or vegan cannot be sure of the menu (Google does not say, or it is not a vegan place). */
@@ -135,6 +138,9 @@ export function canAttend(prefs: PersonPreferences, r: CandidateRestaurant, star
   if (prefs.cuisine && matchCuisine(r.types, prefs.cuisine).excluded) return false;
   if ((prefs.style?.excluded ?? []).some((s) => r.style.includes(s))) return false;
   if ((prefs.excludedRestaurants ?? []).some((x) => x.id === r.id)) return false;
+  // Something they cannot go without: out only when Google says the place lacks it. Where Google
+  // says nothing the place is a maybe, like a vegetarian at a place with no vegetarian answer.
+  if ((prefs.features?.needed ?? []).some((f) => r.features?.[f] === false)) return false;
   return true;
 }
 
@@ -209,13 +215,33 @@ export function satisfaction(
     else if (wished) got.cuisine = m.score;
     else if (cuisine.avoided?.length) got.cuisine = 1;
   }
-  if (style?.wanted?.length) got.style = style.wanted.some((s) => r.style.includes(s)) ? 1 : 0;
+  // What the place is like: its kind (casual, fine dining…) and what it offers (a table outside,
+  // room for a group). Both are scored on the one "style" dimension, as the average of what was
+  // asked for, so asking for several things does not make this dimension count for more.
+  const wantedFeatures = prefs.features?.wanted ?? [];
+  const placeParts: number[] = [];
+  if (style?.wanted?.length) placeParts.push(style.wanted.some((s) => r.style.includes(s)) ? 1 : 0);
+  for (const f of wantedFeatures) {
+    const has = r.features?.[f];
+    placeParts.push(has === true ? 1 : has === false ? 0 : UNKNOWN_SATISFACTION);
+  }
+  if (placeParts.length > 0) got.style = placeParts.reduce((a, b) => a + b, 0) / placeParts.length;
+
+  /** How much a dimension matters. "style" covers the kind of place and what it offers: the stronger of the two. */
+  const strengthOf = (dim: PriorityDim): Strength => {
+    if (dim !== "style") return prefs[dim]!.strength;
+    const both = [
+      style?.wanted?.length ? style.strength : null,
+      wantedFeatures.length ? prefs.features!.strength : null,
+    ];
+    return (["must", "strong", "mild"] as const).find((s) => both.includes(s)) ?? "mild";
+  };
 
   const stated = Object.keys(got) as PriorityDim[];
   const weights = wishWeights(prefs.priority ?? [], stated);
   let score = 1;
   for (const dim of stated) {
-    score -= weights[dim]! * STRENGTH_COST[prefs[dim]!.strength] * (1 - got[dim]!);
+    score -= weights[dim]! * STRENGTH_COST[strengthOf(dim)] * (1 - got[dim]!);
   }
 
   const diet = prefs.dietary ?? [];
@@ -224,6 +250,8 @@ export function satisfaction(
     (diet.includes("vegetarian") && r.servesVegetarian === null && !vegetarianPlace) ||
     (diet.includes("vegan") && !r.types.includes("vegan_restaurant"));
   if (unsure) score -= UNSURE_DIET_PENALTY;
+  // A need Google says nothing about for this place: it may be fine, so it is a little worse than a known yes.
+  for (const f of prefs.features?.needed ?? []) if (r.features?.[f] !== true) score -= UNSURE_NEED_PENALTY;
   if ((prefs.wantedRestaurants ?? []).some((x) => x.id === r.id)) score += NAMED_WISH_BONUS;
   return score;
 }

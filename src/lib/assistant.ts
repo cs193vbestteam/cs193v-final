@@ -32,6 +32,7 @@ import {
   toRanges,
   type MemberState,
   type Variable,
+  FEATURE_PHRASES,
 } from "./member-state";
 import {
   DIETARY_NEEDS,
@@ -49,6 +50,8 @@ import {
   type StartTime,
   type Strength,
   type Style,
+  FEATURES,
+  type Feature,
 } from "./optimizer-input";
 import type { Restaurant } from "./restaurants";
 import { canLocate, resolveStart } from "./start-point";
@@ -122,6 +125,13 @@ const BLOCKS = {
   style: z.object({
     wanted: z.array(z.string()).optional(),
     excluded: z.array(z.string()).optional(),
+    strength: StrengthIn,
+  }),
+  // A closed list, so the model sorts what was said into it directly; anything else fails the
+  // check and is dropped like any other bad block.
+  features: z.object({
+    needed: z.array(z.enum(FEATURES)).optional(),
+    wanted: z.array(z.enum(FEATURES)).optional(),
     strength: StrengthIn,
   }),
   priority: z.array(z.enum(PRIORITY_DIMS)),
@@ -711,6 +721,23 @@ export function applyAssistantOutput(
       });
   }
 
+  // What the place should offer. Needing something outranks wanting it; neither is ever taken
+  // back by a later message that only adds to the list.
+  let featuresAdded: Feature[] = [];
+  if (blocks.features?.needed?.length || blocks.features?.wanted?.length) {
+    const needed = uniq([...(prefs.features?.needed ?? []), ...(blocks.features.needed ?? [])]);
+    const wanted = uniq([...(prefs.features?.wanted ?? []), ...(blocks.features.wanted ?? [])]).filter(
+      (f) => !needed.includes(f),
+    );
+    const had = new Set([...(prefs.features?.needed ?? []), ...(prefs.features?.wanted ?? [])]);
+    const ok = put("features", {
+      ...(needed.length ? { needed } : {}),
+      ...(wanted.length ? { wanted } : {}),
+      strength: blocks.features.strength ?? prefs.features?.strength ?? "mild",
+    });
+    if (ok) featuresAdded = [...needed, ...wanted].filter((f) => !had.has(f));
+  }
+
   if (blocks.priority?.length) put("priority", uniq(blocks.priority));
 
   // A name with no match yet is kept as it is and matched again once the plan's pool is complete
@@ -811,8 +838,16 @@ export function applyAssistantOutput(
   if (quoted(false))
     reply += ` (Restaurants aren't listed by that, so ${quoted(false)} stays a note for you and won't rule places out.)`;
   for (const line of uniq(placeNotes)) reply += ` ${line}`;
+  // Said once, when something about the place itself is first recorded: Google answers this for
+  // most places, not all, and the person should know what an unanswered one counts as.
+  if (featuresAdded.length)
+    reply += ` (I'll look for places that ${featuresAdded.map((f) => FEATURE_PHRASES[f]).join(" and ")}. Google doesn't say for every place; one it says nothing about counts as a maybe.)`;
   if ((allergyNoted || otherNoted) && !CANNOT_CHECK.test(reply))
-    reply += " (That is noted for you. I can't check restaurants for it, so it won't change which places are picked.)";
+    // Still honest that it cannot steer the choice (the tests hold that), but said as something
+    // done for the person and, for an allergy, with what they should do about it (#158).
+    reply += allergyNoted
+      ? " (I've noted that for you. I can't check restaurants for it, so please check with the place before you order.)"
+      : " (I've noted that for you. I can't check restaurants for it yet, so it won't steer which places are picked.)";
   if (dropped.length)
     reply += ` (I couldn't record what you said about ${uniq(dropped)
       .map((d) => (d === "dietary" ? "diet" : d))
