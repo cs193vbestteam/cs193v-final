@@ -1472,6 +1472,36 @@ form:focus-within .plan-ticket {
   animation-delay: 0.3s;
 }
 
+/* On a phone the chat is one screen tall and the conversation has to keep most of it: the dial goes
+   (the count is still written out), and the answer chips and what the assistant knows each take
+   one line that scrolls sideways. */
+@media (max-width: 639px) {
+  .chat-progress .answer-dial {
+    display: none;
+  }
+  .chat-progress ol,
+  .chat-knows ul {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    /* Sized by the chat, never by its own unwrapped line. */
+    width: 0;
+    min-width: 100%;
+  }
+  .chat-progress ol::-webkit-scrollbar,
+  .chat-knows ul::-webkit-scrollbar {
+    display: none;
+  }
+  .chat-progress li,
+  .chat-knows li {
+    flex: none;
+    white-space: nowrap;
+  }
+  .chat-knows > div {
+    display: block;
+  }
+}
+
 /* The answer dial (AnswerDial.tsx): a ring of five ticks with the count in the middle. */
 .answer-dial {
   width: 3rem;

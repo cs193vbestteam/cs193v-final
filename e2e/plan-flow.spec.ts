@@ -223,7 +223,10 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     for (const page of [casey, alex]) {
       await page.reload();
       await expect(page.getByText("Out of date").first()).toBeVisible();
-      await expect(page.getByText(/Someone joined after this was decided/)).toBeVisible();
+      // The person who joined is told it is them; everyone else that someone did.
+      await expect(
+        page.getByText(page === casey ? /You joined after this was decided/ : /Someone joined after this was decided/),
+      ).toBeVisible();
       await expect(page.getByText(/answers have changed/)).toHaveCount(0);
     }
   });

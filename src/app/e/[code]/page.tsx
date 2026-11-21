@@ -161,7 +161,9 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
   const next = !me.ready
     ? null
     : result && !stale
-      ? { text: "The plan is ready.", href: "#plan", link: "See the plan" }
+      ? result.status === "no_deal"
+        ? { text: "No plan works yet. Change an answer to try again.", href: "#plan", link: "See why" }
+        : { text: "The plan is ready.", href: "#plan", link: "See the plan" }
       : members.length < 2
         ? {
             text: "Now invite the others. The plan is worked out as soon as everyone is done.",
@@ -186,6 +188,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       readyCount={readyCount}
       memberCount={members.length}
       decided={!!result}
+      noPlan={result?.status === "no_deal"}
       canRerun={rerunnable}
     />
   );
@@ -265,6 +268,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             date={event.date}
             stale={stale}
             mine={mine}
+            lateJoiner={stale === "joined" && !me.ready}
             actions={share}
             rerun={rerun}
           />
