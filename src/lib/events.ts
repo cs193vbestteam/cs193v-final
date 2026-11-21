@@ -167,7 +167,14 @@ export const PlanSizeSchema = z.coerce
   .max(MAX_PLAN_SIZE, `A plan can have ${MAX_PLAN_SIZE} people at most`);
 
 const INVITE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"; // no look-alikes (l/1, o/0)
-const INVITE_LENGTH = 8;
+/**
+ * Six characters: short enough to read out or type from a friend's screen. That is 31^6, about
+ * 890 million codes, far fewer than the eight characters codes had before, so a code is checked
+ * against the plans that exist before it is used. Plans made earlier keep their longer codes.
+ */
+export const INVITE_LENGTH = 6;
+/** The longest code any plan has; older plans have eight characters. */
+export const MAX_INVITE_LENGTH = 8;
 /**
  * A byte has 256 values and the alphabet 31 letters, so `byte % 31` would pick the first eight
  * letters slightly more often. Bytes past the last whole multiple of 31 are thrown away instead.
@@ -181,6 +188,15 @@ export function newInviteCode(random: (n: number) => Uint8Array = (n) => crypto.
     }
   }
   return code;
+}
+
+/** A code no plan has yet. With short codes two plans can draw the same one; this draws again. */
+async function unusedInviteCode(): Promise<string> {
+  for (let tries = 0; tries < 8; tries++) {
+    const code = newInviteCode();
+    if (!(await getEventByCode(code))) return code;
+  }
+  throw new Error("Could not find an unused plan code");
 }
 
 /** A plan's shared fields are encrypted with that plan's own keys. */
@@ -271,7 +287,7 @@ export async function createEvent(
   const event: EventSummary = {
     id: crypto.randomUUID(),
     title: name,
-    inviteCode: newInviteCode(),
+    inviteCode: await unusedInviteCode(),
     creatorId: userId,
     decided: false,
     scenario: scenario.id,
@@ -789,7 +805,7 @@ export async function removeMember(eventId: string, creatorId: string, memberId:
 /** Replaces the invite link. The old one stops working; everyone already in the plan stays. */
 export async function resetInviteCode(eventId: string, creatorId: string): Promise<string> {
   await requireCreator(eventId, creatorId, "replace the invite link");
-  const code = newInviteCode();
+  const code = await unusedInviteCode();
   const client = await db();
   await client.execute({ sql: "UPDATE events SET invite_code = ? WHERE id = ?", args: [code, eventId] });
   return code;

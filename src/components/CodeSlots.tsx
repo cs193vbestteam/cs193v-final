@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 
+/** The longest code a plan can have (older plans). */
+const LONGEST = 8;
+
 /** A plan code as someone might type or paste it, cut down to what fits the slots. */
 function tidy(raw: string, length: number): string {
   const fromLink = /\/e\/([A-Za-z0-9]+)/.exec(raw)?.[1];
@@ -27,8 +30,10 @@ type Props = {
  * so typing, pasting (a whole invite link works), autofill and screen readers behave as for any
  * input; the slots are only how its value is drawn.
  */
-export function CodeSlots({ id, name, value, onChange, length = 8, invalid = false, describedBy }: Props) {
+export function CodeSlots({ id, name, value, onChange, length = 6, invalid = false, describedBy }: Props) {
   const [focused, setFocused] = useState(false);
+  // Codes are six characters now; plans made before that have eight, so the row grows to fit one.
+  const slots = Math.max(length, value.length);
   return (
     <div className="code-slots" data-invalid={invalid || undefined} data-focused={focused || undefined}>
       <input
@@ -36,7 +41,7 @@ export function CodeSlots({ id, name, value, onChange, length = 8, invalid = fal
         name={name}
         className="code-slots-input"
         value={value}
-        onChange={(e) => onChange(tidy(e.target.value, length))}
+        onChange={(e) => onChange(tidy(e.target.value, LONGEST))}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         required
@@ -50,12 +55,12 @@ export function CodeSlots({ id, name, value, onChange, length = 8, invalid = fal
         aria-invalid={invalid || undefined}
       />
       <div aria-hidden className="code-slots-row">
-        {Array.from({ length }, (_, i) => (
+        {Array.from({ length: slots }, (_, i) => (
           <span
             key={i}
             className="code-slot"
             data-filled={i < value.length || undefined}
-            data-active={(focused && i === Math.min(value.length, length - 1)) || undefined}
+            data-active={(focused && i === Math.min(value.length, slots - 1)) || undefined}
             style={{ "--i": i } as React.CSSProperties}
           >
             {/* Keyed by its character, so a new one drops in afresh. */}
