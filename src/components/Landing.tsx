@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import { CountUp, DotGrid } from "./Effects";
 import { HeroDemo } from "./HeroDemo";
 import { Reveal } from "./Reveal";
@@ -13,20 +14,42 @@ const SOUNDS_LIKE: { said: string; heard: string }[] = [
   { said: "whatever", heard: "the loudest person decides" },
 ];
 
+/** The grid in step two: how many of four people could make each place at each time. One cell wins. */
+const SCORES = [
+  [1, 2, 2, 3, 2],
+  [2, 3, 4, 3, 1],
+  [1, 2, 3, 2, 2],
+  [0, 1, 2, 2, 1],
+];
+const SCORE_TIMES = ["5:30", "6:00", "7:00", "7:30", "8:00"];
+const SCORE_PLACES = ["Kiku", "Olive Tree", "Luca's", "Bao Bar"];
+
 const STEPS = [
   {
     n: "01",
     title: "Tell your assistant the truth",
     body: "A one-minute private chat: budget, when you're free, what you won't eat. Nobody else in your group sees it.",
-    demo: (
-      <div className="space-y-2 text-sm">
-        <div className="flex justify-end">
-          <span className="rounded-2xl rounded-br-md bg-ink px-3 py-1.5 text-paper">
-            after 6 only, under $30, no spicy
-          </span>
-        </div>
-        <div className="flex">
-          <span className="rounded-2xl rounded-bl-md bg-paper-2 px-3 py-1.5">Got it, noted privately.</span>
+    scene: (
+      <div className="scene-chat">
+        <span aria-hidden className="orb" style={{ "--s": "4.5rem" } as React.CSSProperties}>
+          <b />
+          <b />
+          <b />
+          <i />
+        </span>
+        <p className="mt-4 font-serif text-3xl leading-none">Hello, Sam</p>
+        <p className="mt-1.5 text-sm text-ink-2">I can help with your plan today.</p>
+        <div className="mt-6 w-full space-y-2.5 text-left text-sm">
+          <div className="flex justify-end">
+            <span className="bubble-mine rounded-[1.25rem] rounded-br-md px-4 py-2">
+              after 6 only, under $30, no spicy
+            </span>
+          </div>
+          <div className="flex">
+            <span className="bubble-theirs rounded-[1.25rem] rounded-bl-md px-4 py-2 text-ink">
+              Got it, noted privately.
+            </span>
+          </div>
         </div>
       </div>
     ),
@@ -35,20 +58,47 @@ const STEPS = [
     n: "02",
     title: "Every option gets scored",
     body: "Once everyone is done, a program scores every place and start time against what each person said. No AI picks the plan, and nobody's answers are shown to anyone.",
-    demo: (
-      <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
-        <span className="rounded-md border border-line-strong bg-paper-2 px-2 py-1 text-ink-2">
-          <CountUp to={60} /> places
-        </span>
-        <span aria-hidden className="text-ink-3">
-          ×
-        </span>
-        <span className="rounded-md border border-line-strong bg-paper-2 px-2 py-1 text-ink-2">
-          <CountUp to={14} /> start times
-        </span>
-        <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">
-          every open option scored
-        </span>
+    scene: (
+      <div>
+        <div className="flex flex-wrap items-center gap-2 font-mono text-xs">
+          <span className="rounded-md border border-line-strong bg-surface px-2 py-1 text-ink-2">
+            <CountUp to={60} /> places
+          </span>
+          <span aria-hidden className="text-ink-3">
+            ×
+          </span>
+          <span className="rounded-md border border-line-strong bg-surface px-2 py-1 text-ink-2">
+            <CountUp to={14} /> start times
+          </span>
+          <span className="rounded-md border border-moss/30 bg-moss-soft px-2 py-1 text-moss">
+            every open option scored
+          </span>
+        </div>
+        {/* A picture of the scoring, not a table of real results: the sentence above says what it shows. */}
+        <div aria-hidden className="score-grid mt-5">
+          <span />
+          {SCORE_TIMES.map((t) => (
+            <span key={t} className="score-head">
+              {t}
+            </span>
+          ))}
+          {SCORES.map((row, r) => (
+            <Fragment key={SCORE_PLACES[r]}>
+              <span className="score-place">{SCORE_PLACES[r]}</span>
+              {row.map((n, c) => (
+                <span
+                  key={c}
+                  className="score-cell"
+                  data-best={n === 4 || undefined}
+                  style={{ "--fill": n / 4, "--i": r * 5 + c } as React.CSSProperties}
+                >
+                  {n}
+                </span>
+              ))}
+            </Fragment>
+          ))}
+        </div>
+        <p className="mt-3 font-mono text-[0.75rem] uppercase tracking-[0.12em] text-ink-3">how many of 4 could come</p>
       </div>
     ),
   },
@@ -56,10 +106,33 @@ const STEPS = [
     n: "03",
     title: "A short list for the group",
     body: "The plan is the one the fewest people would have to miss, and among those the one that suits the group best, with up to five more places. The group gets the answer and nothing else.",
-    demo: (
-      <div className="rounded-xl border border-ink bg-ink px-4 py-3 text-paper shadow-[var(--shadow-lift)]">
-        <div className="font-serif text-xl leading-tight">Sat 7pm · Olive Tree Mezze</div>
-        <div className="mt-0.5 text-xs text-paper/70">~$27 each · everyone can come</div>
+    scene: (
+      <div className="scene-result">
+        <div className="plan-ticket plan-ticket-paper">
+          <div className="plan-ticket-main">
+            <p className="plan-ticket-eyebrow">Settle · the plan</p>
+            <p className="plan-ticket-title">Olive Tree Mezze</p>
+            <dl className="plan-ticket-facts">
+              <div>
+                <dt>When</dt>
+                <dd>Sat 7:00 PM</dd>
+              </div>
+              <div>
+                <dt>Each</dt>
+                <dd>About $27</dd>
+              </div>
+            </dl>
+          </div>
+          <div className="plan-ticket-stub">
+            <p className="plan-ticket-eyebrow">Can come</p>
+            <p className="plan-ticket-count">4/4</p>
+            <p className="plan-ticket-eyebrow">everyone</p>
+          </div>
+        </div>
+        <ul className="mt-6 space-y-1.5 font-mono text-[0.75rem] uppercase tracking-[0.12em] text-paper/65">
+          <li>also fits · Kiku Izakaya</li>
+          <li>also fits · Luca&apos;s Kitchen</li>
+        </ul>
       </div>
     ),
   },
@@ -165,11 +238,22 @@ export function Landing() {
       {/* What everyone says instead */}
       <Reveal as="section" className="mt-24 border-y border-line py-8 sm:mt-32 sm:py-10">
         <p className="eyebrow text-center">What everyone says instead</p>
-        <ul className="excuses mt-5">
-          {EXCUSES.map((e) => (
-            <li key={e}>&ldquo;{e}&rdquo;</li>
+        {/* Two rows that slide past each other as the page scrolls, where the browser can tie motion
+            to scrolling; otherwise the six sit still. The repeats only fill the rows and are not read out. */}
+        <div className="excuses mt-5">
+          {[EXCUSES.slice(0, 3), EXCUSES.slice(3)].map((row, r) => (
+            <ul key={r} className="excuses-row" data-dir={r ? "right" : "left"}>
+              {row.map((e) => (
+                <li key={e}>&ldquo;{e}&rdquo;</li>
+              ))}
+              {[...row, ...row].map((e, i) => (
+                <li key={i} aria-hidden className="excuses-fill">
+                  &ldquo;{e}&rdquo;
+                </li>
+              ))}
+            </ul>
           ))}
-        </ul>
+        </div>
       </Reveal>
 
       {/* Why it happens: the one dark page in the book. */}
@@ -208,18 +292,24 @@ export function Landing() {
             three steps · one answer
           </span>
         </Reveal>
-        <ol className="mt-10 border-t border-ink">
+        {/* Each step is a sheet that stays put while the next one slides up over it. */}
+        <ol className="stack mt-10">
           {STEPS.map((s, i) => (
-            <Reveal as="li" key={s.n} delay={i * 0.08} className="step">
-              <span aria-hidden className="step-num">
-                {s.n}
-              </span>
-              <div>
-                <h3 className="font-serif text-3xl leading-[1.05] sm:text-[2.5rem]">{s.title}</h3>
-                <p className="mt-3 max-w-md leading-relaxed text-ink-2">{s.body}</p>
+            <li
+              key={s.n}
+              className="stack-card"
+              data-tone={i === 2 ? "ink" : i === 1 ? "paper" : "surface"}
+              style={w(i)}
+            >
+              <div className="stack-copy">
+                <span aria-hidden className="step-num">
+                  {s.n}
+                </span>
+                <h3 className="mt-6 font-serif text-4xl leading-[1.02] sm:text-5xl">{s.title}</h3>
+                <p className="stack-body mt-4 max-w-md leading-relaxed">{s.body}</p>
               </div>
-              <div className="step-demo">{s.demo}</div>
-            </Reveal>
+              <div className="stack-scene">{s.scene}</div>
+            </li>
           ))}
         </ol>
       </section>

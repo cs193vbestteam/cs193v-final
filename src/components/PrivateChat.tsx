@@ -211,7 +211,7 @@ export function PrivateChat({
     <section
       ref={chat}
       onPointerMove={lean}
-      className="chat card flex flex-col !p-0 lg:h-[min(46rem,calc(100dvh-10rem))] lg:min-h-[34rem]"
+      className="chat card flex h-[calc(100dvh-5.75rem)] max-h-[64rem] min-h-[24rem] scroll-mt-[5.25rem] flex-col !p-0 lg:absolute lg:inset-0 lg:h-auto lg:max-h-none"
     >
       <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
         <h2 className="font-serif text-xl">Your private assistant</h2>
@@ -228,7 +228,7 @@ export function PrivateChat({
           onScroll={measure}
           data-above={hidden.above || undefined}
           data-below={hidden.below || undefined}
-          className="chat-log scroll-quiet max-h-[26rem] min-h-[16rem] flex-1 space-y-3 overflow-y-auto px-5 py-4 lg:max-h-none lg:min-h-[8rem]"
+          className="chat-log scroll-quiet min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-4"
           role="log"
           aria-label="Conversation with your assistant"
           aria-live="polite"
@@ -309,6 +309,36 @@ export function PrivateChat({
         )}
         {/* The message box floats over the end of the conversation, so messages pass under its glass. */}
         <div className="composer">
+          {/* Ready-made answers to what the assistant just asked sit right above the box they fill.
+              Nothing is sent until the person presses Send. */}
+          {!ready && progress.length > 0 && quick.length > 0 && (
+            <div
+              // A new set of answers comes in one after another, so the change of question is seen.
+              key={quick.join("|")}
+              className="quick-row"
+              role="group"
+              aria-label="Quick answers"
+              // Only at the end of the conversation, where the person is about to type. Scrolled
+              // back to read, they would lie over the messages, so they step away until then.
+              data-away={hidden.below || undefined}
+              inert={hidden.below || undefined}
+            >
+              <span className="quick-row-label">
+                {shown.length ? `${shown.map((s) => s.label).join(" or ")}?` : "Try"}
+              </span>
+              {quick.map((answer, n) => (
+                <button
+                  key={answer}
+                  type="button"
+                  className="quick-chip"
+                  style={{ "--i": n } as React.CSSProperties}
+                  onClick={() => addQuick(answer)}
+                >
+                  {answer}
+                </button>
+              ))}
+            </div>
+          )}
           <form
             onSubmit={send}
             className="prompt-bar liquid"
@@ -351,7 +381,7 @@ export function PrivateChat({
 
       {/* Under the message box: what is still missing, the way to finish, and what happens after. */}
       {!opening && (
-        <div className={`border-t px-5 py-3 ${ready ? "border-moss/30 bg-moss-soft" : "border-line"}`}>
+        <div className={`border-t px-5 py-2 ${ready ? "border-moss/30 bg-moss-soft" : "border-line"}`}>
           <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             {ready ? (
               <p role="status" className="min-w-0 flex-1 basis-64 text-sm text-ink-2">
@@ -399,83 +429,56 @@ export function PrivateChat({
         </div>
       )}
 
-      {/* Then how far through the questions they are, which one the assistant is
-          on, and ready-made answers to that one. Nothing is sent until they press Send. */}
-      {!ready && progress.length > 0 && (
-        <div className={opening ? "px-5 pb-4" : "border-t border-line px-5 py-3"}>
-          {!opening && (
-            <div className="flex items-center gap-4">
-              <AnswerDial progress={progress} />
-              <div className="min-w-0 flex-1">
-                <p className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
-                  <span id="answers-label" className="sr-only">
-                    Your answers
-                  </span>
-                  {answered} of {progress.length} answered
-                </p>
-                <ol aria-labelledby="answers-label" className="mt-2 flex flex-wrap gap-1.5">
-                  {progress.map((s) => (
-                    <li key={s.topic}>
-                      <button
-                        type="button"
-                        className="answer-chip"
-                        data-done={s.done || undefined}
-                        data-asking={s.asking || undefined}
-                        aria-pressed={shown.includes(s)}
-                        onClick={() => setPicked(picked === s.topic ? null : s.topic)}
-                      >
-                        {s.done && (
-                          <span aria-hidden className="answer-chip-check">
-                            ✓{" "}
-                          </span>
-                        )}
-                        {s.label}
-                        <span className="sr-only">
-                          {s.asking
-                            ? ": the assistant is asking this now"
-                            : s.done
-                              ? ": answered"
-                              : s.required
-                                ? ": needed before you can finish"
-                                : ": optional, not answered"}
+      {/* Then how far through the questions they are, and which one the assistant is on. */}
+      {!ready && !opening && progress.length > 0 && (
+        <div className="border-t border-line px-5 py-2">
+          <div className="flex items-center gap-3">
+            <AnswerDial progress={progress} />
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
+                <span id="answers-label" className="sr-only">
+                  Your answers
+                </span>
+                {answered} of {progress.length} answered
+              </p>
+              <ol aria-labelledby="answers-label" className="mt-1 flex flex-wrap gap-1.5">
+                {progress.map((s) => (
+                  <li key={s.topic}>
+                    <button
+                      type="button"
+                      className="answer-chip"
+                      data-done={s.done || undefined}
+                      data-asking={s.asking || undefined}
+                      aria-pressed={shown.includes(s)}
+                      onClick={() => setPicked(picked === s.topic ? null : s.topic)}
+                    >
+                      {s.done && (
+                        <span aria-hidden className="answer-chip-check">
+                          ✓{" "}
                         </span>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              </div>
+                      )}
+                      {s.label}
+                      <span className="sr-only">
+                        {s.asking
+                          ? ": the assistant is asking this now"
+                          : s.done
+                            ? ": answered"
+                            : s.required
+                              ? ": needed before you can finish"
+                              : ": optional, not answered"}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
             </div>
-          )}
-          {quick.length > 0 && (
-            <div
-              // A new set of answers comes in one after another, so the change of question is seen.
-              key={quick.join("|")}
-              className={`flex flex-wrap items-center gap-1.5 ${opening ? "justify-center" : "mt-3"}`}
-              role="group"
-              aria-label="Quick answers"
-            >
-              <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
-                {shown.length ? `${shown.map((s) => s.label).join(" or ")}?` : "Try"}
-              </span>
-              {quick.map((answer, n) => (
-                <button
-                  key={answer}
-                  type="button"
-                  className="quick-chip"
-                  style={{ "--i": n } as React.CSSProperties}
-                  onClick={() => addQuick(answer)}
-                >
-                  {answer}
-                </button>
-              ))}
-            </div>
-          )}
+          </div>
         </div>
       )}
 
       {/* The words are AI-CONSENT.md's: what leaves, who gets it, and for how long. Kept where
           people type, folded under a title so it is there for whoever wants it. */}
-      <details className="notice border-t border-line px-5 py-2">
+      <details className="notice border-t border-line px-5 py-1.5">
         <summary>
           <LockIcon />
           Processed by Anthropic&apos;s Claude. Where your messages go
@@ -492,22 +495,29 @@ export function PrivateChat({
 
       {/* On the greeting there is nothing known yet, so the summary waits for the first message. */}
       {(!quiet || error) && (
-        <div className="border-t border-line bg-paper-2/40 px-5 py-4">
-          {!quiet && <div className="eyebrow">What your assistant knows</div>}
-          {quiet ? null : summary.length ? (
-            <ul className="mt-2.5 grid gap-x-6 gap-y-1 text-sm text-ink-2 sm:grid-cols-2">
-              {summary.map((s) => (
-                <li key={s} className="flex gap-2">
-                  <span aria-hidden className="mt-[0.55em] h-1 w-1 shrink-0 rounded-full bg-ink-3" />
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2.5 text-sm text-ink-3">Nothing yet. Just talk to it like a friend who keeps secrets.</p>
+        <div className="border-t border-line bg-paper-2/40 px-5 py-2">
+          {/* One short line under the chat: the conversation above is what the room is for. */}
+          {quiet ? null : (
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs text-ink-2">
+              <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
+                What your assistant knows
+              </span>
+              {summary.length ? (
+                <ul className="flex min-w-0 flex-wrap gap-x-3 gap-y-0.5">
+                  {summary.map((s) => (
+                    <li key={s} className="flex gap-1.5">
+                      <span aria-hidden className="mt-[0.6em] h-1 w-1 shrink-0 rounded-full bg-ink-3" />
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <span className="text-ink-3">Nothing yet. Just talk to it like a friend who keeps secrets.</span>
+              )}
+            </div>
           )}
           {error && (
-            <p role="alert" className="mt-3 text-sm text-seal-ink">
+            <p role="alert" className="mt-1.5 text-sm text-seal-ink">
               {error}
             </p>
           )}

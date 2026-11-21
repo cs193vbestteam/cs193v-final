@@ -160,18 +160,33 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             ? { text: "Everyone is done, but the plan is out of date.", href: "#plan", link: "Re-run it" }
             : { text: "Everyone is done.", href: "#plan", link: "Find a plan" };
 
-  const planActions = (
+  const share = shareResult && <ShareMessage label="Share with the group" message={shareResult} primary />;
+  const rerun = (
+    <NegotiateButton
+      eventId={event.id}
+      inviteCode={code}
+      readyCount={readyCount}
+      memberCount={members.length}
+      decided={!!result}
+      canRerun={rerunnable}
+    />
+  );
+  // A settled plan needs no more invitations on show; they stay one click away.
+  const settled = !!result && !stale;
+  const invite = (
     <>
-      {shareResult && <ShareMessage label="Share with the group" message={shareResult} primary />}
-      <div className={shareResult ? "mt-2" : ""}>
-        <NegotiateButton
-          eventId={event.id}
-          inviteCode={code}
-          readyCount={readyCount}
-          memberCount={members.length}
-          decided={!!result}
-          canRerun={rerunnable}
-        />
+      <CopyInvite url={planUrl} />
+      <div className="mt-3 text-center">
+        <p className="eyebrow">Plan code</p>
+        <div className="mt-2">
+          <PlanCode code={code} />
+        </div>
+        <p className="mt-2 text-xs text-ink-3">
+          Friends can join with this code and a name, no account needed, at{" "}
+          <a className="link link-small" href={`/guest?code=${code}`}>
+            {origin.replace(/^https?:\/\//, "")}/guest
+          </a>
+        </p>
       </div>
     </>
   );
@@ -190,7 +205,10 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
                 Until the plan is decided the count is only the first batch, so it is left out. */}
             {` · ${event.poolSource !== "places" || result ? `${event.poolSize} ` : ""}${POOL_LABEL[event.poolSource]}`}
           </p>
-          <h1 className="display mt-2 break-words text-4xl sm:text-5xl">{event.title}</h1>
+          {/* Once there is a plan, the place is the headline and the plan's own name steps back. */}
+          <h1 className={`display mt-2 break-words ${result ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl"}`}>
+            {event.title}
+          </h1>
           {sample && (
             <p className="mt-2 max-w-xl text-sm text-ink-2">
               <span className="pill pill-amber mr-2">Sample data</span>
@@ -215,21 +233,21 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         <section
           id="plan"
           aria-labelledby="plan-heading"
-          className="card rise sealed-trace mt-6 scroll-mt-24"
+          className="plan-hero rise sealed-trace mt-6 scroll-mt-24"
+          data-tone={chosen && !stale ? "ink" : "paper"}
           style={{ "--d": "0.06s" } as React.CSSProperties}
         >
-          <h2 id="plan-heading" className="font-serif text-2xl">
+          {/* The one dark block on the page: where, when and what it costs, then what to do with it. */}
+          <h2 id="plan-heading" className="plan-hero-label">
             The plan
           </h2>
-          <div className="mt-3 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-            <ResultCard result={result} sample={sample} date={event.date} stale={stale} />
-            <div>{planActions}</div>
-          </div>
+          <ResultCard result={result} sample={sample} date={event.date} stale={stale} actions={share} rerun={rerun} />
         </section>
       )}
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="rise" style={{ "--d": "0.1s" } as React.CSSProperties}>
+        {/* Beside the group and the plan, the chat is exactly as tall as the two of them together. */}
+        <div className="rise lg:relative lg:min-h-[34rem]" style={{ "--d": "0.1s" } as React.CSSProperties}>
           <PrivateChat
             eventId={event.id}
             inviteCode={code}
@@ -255,10 +273,9 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
               {members.map((m) => (
                 <li key={m.userId} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                   <span className="flex min-w-0 items-center gap-2.5">
-                    <span
-                      aria-hidden
-                      className={`h-2 w-2 shrink-0 rounded-full ${m.ready ? "bg-moss" : "bg-amber dot-live"}`}
-                    />
+                    <span aria-hidden className="member-mark" data-ready={m.ready || undefined}>
+                      {[...m.displayName.trim()][0]?.toUpperCase() ?? "?"}
+                    </span>
                     <span className="truncate">
                       {m.displayName}
                       {m.userId === user.id && <span className="text-ink-3"> (you)</span>}
@@ -272,21 +289,19 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
                 </li>
               ))}
             </ul>
-            <div className="mt-4">
-              <CopyInvite url={planUrl} />
-            </div>
-            <div className="mt-3 text-center">
-              <p className="eyebrow">Plan code</p>
-              <div className="mt-2">
-                <PlanCode code={code} />
-              </div>
-              <p className="mt-2 text-xs text-ink-3">
-                Friends can join with this code and a name, no account needed, at{" "}
-                <a className="link link-small" href={`/guest?code=${code}`}>
-                  {origin.replace(/^https?:\/\//, "")}/guest
-                </a>
-              </p>
-            </div>
+            {settled ? (
+              <details className="group mt-3 border-t border-line pt-3">
+                <summary className="flex cursor-pointer list-none items-center justify-between text-sm [&::-webkit-details-marker]:hidden">
+                  <span className="link">Invite someone else</span>
+                  <span aria-hidden className="text-ink-3 transition-transform duration-300 group-open:rotate-180">
+                    ↓
+                  </span>
+                </summary>
+                <div className="mt-4">{invite}</div>
+              </details>
+            ) : (
+              <div className="mt-4">{invite}</div>
+            )}
             {nudge && (
               <div className="mt-2">
                 <ShareMessage label="Nudge the group" message={nudge} />
@@ -327,7 +342,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
               <div className="mt-4 text-center">
                 <NotifyToggle eventId={event.id} />
               </div>
-              <div className="mt-4">{planActions}</div>
+              <div className="mt-4">{rerun}</div>
             </section>
           )}
         </aside>

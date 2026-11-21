@@ -2,7 +2,7 @@ import Link from "next/link";
 import { CreateEventForm } from "@/components/CreateEventForm";
 import { Landing } from "@/components/Landing";
 import { DEFAULT_PLAN_SIZE, MAX_PLAN_SIZE, MIN_PLAN_SIZE, listMyEvents } from "@/lib/events";
-import { latestPlanDate, todayPacific } from "@/lib/plan-date";
+import { formatPlanDate, latestPlanDate, todayPacific } from "@/lib/plan-date";
 import { currentUser } from "@/lib/session";
 import { yelpDatasetDir } from "@/lib/yelp-pool";
 
@@ -58,25 +58,24 @@ export default async function Home() {
         {events.length === 0 ? (
           <p className="py-8 text-sm text-ink-3">Nothing yet. Your first plan will show up here.</p>
         ) : (
-          <ul className="divide-y divide-line">
+          <ul className="mt-5 grid gap-4 sm:grid-cols-2">
             {events.map((e, i) => (
               <li key={e.id} className="rise" style={{ "--d": `${0.3 + i * 0.05}s` } as React.CSSProperties}>
-                <Link
-                  href={`/e/${e.inviteCode}`}
-                  className="group flex items-center justify-between gap-4 py-4 transition-colors hover:text-seal-ink"
-                >
-                  <span className="flex min-w-0 items-baseline gap-3">
-                    <span className="font-mono text-xs text-ink-3">{String(i + 1).padStart(2, "0")}</span>
-                    <span className="truncate font-serif text-xl">{e.title}</span>
+                {/* Each plan is the ticket it was started as: ink once it is decided, paper while it is open. */}
+                <Link href={`/e/${e.inviteCode}`} className="plan-stub spot" data-decided={e.decided || undefined}>
+                  <span className="plan-stub-main">
+                    <span className="plan-stub-eyebrow">
+                      No. {String(events.length - i).padStart(2, "0")}
+                      {e.date ? ` · ${formatPlanDate(e.date)}` : ""}
+                    </span>
+                    <span className="plan-stub-title">{e.title}</span>
+                    <span className="plan-stub-where">{e.location ?? "Sample places"}</span>
                   </span>
-                  <span className="flex shrink-0 items-center gap-3">
+                  <span className="plan-stub-end">
                     <span className={`pill ${e.decided ? "pill-moss" : "pill-amber"}`}>
                       {e.decided ? "Decided" : "Collecting"}
                     </span>
-                    <span
-                      aria-hidden
-                      className="text-ink-3 transition-transform duration-500 ease-out group-hover:translate-x-1"
-                    >
+                    <span aria-hidden className="plan-stub-go">
                       →
                     </span>
                   </span>
