@@ -1,4 +1,6 @@
 import { labelOf } from "./cuisine-table";
+import { FEATURE_WORDS } from "./member-state";
+import type { Feature } from "./optimizer-input";
 import { db } from "./db";
 import { decryptOrPlain, scope } from "./crypto";
 import type { Place, Restaurant } from "./restaurants";
@@ -51,7 +53,24 @@ export type PlaceSummary = Pick<Place, "name" | "cuisine" | "pricePerPerson"> &
     travelMin?: number;
     /** What kind of food it is, in words, from the place's main Google type: "ramen", "Indian". Optimizer results only. */
     kind?: string;
+    /** A few things Google says the place has ("outdoor seating"). Public facts about the place, the same for everyone. */
+    offers?: string[];
   };
+
+/**
+ * Which of a place's features are worth a word on the plan, most telling first. The rating has
+ * its own place on the card, and nearly every restaurant has room for a group and somewhere to park.
+ */
+const OFFERS_SHOWN: readonly Feature[] = [
+  "outdoor",
+  "wheelchair",
+  "kids",
+  "reservable",
+  "alcohol",
+  "live_music",
+  "dogs",
+];
+const MAX_OFFERS = 3;
 
 /**
  * The same for a plan the optimizer decided. Its pool includes places that have none of the ten
@@ -63,6 +82,10 @@ export function summarizePlaces(places: readonly Place[], ids: Iterable<string>)
     const p = places.find((x) => x.id === id);
     const type = p?.primaryType ?? p?.types?.find((t) => t !== "restaurant") ?? p?.types?.[0];
     if (type) summary.kind = labelOf(type);
+    const offers = OFFERS_SHOWN.filter((f) => p?.features?.[f] === true)
+      .slice(0, MAX_OFFERS)
+      .map((f) => FEATURE_WORDS[f]);
+    if (offers.length) summary.offers = offers;
   }
   return out;
 }

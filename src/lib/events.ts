@@ -15,7 +15,9 @@ import type { MemberState } from "./member-state";
 import type { ChatTurn } from "./extract";
 import type { Proposal } from "./evaluate";
 import type { NegotiationResult } from "./negotiate";
+import { myMatches } from "./my-matches";
 import { optimize } from "./optimizer";
+import type { StartTime } from "./optimizer-input";
 import { checkResult, type OptimizerResult } from "./optimizer-handoff";
 import { loadOptimizerInput } from "./optimizer-source";
 import { planDateSchema, todayPacific } from "./plan-date";
@@ -704,6 +706,21 @@ export async function negotiateWhenAllReady(eventId: string, userId: string): Pr
     throw err;
   }
   return true;
+}
+
+/**
+ * What the viewer asked for that the plan gives them, for the one line on the plan only they see.
+ * Their own preferences and the place's public facts; nothing about anyone else, and not stored.
+ */
+export async function myPlanMatches(
+  eventId: string,
+  userId: string,
+  proposal: { restaurantId: string; slot: string },
+): Promise<string[]> {
+  const { constraints } = await loadConstraints(eventId, userId); // also checks membership
+  const { places } = await poolForEvent(eventId);
+  const place = places.find((p) => p.id === proposal.restaurantId);
+  return place ? myMatches(constraints.prefs, place, proposal.slot as StartTime) : [];
 }
 
 export async function getResult(eventId: string, userId: string): Promise<StoredResult | null> {
