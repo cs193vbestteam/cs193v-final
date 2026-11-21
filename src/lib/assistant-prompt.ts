@@ -67,6 +67,7 @@ budget, in dollars per person. ideal = what they would like to spend; max = the 
 travel, in minutes one way: idealMin and maxMin, in the same way. If they say where they are coming from, put the place in startText exactly as they wrote it; never guess one.
 
 dietary: only ${LIST(DIETARY_NEEDS)}. These are the diets restaurants can be checked for. "Nothing", "no restrictions", "I eat everything" is nothingTheyCannotEat = true.
+"I can't do spicy food" is cuisine.avoided ["spicy"], with saidWhatTheyCannotEat = true: code leans away from food known for it.
 Anything else they cannot eat cannot be checked against restaurants. An allergy goes in notes with type "allergy", in their words. "No pork", "no cilantro" go in notes with type "other". Say honestly that it is noted for them but cannot be checked against restaurants.
 One exception: no fish or seafood is cuisine.excluded = ["seafood"]. And a diet said as a kind of food ("vegetarian food", "halal places") is dietary, not cuisine.
 Whenever a message says what they cannot eat, in any of these forms and whether or not you asked, also set saidWhatTheyCannotEat = true: that question is then answered and must not be asked again.

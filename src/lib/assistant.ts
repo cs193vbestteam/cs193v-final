@@ -162,6 +162,22 @@ const ToolOutput = z.object({
 });
 export type AssistantOutput = z.infer<typeof ToolOutput>;
 
+/**
+ * What the model recorded but put beside `update` instead of inside it ({reply, budget: …}).
+ * Without this the turn would look fine and save nothing: the reply says "got it" and the
+ * record stays empty. A block inside `update` wins over the same block outside it.
+ */
+export function liftMisplaced(input: unknown): unknown {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+  const raw = input as Record<string, unknown>;
+  const stray = Object.keys(BLOCKS).filter((name) => name in raw);
+  if (stray.length === 0) return input;
+  const inside = unwrapJson(raw.update);
+  const update =
+    inside && typeof inside === "object" && !Array.isArray(inside) ? (inside as Record<string, unknown>) : {};
+  return { ...raw, update: { ...Object.fromEntries(stray.map((name) => [name, raw[name]])), ...update } };
+}
+
 const uniq = <T>(xs: readonly T[]) => Array.from(new Set(xs));
 const isVariable = (x: unknown): x is Variable => (VARIABLES as readonly unknown[]).includes(x);
 
@@ -840,7 +856,7 @@ async function callModel(history: ChatTurn[], state: MemberState, apiKey: string
   if (!res.ok) throw new Error(`Anthropic API ${res.status}`);
   const data = (await res.json()) as { content?: { type: string; input?: unknown }[]; usage?: Usage };
   await recordUsage(data.usage);
-  return ToolOutput.parse(data.content?.find((b) => b.type === "tool_use")?.input);
+  return ToolOutput.parse(liftMisplaced(data.content?.find((b) => b.type === "tool_use")?.input));
 }
 
 /** Resolve a start point the person named. The model only ever supplies the text. */
