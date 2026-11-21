@@ -473,7 +473,7 @@
     {
       "id": "near-04",
       "category": "near miss",
-      "note": "A message about the meal in Chinese.",
+      "note": "A message about the meal in Chinese. Not wanting spicy food is a note; the words may be the person's or the table's.",
       "user": "我晚上七点以后有空，人均三十美元左右，不吃辣",
       "expect": "answer",
       "model": {
@@ -509,7 +509,7 @@
         ],
         "prefs.budget.ideal": 30,
         "prefs.notes": {
-          "$includes": "不吃辣"
+          "$includes": "other"
         }
       }
     },

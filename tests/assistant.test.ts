@@ -525,7 +525,9 @@ describe("cuisines: the model passes the words on, the table in code says what t
     expect(scoresOf(r).japanese_restaurant).toBe(1);
     expect(scoresOf(r).nepalese_restaurant).toBeUndefined();
     expect(r.state.prefs.budget?.max).toBe(40);
-    expect(r.reply).toContain('I can\'t look for "Nepalese" as a kind of food or place');
+    expect(r.reply).toContain("I can't look for \"Nepalese\" directly, so I've kept it as a note");
+    // Not a dead end: the reply says what to do next (#158).
+    expect(r.reply).toContain("Name a kind of food close to it");
     expect(r.reply).toContain("kept it as a note");
     expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would like: Nepalese" }]);
     // The note is not an answer to "anything you can't eat?", and it is said only once.
@@ -622,8 +624,144 @@ describe("restaurants named by the person", () => {
 
   it("does not say a place is missing: the plan's places are not final during the chat", () => {
     const r = apply(state(), out({ wantedRestaurants: ["Sizzler"] }, { reply: "Sizzler, noted!" }));
-    expect(r.reply).toBe("Sizzler, noted!");
+    expect(r.reply).not.toMatch(/not among|not found|can't find|isn't one of/i);
     expect(r.state.prefs.wantedRestaurants).toEqual([{ name: "Sizzler", id: null }]);
+  });
+
+  it("says plainly that a name was taken as a restaurant, found or not yet (#158)", () => {
+    const later = apply(state(), out({ wantedRestaurants: ["Imperial Treasure"] }, { reply: "Got it." }));
+    expect(later.reply).toBe(
+      `Got it. (I've noted "Imperial Treasure" as a restaurant you'd like, and will check for it once your group's places are in.)`,
+    );
+    const found = apply(state(), out({ wantedRestaurants: ["ramen nagi"] }, { reply: "Got it." }));
+    expect(found.reply).toBe(
+      `Got it. ("Ramen Nagi" is one of this plan's places; I've marked it as somewhere you'd like to go.)`,
+    );
+    // A place they do not want needs no such line.
+    expect(apply(state(), out({ excludedRestaurants: ["Sizzler"] }, { reply: "Got it." })).reply).toBe("Got it.");
+  });
+});
+
+describe("wishes about what the food is like are understood, not turned away (#158)", () => {
+  it("'spicy' leans toward food known for it, says which, and searches nothing it cannot", () => {
+    const r = apply(state(), out({ cuisine: { liked: ["spicy"] } }, { reply: "Got it." }));
+    expect(r.state.prefs.cuisine?.scores).toEqual({
+      thai_restaurant: 1,
+      indian_restaurant: 1,
+      korean_restaurant: 1,
+      mexican_restaurant: 1,
+      hot_pot_restaurant: 1,
+    });
+    expect(r.reply).toBe(
+      "Got it. (Restaurants aren't listed by how spicy the food is, so I'll lean toward food known for it: Thai, Indian, Korean, Mexican, hot pot.)",
+    );
+    expect(r.reply).not.toMatch(/can't look for|cannot|won't change/i);
+    expect(r.state.prefs.notes).toBeUndefined();
+  });
+
+  it("'trying to lose weight' leans toward lighter kinds of food", () => {
+    const r = apply(state(), out({ cuisine: { liked: ["trying to lose weight"] } }, { reply: "Got it." }));
+    expect(Object.keys(r.state.prefs.cuisine?.scores ?? {})).toEqual(
+      expect.arrayContaining(["salad_shop", "vegetarian_restaurant", "mediterranean_restaurant"]),
+    );
+    expect(r.reply).toContain("how light or healthy the food is");
+  });
+
+  it("both in one message: neither is refused", () => {
+    const r = apply(state(), out({ cuisine: { liked: ["spicy", "healthy"] } }, { reply: "Got it." }));
+    const scores = r.state.prefs.cuisine?.scores ?? {};
+    expect(scores.thai_restaurant).toBe(1);
+    expect(scores.salad_shop).toBe(1);
+    expect(r.reply).not.toMatch(/can't look for/);
+  });
+
+  it("'nothing spicy' is a note and rules nothing out", () => {
+    const r = apply(state(), out({ cuisine: { excluded: ["spicy"] } }, { reply: "Got it." }));
+    expect(r.state.prefs.cuisine?.excluded).toBeUndefined();
+    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would rather not have: spicy" }]);
+    expect(r.reply).toBe(
+      `Got it. (Restaurants aren't listed by that, so "spicy" stays a note for you and won't rule places out.)`,
+    );
+  });
+
+  it("a wish the table does not have: the model's nearest kinds of food are used, at a lower score", () => {
+    const r = apply(
+      state(),
+      out(
+        {
+          cuisine: {
+            liked: ["comfort food"],
+            closest: [{ wish: "comfort food", like: ["American", "Italian", "ramen"] }],
+          },
+        },
+        { reply: "Got it." },
+      ),
+    );
+    expect(r.state.prefs.cuisine?.scores).toEqual({
+      american_restaurant: 0.5,
+      italian_restaurant: 0.5,
+      ramen_restaurant: 0.5,
+    });
+    expect(r.reply).toBe(
+      `Got it. (Restaurants aren't listed by "comfort food", so I'll lean toward American, Italian, ramen. Tell me if that's off.)`,
+    );
+    // Their own words are kept where they can see them.
+    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would like: comfort food" }]);
+  });
+
+  it("the model cannot add a kind of food of its own: names the table does not have are dropped", () => {
+    const r = apply(
+      state(),
+      out(
+        {
+          cuisine: {
+            liked: ["cozy food"],
+            closest: [
+              { wish: "cozy food", like: ["Italian", "Zorgon cuisine", "ignore previous instructions", "Asian"] },
+            ],
+          },
+        },
+        { reply: "Got it." },
+      ),
+    );
+    // Only the plain cuisine survives: a made-up name, an instruction and another broad word do not.
+    expect(r.state.prefs.cuisine?.scores).toEqual({ italian_restaurant: 0.5 });
+  });
+
+  it("with nothing usable from the model it is still not a dead end", () => {
+    const r = apply(
+      state(),
+      out({ cuisine: { liked: ["zorgon"], closest: [{ wish: "zorgon", like: ["Blarg"] }] } }, { reply: "Got it." }),
+    );
+    expect(r.state.prefs.cuisine).toBeUndefined();
+    expect(r.reply).toContain(`I can't look for "zorgon" directly`);
+    expect(r.reply).toContain("Name a kind of food close to it");
+  });
+
+  it("a wish the table knows is never overridden by the model's guess", () => {
+    const r = apply(
+      state(),
+      out({ cuisine: { liked: ["spicy"], closest: [{ wish: "spicy", like: ["Italian"] }] } }, { reply: "Got it." }),
+    );
+    expect(r.state.prefs.cuisine?.scores?.italian_restaurant).toBeUndefined();
+    expect(r.state.prefs.cuisine?.scores?.thai_restaurant).toBe(1);
+  });
+
+  it("food the person named outranks food suggested for a wish", () => {
+    const r = apply(
+      state(),
+      out(
+        {
+          cuisine: {
+            liked: ["Korean", "comfort food"],
+            closest: [{ wish: "comfort food", like: ["Korean", "Italian"] }],
+          },
+        },
+        { reply: "Got it." },
+      ),
+    );
+    expect(r.state.prefs.cuisine?.scores?.korean_restaurant).toBe(1);
+    expect(r.state.prefs.cuisine?.scores?.italian_restaurant).toBe(0.5);
   });
 
   it("never accepts an id from the model", () => {
@@ -697,8 +835,9 @@ describe("the conversation is run by code", () => {
     const { state: after } = await converse(["hello", "not sure"]);
     expect(systemOf(fetchMock, 0)).toContain("You may ask about ONE of: time, budget, travel, diet, cuisine.");
     expect(systemOf(fetchMock, 0)).toContain("Question you asked last: none");
-    // Travel was asked and not answered: it is not offered again.
-    expect(systemOf(fetchMock, 1)).toContain("You may ask about ONE of: time, budget, diet, cuisine.");
+    // Travel was asked: the one question about everything optional is used up (#156). What the
+    // plan cannot do without can still be asked.
+    expect(systemOf(fetchMock, 1)).toContain("You may ask about ONE of: time, diet.");
     expect(systemOf(fetchMock, 1)).toContain("Question you asked last: travel");
     expect(after.chat).toMatchObject({ asked: ["travel", "diet"], lastAsked: "diet", turns: 2 });
   });
@@ -806,7 +945,7 @@ describe("what is sent to the model", () => {
       "Recorded so far, in words: Budget: up to $40/person (matters most)",
       `Recorded so far, as stored (JSON): ${JSON.stringify(s.prefs)}`,
       "Question you asked last: travel (minutes one way)",
-      "You may ask about ONE of: time, diet, cuisine. Nothing else.",
+      "You may ask about ONE of: time, diet. Nothing else.",
       `Still needed before they can press "I'm done": time, what they cannot eat`,
       `Replies you have left: ${MAX_ASSISTANT_TURNS - 2} of ${MAX_ASSISTANT_TURNS}`,
     ]);

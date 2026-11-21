@@ -82,9 +82,25 @@ describe("which variables the assistant may still ask about", () => {
     expect(allowedToAsk(withPrefs({}, { answered: ["budget", "cuisine"] }))).toEqual(["time", "travel", "diet"]);
   });
 
-  it("asks about budget, travel and cuisine at most once, answered or not", () => {
-    const s = withPrefs({}, { asked: ["budget", "travel", "cuisine"] });
-    expect(allowedToAsk(s)).toEqual(["time", "diet"]);
+  it("budget, travel and cuisine share ONE question: after any of them is asked, none is (#156)", () => {
+    for (const first of ["budget", "travel", "cuisine"] as const)
+      expect(allowedToAsk(withPrefs({}, { asked: [first] })), first).toEqual(["time", "diet"]);
+    // Whether or not it was answered.
+    expect(allowedToAsk(withPrefs({}, { asked: ["budget"], answered: ["budget"] }))).toEqual(["time", "diet"]);
+    expect(allowedToAsk(withPrefs({}, { asked: ["budget", "travel", "cuisine"] }))).toEqual(["time", "diet"]);
+  });
+
+  it("so a chat needs at most three questions: time, diet, and the one about everything else", () => {
+    // Worst case: nothing volunteered, every question asked alone and answered.
+    let s = withPrefs({}, {});
+    const asked: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const next = allowedToAsk(s)[0];
+      if (!next) break;
+      asked.push(next);
+      s = withPrefs({}, { asked: [...s.chat.asked, next], answered: [...s.chat.answered, next] });
+    }
+    expect(asked).toEqual(["time", "budget", "diet"]);
   });
 
   it("keeps the two required questions open until they are answered, because nobody can finish without them", () => {

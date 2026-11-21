@@ -6,8 +6,10 @@ import {
   compactExcluded,
   compactScores,
   describeMatch,
+  NEAR_SCORE,
   excludedFor,
   findCuisine,
+  leaningOf,
   findStyle,
   lowerBroadWish,
   matchCuisine,
@@ -105,6 +107,12 @@ const BLOCKS = {
   cuisine: z.object({
     liked: z.array(z.string()).optional(),
     excluded: z.array(z.string()).optional(),
+    // For a wish about what the food is like ("comfort food"): the ordinary kinds of food the
+    // model thinks come closest. Code keeps only the ones the table knows (see `suggested`).
+    closest: z
+      .array(z.object({ wish: z.string(), like: z.array(z.string()).max(6) }))
+      .max(4)
+      .optional(),
     strength: StrengthIn,
   }),
   // Words, like cuisine: code looks them up (cuisine-table.ts), the model does not classify them.
@@ -232,6 +240,11 @@ type FoodWords = {
   dietary: DietaryNeed[];
   /** Words the table does not have, with whether they were wanted. Kept as notes, never as scores. */
   unknown: { word: string; wanted: boolean }[];
+  /**
+   * A wish the table does not have, with the kinds of food the model said come closest, as far
+   * as the table knows them. They count for less than food the person named (NEAR_SCORE).
+   */
+  suggested: { word: string; like: CuisineMatch[] }[];
 };
 
 /**
@@ -241,7 +254,27 @@ type FoodWords = {
  * right one.
  */
 function readFoodWords(cuisine: Blocks["cuisine"], style: Blocks["style"]): FoodWords {
-  const out: FoodWords = { liked: [], excluded: [], styleWanted: [], styleExcluded: [], dietary: [], unknown: [] };
+  const out: FoodWords = {
+    liked: [],
+    excluded: [],
+    styleWanted: [],
+    styleExcluded: [],
+    dietary: [],
+    unknown: [],
+    suggested: [],
+  };
+  const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+  // What the model offers as closest to a wish is only ever looked up: a name the table does not
+  // have is dropped, so the model cannot add a kind of food of its own. Only plain cuisines and
+  // dishes count; another broad word or leaning would say nothing.
+  const closestTo = (word: string): CuisineMatch[] => {
+    const entry = (cuisine?.closest ?? []).find((c) => same(c.wish, word));
+    const found = (entry?.like ?? []).flatMap((name) => {
+      const m = findCuisine(name);
+      return m && (m.level === "cuisine" || m.level === "dish") ? [m] : [];
+    });
+    return found.filter((m, i) => found.findIndex((x) => x.id === m.id) === i).slice(0, MAX_SUGGESTED);
+  };
   // "Somewhere fancy", "a café": the word that matters is the last part.
   const bare = (w: string) => w.replace(/^(?:somewhere|some ?place|a place that is|an?|the|any)\s+/i, "");
   const asStyle = (w: string): Style | null =>
@@ -255,19 +288,30 @@ function readFoodWords(cuisine: Blocks["cuisine"], style: Blocks["style"]): Food
       const food = findCuisine(word) ?? findCuisine(bare(word));
       const kind = asStyle(word);
       if (kind && (styleFirst || !food)) (wanted ? out.styleWanted : out.styleExcluded).push(kind);
+      // "No spicy food" must not rule out every Thai, Indian, Korean and Mexican place: ruling
+      // out is a hard rule, and a leaning is only a guess at where such food is found.
+      else if (food && !wanted && leaningOf(food)) out.unknown.push({ word, wanted });
       else if (food) (wanted ? out.liked : out.excluded).push(food);
       else if (wanted && dietWord(word)) out.dietary.push(dietWord(word)!);
+      else if (wanted && closestTo(word).length) out.suggested.push({ word, like: closestTo(word) });
       else out.unknown.push({ word, wanted });
     }
   };
-  read(cuisine?.liked, true, false);
+  // A wish given only under `closest` is still a wish.
+  const extra = (cuisine?.closest ?? [])
+    .map((c) => c.wish)
+    .filter((w) => !(cuisine?.liked ?? []).some((l) => same(l, w)));
+  read([...(cuisine?.liked ?? []), ...extra], true, false);
   read(cuisine?.excluded, false, false);
   read(style?.wanted, true, true);
   read(style?.excluded, false, true);
   return out;
 }
 
-const isBroad = (m: CuisineMatch) => m.level === "group" || m.level === "region";
+const isBroad = (m: CuisineMatch) => m.level === "group" || m.level === "region" || m.level === "leaning";
+
+/** The most kinds of food kept for one wish the table does not have. */
+const MAX_SUGGESTED = 5;
 
 const plain = (s: string) =>
   s
@@ -566,8 +610,12 @@ export function applyAssistantOutput(
   // "No pork", said in passing before the question was ever asked, still answers it.
   if (blocks.nothingTheyCannotEat || blocks.saidWhatTheyCannotEat) answered.add("diet");
 
-  if (words.liked.length || words.excluded.length) {
-    const likedScores = mergeScores(...words.liked.map(scoresFor));
+  if (words.liked.length || words.excluded.length || words.suggested.length) {
+    // Food the model suggested for a wish counts as a near match, never as what was asked for.
+    const suggestedScores = Object.fromEntries(
+      words.suggested.flatMap((s) => s.like.map((m) => [m.id, NEAR_SCORE] as const)),
+    );
+    const likedScores = mergeScores(...words.liked.map(scoresFor), suggestedScores);
     const top = Object.keys(likedScores).filter((t) => likedScores[t] === 1);
     // What they say they want now wins over what they ruled out before, and over a ban in the same message.
     const wantedNow = (t: string) => top.includes(t) || top.some((x) => parentCuisine(x) === t);
@@ -598,6 +646,7 @@ export function applyAssistantOutput(
     const onlyBroad = words.liked.length > 0 && words.liked.every(isBroad);
     const settles =
       state.chat.lastAsked === "cuisine" ||
+      words.suggested.length > 0 ||
       (words.liked.length > 0 && !(onlyBroad && !state.chat.asked.includes("cuisine")));
     if (put("cuisine", block) && settles) answered.add("cuisine");
   } else if (state.chat.lastAsked === "cuisine" && words.unknown.some((u) => u.wanted)) {
@@ -627,6 +676,18 @@ export function applyAssistantOutput(
   // A name with no match yet is kept as it is and matched again once the plan's pool is complete
   // (pool-refresh.ts). The chat does not say "not found": at this point the pool is not final.
   const named = (names: readonly string[]) => names.map((name) => ({ name, id: matchRestaurant(name, pool) }));
+  // Said by code, so a person who names a place knows it was taken as a place (#158).
+  const placeNotes: string[] = [];
+  for (const r of named(blocks.wantedRestaurants ?? [])) {
+    const found = r.id ? pool.find((p) => p.id === r.id)?.name : undefined;
+    // The model often says the name back itself; then the person already knows it was heard.
+    if (output.reply.toLowerCase().includes((found ?? r.name).toLowerCase())) continue;
+    placeNotes.push(
+      found
+        ? `("${found}" is one of this plan's places; I've marked it as somewhere you'd like to go.)`
+        : `(I've noted "${r.name}" as a restaurant you'd like, and will check for it once your group's places are in.)`,
+    );
+  }
   if (blocks.wantedRestaurants?.length || blocks.excludedRestaurants?.length) {
     const wantedNew = named(blocks.wantedRestaurants ?? []);
     const excludedNew = named(blocks.excludedRestaurants ?? []).filter(
@@ -645,9 +706,11 @@ export function applyAssistantOutput(
   let otherNoted = false;
   // A food or kind of place the table does not have is kept in the person's own words, as a note:
   // it cannot change which places are picked, and the reply says so, but it is not thrown away.
-  const unknownNotes = uniq(
-    words.unknown.map((u) => `${u.wanted ? "Would like" : "Would rather not have"}: ${u.word}`),
-  ).map((text) => ({ type: "other" as const, text: text.slice(0, LIMITS.noteChars) }));
+  const unknownNotes = uniq([
+    ...words.unknown.map((u) => `${u.wanted ? "Would like" : "Would rather not have"}: ${u.word}`),
+    // The person's own words for a wish that was turned into kinds of food, so they can see it was heard.
+    ...words.suggested.map((s) => `Would like: ${s.word}`),
+  ]).map((text) => ({ type: "other" as const, text: text.slice(0, LIMITS.noteChars) }));
   if (blocks.notes?.length || unknownNotes.length) {
     const notes = [...(prefs.notes ?? [])];
     for (const note of blocks.notes ?? []) {
@@ -677,17 +740,30 @@ export function applyAssistantOutput(
   }
   // A broad word: say what it was taken to mean, unless the model already listed it.
   const saidBroad = new Set<string>();
+  // Several wishes about what the food is like share one sentence, so the reply stays short.
+  const leanings: { leaning: string; meant: string }[] = [];
   for (const match of words.liked.filter(isBroad)) {
     if (saidBroad.has(match.id)) continue;
     saidBroad.add(match.id);
     const meant = describeMatch(match);
     const named = meant.split(", ").filter((label) => reply.toLowerCase().includes(label.toLowerCase())).length;
-    if (named < 3) reply += ` (By ${match.label} I mean: ${meant}.)`;
+    const leaning = leaningOf(match);
+    if (leaning) leanings.push({ leaning, meant });
+    else if (named < 3) reply += ` (By ${match.label} I mean: ${meant}.)`;
   }
-  if (words.unknown.length)
-    reply += ` (I can't look for ${uniq(words.unknown.map((u) => `"${u.word}"`)).join(
-      " or ",
-    )} as a kind of food or place, so it won't change which places are picked. I've kept it as a note for you.)`;
+  // Not a refusal: say what the wish was turned into, so the person can correct it.
+  if (leanings.length)
+    reply += ` (Restaurants aren't listed by ${leanings.map((l) => l.leaning).join(" or ")}, so I'll lean toward food known for it: ${leanings.map((l) => l.meant).join("; ")}.)`;
+  for (const s of words.suggested)
+    reply += ` (Restaurants aren't listed by "${s.word}", so I'll lean toward ${s.like.map((m) => m.label).join(", ")}. Tell me if that's off.)`;
+  const quoted = (wanted: boolean) =>
+    uniq(words.unknown.filter((u) => u.wanted === wanted).map((u) => `"${u.word}"`)).join(" or ");
+  // A wish that leads nowhere is said once, with what the person can do next (#158).
+  if (quoted(true))
+    reply += ` (I can't look for ${quoted(true)} directly, so I've kept it as a note. Name a kind of food close to it and I'll look for that.)`;
+  if (quoted(false))
+    reply += ` (Restaurants aren't listed by that, so ${quoted(false)} stays a note for you and won't rule places out.)`;
+  for (const line of uniq(placeNotes)) reply += ` ${line}`;
   if ((allergyNoted || otherNoted) && !CANNOT_CHECK.test(reply))
     reply += " (That is noted for you. I can't check restaurants for it, so it won't change which places are picked.)";
   if (dropped.length)

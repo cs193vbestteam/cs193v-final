@@ -21,6 +21,8 @@ import {
   scoresFor,
   stylesOf,
   tableTypes,
+  LEANINGS,
+  leaningOf,
 } from "@/lib/cuisine-table";
 import { LIMITS, PersonPreferencesSchema } from "@/lib/optimizer-input";
 
@@ -155,7 +157,7 @@ describe("words people say", () => {
     const words = knownCuisineWords();
     expect(words.length).toBeGreaterThan(250);
     const types = new Set(tableTypes());
-    const broad = new Set([...GROUPS.map((g) => g.id), ...REGIONS.map((r) => r.id)]);
+    const broad = new Set([...GROUPS.map((g) => g.id), ...REGIONS.map((r) => r.id), ...LEANINGS.map((l) => l.id)]);
     for (const word of words) {
       const m = find(word);
       expect(types.has(m.id) || broad.has(m.id), word).toBe(true);
@@ -493,5 +495,57 @@ describe("the ten cuisines the app knew before", () => {
     }
     expect(legacyCuisineOf("french_restaurant")).toBeNull();
     expect(legacyCuisineOf("cafe")).toBeNull();
+  });
+});
+
+describe("wishes about what the food is like (#158)", () => {
+  it.each([
+    ["spicy", "spicy"],
+    ["I like spicy food".replace("I like ", ""), "spicy"],
+    ["辣", "spicy"],
+    ["healthy", "light"],
+    ["something light", "light"],
+    ["trying to lose weight", "light"],
+    ["减肥", "light"],
+    ["lots of meat", "hearty"],
+    ["something warm", "warm"],
+  ])("%s is understood as a leaning, not turned away", (word, id) => {
+    const m = find(word);
+    expect(m).toMatchObject({ level: "leaning", id });
+    expect(leaningOf(m)).toBeTruthy();
+  });
+
+  it("leans toward the kinds of food known for it, at full score", () => {
+    expect(scoresFor(find("spicy"))).toEqual({
+      thai_restaurant: 1,
+      indian_restaurant: 1,
+      korean_restaurant: 1,
+      mexican_restaurant: 1,
+      hot_pot_restaurant: 1,
+    });
+    expect(Object.keys(scoresFor(find("healthy")))).toEqual(expect.arrayContaining(["salad_shop", "vegan_restaurant"]));
+  });
+
+  it("names those kinds of food in plain words", () => {
+    expect(describeMatch(find("spicy"))).toBe("Thai, Indian, Korean, Mexican, hot pot");
+    expect(describeMatch(find("healthy"))).toBe("salad, vegetarian, vegan, Mediterranean, sushi, Vietnamese");
+  });
+
+  it("never rules a kind of food out: 'nothing spicy' must not ban every Thai and Indian place", () => {
+    for (const l of LEANINGS) expect(excludedFor(find(l.label))).toEqual([]);
+  });
+
+  it("only uses types the table knows, and leaves ordinary words alone", () => {
+    // Vegetarian and vegan places are Google types without a place in the cuisine tree, so the
+    // check is against every food type Google has, and that a place of that type really matches.
+    const types = new Set<string>(PLACE_FOOD_TYPES);
+    for (const l of LEANINGS)
+      for (const t of l.types) {
+        expect(types.has(t), `${l.id}: ${t}`).toBe(true);
+        expect(matchCuisine([t, "restaurant"], { scores: scoresFor(find(l.label)) }).score, t).toBe(1);
+      }
+    expect(find("soup")).toMatchObject({ level: "cuisine" });
+    expect(find("Asian")).toMatchObject({ level: "group" });
+    expect(leaningOf(find("Thai"))).toBeNull();
   });
 });
