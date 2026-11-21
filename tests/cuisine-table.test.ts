@@ -340,7 +340,7 @@ describe("matching a restaurant", () => {
     expect(matchCuisine(["korean_restaurant", "barbecue_restaurant"], { scores }).score).toBe(1);
     expect(matchCuisine(["sushi_restaurant", "japanese_restaurant"], { scores }).score).toBe(NEAR_SCORE);
     expect(matchCuisine(["italian_restaurant"], { scores }).score).toBe(0);
-    expect(matchCuisine([], { scores })).toEqual({ excluded: false, score: 0 });
+    expect(matchCuisine([], { scores })).toEqual({ excluded: false, avoided: false, score: 0 });
   });
 
   it("a place tagged only with a dish counts for its cuisine", () => {

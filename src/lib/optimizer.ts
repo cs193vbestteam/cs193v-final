@@ -89,6 +89,8 @@ export const STRENGTH_COST = { must: 3, strong: 1, mild: 0.5 } as const;
  * limit comes before one that could cost anything.
  */
 export const UNKNOWN_SATISFACTION = 0.4;
+/** What a match is worth at a place that is also a kind of food the person would rather not have. */
+export const AVOIDED_FACTOR = 0.5;
 /** Taken off when a vegetarian or vegan cannot be sure of the menu (Google does not say, or it is not a vegan place). */
 export const UNSURE_DIET_PENALTY = 0.1;
 /** Added when the place is one the person asked for by name. */
@@ -196,7 +198,17 @@ export function satisfaction(
     got.budget = price === null ? UNKNOWN_SATISFACTION : ramp(price, budget.ideal, budget.max);
   }
   if (travel) got.travel = ramp(r.travelMin[personId] ?? 0, travel.idealMin, travel.maxMin);
-  if (cuisine && Object.keys(cuisine.scores ?? {}).length > 0) got.cuisine = matchCuisine(r.types, cuisine).score;
+  if (cuisine) {
+    // Food they would rather not have is a wish like any other: it costs points on the cuisine
+    // dimension and keeps nobody out (canAttend only reads `excluded`). A place of a kind they
+    // avoid is worth nothing on cuisine, or half its match when it is also food they asked for
+    // (a Thai and Vietnamese place, to someone who likes Vietnamese and would rather not have Thai).
+    const wished = Object.keys(cuisine.scores ?? {}).length > 0;
+    const m = matchCuisine(r.types, cuisine);
+    if (m.avoided) got.cuisine = wished ? m.score * AVOIDED_FACTOR : 0;
+    else if (wished) got.cuisine = m.score;
+    else if (cuisine.avoided?.length) got.cuisine = 1;
+  }
   if (style?.wanted?.length) got.style = style.wanted.some((s) => r.style.includes(s)) ? 1 : 0;
 
   const stated = Object.keys(got) as PriorityDim[];

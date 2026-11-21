@@ -63,9 +63,11 @@ function legacyCuisines(cuisine: PersonPreferences["cuisine"]): { liked: Cuisine
   const liked = CUISINES.filter(
     (c) => asked.includes(c) || matchCuisine([LEGACY_CUISINE_TYPE[c]], cuisine).score === 1,
   );
-  const disliked = CUISINES.filter(
-    (c) => !liked.includes(c) && matchCuisine([LEGACY_CUISINE_TYPE[c]], cuisine).excluded,
-  );
+  const disliked = CUISINES.filter((c) => {
+    const m = matchCuisine([LEGACY_CUISINE_TYPE[c]], cuisine);
+    // The older format has one list for both: food ruled out and food they would rather not have.
+    return !liked.includes(c) && (m.excluded || m.avoided);
+  });
   return { liked, disliked };
 }
 

@@ -71,9 +71,12 @@ Anything else they cannot eat cannot be checked against restaurants. An allergy 
 One exception: no fish or seafood is cuisine.excluded = ["seafood"]. And a diet said as a kind of food ("vegetarian food", "halal places") is dietary, not cuisine.
 Whenever a message says what they cannot eat, in any of these forms and whether or not you asked, also set saidWhatTheyCannotEat = true: that question is then answered and must not be asked again.
 
-cuisine: liked and excluded, as the WORDS the person used for the food, one entry per thing they named: "Asian", "Chinese", "hot pot", "French", "Korean BBQ", "火锅", "seafood". A table in code says what each word covers and what to look for, so pass the word on and do not work it out yourself: never expand a broad word ("Asian" stays "Asian", not a list of cuisines), never turn a dish into a cuisine ("ramen" stays "ramen"), and never replace a word with a nearby one because you think it is not supported. excluded is only for food they say they do NOT want.
+cuisine: liked and excluded, as the WORDS the person used for the food, one entry per thing they named: "Asian", "Chinese", "hot pot", "French", "Korean BBQ", "火锅", "seafood". A table in code says what each word covers and what to look for, so pass the word on and do not work it out yourself: never expand a broad word ("Asian" stays "Asian", not a list of cuisines), never turn a dish into a cuisine ("ramen" stays "ramen"), and never replace a word with a nearby one because you think it is not supported. Food they do not want goes in one of two places, and the difference matters:
+- excluded: a firm no. "No Indian", "I can't do seafood", "anything but Western", "never sushi", "I won't eat there". A place of that kind is ruled out for them.
+- avoided: they would rather not, but would go along. "Not a fan of Indian", "I'd rather not have pizza", "not really into sushi", "not too spicy", "I don't love Mexican". It counts against a place without ruling it out.
+When unsure which, use avoided: ruling a whole kind of food out for a mild dislike is the bigger mistake.
 What the food should be LIKE is a wish too, and never something to turn away: "I like spicy food", "something light", "I'm trying to lose weight", "comfort food", "something warm", "lots of meat", "kid-friendly food". Put it in liked in a word or two ("spicy", "healthy", "comfort food"). When it is not an ordinary cuisine or dish, ALSO add it to closest: {wish: the same word, like: 2 to 5 ordinary cuisines or dishes where people most reliably find it}, for example {wish: "comfort food", like: ["American", "Italian", "ramen"]}. Use what you know about food. Code keeps the ones it can look for and tells the person which, so do not list them in your reply and never say such a wish cannot be matched.
-A wish to AVOID what the food is like ("nothing spicy", "not too greasy") goes in excluded in a word or two ("spicy"). Code keeps it as their note without ruling places out.
+A wish to AVOID what the food is like ("nothing spicy", "not too heavy") goes in avoided in a word or two ("spicy"), never in excluded.
 Code tells the person what a broad word or a wish was taken to mean, and says so when a word cannot be looked for; you do not need to list cuisines yourself. After a broad word, if cuisine is still on your list in STATE, your one question may be whether they have a favourite among them.
 
 style: the kind of place, wanted and excluded, again as the words they used ("fast food", "fine dining", "somewhere fancy", "a café", "a bar"). Code maps them to ${LIST(STYLES)}. Only when they bring it up.
@@ -85,7 +88,7 @@ wantedRestaurants, excludedRestaurants: names of particular places exactly as th
 notes: anything else they want remembered that fits nowhere above.
 
 # When they change their mind
-Record the new statement; code replaces the old one. For food they no longer want ("actually I don't like Mexican anymore", "scratch the sushi"), put that word in cuisine.excluded, even if this message also names something they do want: "not Mexican anymore, Thai instead" is excluded ["Mexican"], liked ["Thai"].
+Record the new statement; code replaces the old one. For food they no longer want ("actually I don't like Mexican anymore", "scratch the sushi"), put that word in cuisine.avoided (or excluded if they are firm about it), even if this message also names something they do want: "not Mexican anymore, Thai instead" is avoided ["Mexican"], liked ["Thai"].
 
 # Reading one message
 Read it first as the answer to the question you asked last (STATE names it). A bare "20" after the travel question is 20 minutes, never dollars.
@@ -222,7 +225,12 @@ export const TOOL = {
               excluded: {
                 type: "array",
                 items: { type: "string" },
-                description: "Food they do not want, in the words they used.",
+                description: "Food they will NOT eat: a firm no. In the words they used.",
+              },
+              avoided: {
+                type: "array",
+                items: { type: "string" },
+                description: "Food they would rather not have but would go along with. In the words they used.",
               },
               closest: {
                 type: "array",

@@ -705,7 +705,7 @@
                 "liked": [
                   "Thai"
                 ],
-                "excluded": [
+                "avoided": [
                   "Mexican"
                 ]
               }
@@ -715,7 +715,7 @@
       ],
       "expected": {
         "prefs.cuisine.scores.thai_restaurant": 1,
-        "prefs.cuisine.excluded": {
+        "prefs.cuisine": {
           "$includes": "mexican_restaurant"
         }
       },
@@ -933,7 +933,7 @@
     {
       "id": "taste-03",
       "about": "what the food is like",
-      "note": "Not wanting spicy food is kept as a note and rules no kind of food out.",
+      "note": "Not wanting spicy food leans away from the kinds of food known for it, and rules none of them out.",
       "turns": [
         {
           "user": "Nothing too spicy for me please",
@@ -943,7 +943,7 @@
             "asks": "time",
             "update": {
               "cuisine": {
-                "excluded": [
+                "avoided": [
                   "spicy"
                 ]
               }
@@ -952,12 +952,15 @@
         }
       ],
       "expected": {
-        "prefs.notes": {
-          "$includes": "spicy"
+        "prefs.cuisine.avoided": {
+          "$includes": "thai_restaurant"
         }
       },
       "absent": [
         "prefs.cuisine.excluded"
+      ],
+      "replyMustMatch": [
+        "lean away from food known for it"
       ]
     },
     {
@@ -1021,6 +1024,66 @@
       },
       "replyMustMatch": [
         "Imperial Treasure"
+      ]
+    },
+    {
+      "id": "avoid-01",
+      "about": "would rather not, or will not",
+      "note": "A mild dislike counts against a place and rules nothing out.",
+      "turns": [
+        {
+          "user": "I'm not a huge fan of Indian food, but I'd go along with it",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "avoided": [
+                  "Indian"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.avoided": {
+          "$includes": "indian_restaurant"
+        }
+      },
+      "absent": [
+        "prefs.cuisine.excluded"
+      ]
+    },
+    {
+      "id": "avoid-02",
+      "about": "would rather not, or will not",
+      "note": "A firm no rules the kind of food out.",
+      "turns": [
+        {
+          "user": "No Indian food for me, I really can't do it",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "excluded": [
+                  "Indian"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.excluded": {
+          "$includes": "indian_restaurant"
+        }
+      },
+      "absent": [
+        "prefs.cuisine.avoided"
       ]
     }
   ]
