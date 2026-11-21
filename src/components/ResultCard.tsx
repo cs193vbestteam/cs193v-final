@@ -112,6 +112,10 @@ export function ResultCard({
     dim: DIM_LABEL[x.dim],
   }));
 
+  const said = showPlan && "offers" in r ? (r.offers ?? []) : [];
+  // The first one starts the line, so it starts with a capital.
+  const offers = said.map((o, i) => (i === 0 ? o.charAt(0).toUpperCase() + o.slice(1) : o));
+
   const facts = (() => {
     if (!showPlan) return [];
     const [day, time] = when(result.proposal!.slot).split(" · ");
@@ -121,8 +125,6 @@ export function ResultCard({
       { label: "Cost", value: `~$${r.pricePerPerson}/person` },
       ...(r.travelMin !== undefined ? [{ label: "Travel", value: `${r.travelMin} min away` }] : []),
       { label: "Kind", value: kindOf(r) },
-      // What the place itself offers, from Google: the same line for everyone in the group.
-      ...("offers" in r && r.offers?.length ? [{ label: "Has", value: r.offers.join(" · ") }] : []),
     ];
   })();
 
@@ -162,8 +164,14 @@ export function ResultCard({
                 </div>
               ))}
             </dl>
+            {offers.length > 0 && (
+              // What the place itself offers, from Google: the same line for everyone in the group.
+              <p className="mt-4 max-w-2xl text-sm text-ink-2" data-testid="place-offers">
+                {offers.join(" · ")}
+              </p>
+            )}
             {mine.length > 0 && !stale && (
-              <p className="mt-4 max-w-2xl text-sm text-ink-2" data-testid="for-you">
+              <p className="mt-2 max-w-2xl text-sm text-ink-2" data-testid="for-you">
                 <span className="font-medium">For you:</span> {mine.join(" · ")}.{" "}
                 <span className="text-ink-3">Only you see this line.</span>
               </p>
