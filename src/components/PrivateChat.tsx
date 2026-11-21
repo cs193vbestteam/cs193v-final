@@ -143,6 +143,14 @@ export function PrivateChat({
         ? shown.flatMap((s) => QUICK[s.topic].slice(0, 2))
         : progress.filter((s) => !s.done).map((s) => QUICK[s.topic][0]);
 
+  // The one thing to do now, in three steps: say what works, press done, get the plan.
+  const step = ready
+    ? // The bar under the message box says what the group is waiting for; this line only says what is left to do.
+      { n: 3, text: next?.link ? `Next: ${next.link.toLowerCase()}.` : "Nothing more for you to do for now." }
+    : missing.length === 0 && !welcome
+      ? { n: 2, text: "That is enough. Press \u201cI\u2019m done\u201d when you are." }
+      : { n: 1, text: "Tell your assistant what works for you." };
+
   // The glass is cut to each element's size, so it is recut when messages arrive or the greeting goes.
   useLiquidGlass(chat, `${messages.length}:${welcome}:${pending}`);
 
@@ -222,6 +230,39 @@ export function PrivateChat({
         </span>
       </header>
 
+      {/* One line under the title: the step the person is on, and where what they type goes.
+          A tester could not tell where to look or what to do next (#152), and took "hidden from
+          your group" to mean nobody but the AI sees the chat (#159), so both are said here, first. */}
+      <div className="chat-guide">
+        <p className="chat-step" aria-live="polite">
+          <span aria-hidden className="chat-step-dots" data-step={step.n}>
+            <i />
+            <i />
+            <i />
+          </span>
+          <span className="sr-only">Step {step.n} of 3: </span>
+          <span className="chat-step-n" aria-hidden>
+            {step.n}/3
+          </span>
+          {step.text}
+        </p>
+        {/* The words are AI-CONSENT.md's: what leaves, who gets it, and for how long. */}
+        <details className="notice">
+          <summary>
+            <LockIcon />
+            Processed by Anthropic&apos;s Claude. Where your messages go
+          </summary>
+          <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
+            Your messages and meal preferences are sent to Anthropic&apos;s Claude. Anthropic does not use API chats for
+            training by default. Its standard retention policy is up to 30 days, with longer retention for flagged
+            content or legal requirements. Your group sees the plan, not your chat.{" "}
+            <a className="link link-small" href="/privacy" target="_blank" rel="noopener">
+              How your data is used<span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </p>
+        </details>
+      </div>
+
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div
           ref={log}
@@ -240,7 +281,8 @@ export function PrivateChat({
               <p className="chat-hello">{name ? `Hello, ${name}` : "Hello"}</p>
               <p className="chat-ask">I can help with your plan today.</p>
               <p className="chat-fineprint">
-                Nobody else in the group sees this chat or your numbers. What are you hoping for with this meal?
+                Nobody else in the group sees this chat or your numbers. Settle and Anthropic&apos;s Claude process it
+                to answer you. What are you hoping for with this meal?
               </p>
             </div>
           ) : (
@@ -475,23 +517,6 @@ export function PrivateChat({
           </div>
         </div>
       )}
-
-      {/* The words are AI-CONSENT.md's: what leaves, who gets it, and for how long. Kept where
-          people type, folded under a title so it is there for whoever wants it. */}
-      <details className="notice border-t border-line px-5 py-1.5">
-        <summary>
-          <LockIcon />
-          Processed by Anthropic&apos;s Claude. Where your messages go
-        </summary>
-        <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
-          Your messages and meal preferences are sent to Anthropic&apos;s Claude. Anthropic does not use API chats for
-          training by default. Its standard retention policy is up to 30 days, with longer retention for flagged content
-          or legal requirements. Your group sees the plan, not your chat.{" "}
-          <a className="link link-small" href="/privacy" target="_blank" rel="noopener">
-            How your data is used<span className="sr-only"> (opens in a new tab)</span>
-          </a>
-        </p>
-      </details>
 
       {/* On the greeting there is nothing known yet, so the summary waits for the first message. */}
       {(!quiet || error) && (

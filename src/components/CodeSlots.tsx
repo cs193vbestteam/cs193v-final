@@ -72,16 +72,48 @@ export function CodeSlots({ id, name, value, onChange, length = 6, invalid = fal
   );
 }
 
-/** A plan's code shown one character per slot, landing left to right. For reading, not typing. */
+/**
+ * A plan's code shown one character per slot, landing left to right. The slots are separate boxes,
+ * so selecting them with the mouse copies one character at best (#162): the whole row is a button
+ * that copies the code instead.
+ */
 export function PlanCode({ code }: { code: string }) {
+  const [status, setStatus] = useState<"copied" | "failed" | null>(null);
+
+  async function copy() {
+    try {
+      if (typeof navigator.clipboard?.writeText !== "function") throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(code.toUpperCase());
+      setStatus("copied");
+    } catch {
+      setStatus("failed");
+    }
+    setTimeout(() => setStatus(null), 2000);
+  }
+
   return (
-    <span className="code-slots-row code-slots-shown">
-      <span className="sr-only">{code.toUpperCase().split("").join(" ")}</span>
-      {[...code].map((ch, i) => (
-        <span aria-hidden key={i} className="code-slot" data-filled style={{ "--i": i } as React.CSSProperties}>
-          <b>{ch}</b>
+    <span className="flex flex-col items-center gap-1.5">
+      <button
+        type="button"
+        className="code-copy"
+        onClick={copy}
+        aria-label={`Copy plan code ${code.toUpperCase().split("").join(" ")}`}
+      >
+        <span aria-hidden className="code-slots-row code-slots-shown">
+          {[...code].map((ch, i) => (
+            <span key={i} className="code-slot" data-filled style={{ "--i": i } as React.CSSProperties}>
+              <b>{ch}</b>
+            </span>
+          ))}
         </span>
-      ))}
+      </button>
+      <span role="status" className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
+        {status === "copied"
+          ? "Copied"
+          : status === "failed"
+            ? `Could not copy. The code is ${code.toUpperCase()}`
+            : "Tap the code to copy it"}
+      </span>
     </span>
   );
 }
