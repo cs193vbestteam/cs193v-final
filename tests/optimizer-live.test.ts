@@ -9,6 +9,7 @@ import {
   forGroupSize,
   getResult,
   joinEvent,
+  listMyEvents,
   negotiateWhenAllReady,
   runNegotiation,
   sendMessage,
@@ -156,5 +157,23 @@ describe("what the card says when the optimizer finds no plan", () => {
     expect(forGroupSize(once)).toEqual(once);
     // Three people keep the plan and the count.
     expect(forGroupSize({ ...partial, participants: 3 })).toMatchObject({ status: "partial", cannotCome: 1 });
+  });
+});
+
+describe("the list of someone's plans", () => {
+  it("calls a plan decided when there is a place, and stuck when the run found none", async () => {
+    const good = await plan([EASY, EASY]);
+    await runNegotiation(good.event.id, good.users[0].id);
+    const [listed] = await listMyEvents(good.users[0].id);
+    expect(listed).toMatchObject({ decided: true, stuck: false });
+
+    const clash = await plan([
+      "only 6pm works for me, max $15 per person, vegan, 10 minutes away at most",
+      "only 9pm works for me, I want steak, at least $80 per person, no restrictions, 20 minutes",
+    ]);
+    const result = await runNegotiation(clash.event.id, clash.users[0].id);
+    expect(result.status).toBe("no_deal");
+    const [stuck] = await listMyEvents(clash.users[0].id);
+    expect(stuck).toMatchObject({ decided: true, stuck: true });
   });
 });

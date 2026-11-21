@@ -470,7 +470,7 @@ export function PrivateChat({
 
       {/* Then how far through the questions they are, and which one the assistant is on. */}
       {!ready && !opening && progress.length > 0 && (
-        <div className="border-t border-line px-5 py-2">
+        <div className="chat-progress border-t border-line px-5 py-2">
           <div className="flex items-center gap-3">
             <AnswerDial progress={progress} />
             <div className="min-w-0 flex-1">
@@ -517,7 +517,7 @@ export function PrivateChat({
 
       {/* On the greeting there is nothing known yet, so the summary waits for the first message. */}
       {(!quiet || error) && (
-        <div className="border-t border-line bg-paper-2/40 px-5 py-2">
+        <div className="chat-knows border-t border-line bg-paper-2/40 px-5 py-2">
           {/* One short line under the chat: the conversation above is what the room is for. */}
           {quiet ? null : (
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs text-ink-2">

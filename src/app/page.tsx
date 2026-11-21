@@ -10,7 +10,7 @@ export default async function Home() {
   const user = await currentUser();
   if (!user) return <Landing />;
   const events = await listMyEvents(user.id);
-  const open = events.filter((e) => !e.decided).length;
+  const open = events.filter((e) => !e.decided || e.stuck).length;
   // Whether a plan can get real restaurants here decides what the form promises.
   const realPlaces = !!process.env.GOOGLE_PLACES_API_KEY?.trim() || !!yelpDatasetDir();
   return (
@@ -62,7 +62,11 @@ export default async function Home() {
             {events.map((e, i) => (
               <li key={e.id} className="rise" style={{ "--d": `${0.3 + i * 0.05}s` } as React.CSSProperties}>
                 {/* Each plan is the ticket it was started as: ink once it is decided, paper while it is open. */}
-                <Link href={`/e/${e.inviteCode}`} className="plan-stub spot" data-decided={e.decided || undefined}>
+                <Link
+                  href={`/e/${e.inviteCode}`}
+                  className="plan-stub spot"
+                  data-decided={(e.decided && !e.stuck) || undefined}
+                >
                   <span className="plan-stub-main">
                     <span className="plan-stub-eyebrow">
                       No. {String(events.length - i).padStart(2, "0")}
@@ -72,8 +76,8 @@ export default async function Home() {
                     <span className="plan-stub-where">{e.location ?? "Sample places"}</span>
                   </span>
                   <span className="plan-stub-end">
-                    <span className={`pill ${e.decided ? "pill-moss" : "pill-amber"}`}>
-                      {e.decided ? "Decided" : "Collecting"}
+                    <span className={`pill ${e.stuck ? "pill-seal" : e.decided ? "pill-moss" : "pill-amber"}`}>
+                      {e.stuck ? "Stuck" : e.decided ? "Decided" : "Collecting"}
                     </span>
                     <span aria-hidden className="plan-stub-go">
                       →

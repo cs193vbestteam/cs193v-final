@@ -10,6 +10,7 @@ export function NegotiateButton({
   readyCount,
   memberCount,
   decided,
+  noPlan = false,
   canRerun = true,
 }: {
   eventId: string;
@@ -17,6 +18,8 @@ export function NegotiateButton({
   readyCount: number;
   memberCount: number;
   decided: boolean;
+  /** The last run found nothing that works, so there is no plan to call one. */
+  noPlan?: boolean;
   /** For a decided plan: whether anyone has changed an answer or joined since. Without that a run gives the same plan (#118). */
   canRerun?: boolean;
 }) {
@@ -46,7 +49,9 @@ export function NegotiateButton({
       )}
       {nothingNew && (
         <p className="mt-2 text-center text-xs text-ink-3">
-          This is the plan for everyone&apos;s current answers. It can be run again once someone changes theirs.
+          {noPlan
+            ? "Nothing has changed since the last try. It can be run again once someone changes an answer."
+            : "This is the plan for everyone\u2019s current answers. It can be run again once someone changes theirs."}
         </p>
       )}
       {error && (

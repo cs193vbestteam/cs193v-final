@@ -27,6 +27,7 @@ export function ResultCard({
   date,
   stale = null,
   mine = [],
+  lateJoiner = false,
   actions,
   rerun,
 }: {
@@ -44,6 +45,8 @@ export function ResultCard({
    * (my-matches.ts). It is not part of the group's result and nobody else is sent it.
    */
   mine?: string[];
+  /** The person reading is the one who joined after it was decided. */
+  lateJoiner?: boolean;
   /** The buttons that act on the plan (share it, run it again); the page owns them. */
   actions?: React.ReactNode;
   /** Running it again comes last: it is the one thing here most people never need. */
@@ -148,9 +151,10 @@ export function ResultCard({
         {stale && (
           <p role="status" className="mt-3 max-w-2xl text-sm text-ink-2">
             {stale === "joined"
-              ? "Someone joined after this was decided, so it does not count them yet."
-              : "Someone's answers have changed since this was decided, so it may no longer fit."}{" "}
-            Re-run it once everyone is done.
+              ? lateJoiner
+                ? "You joined after this was decided, so it does not count you yet. Tell your assistant what works for you; it is run again once everyone is done."
+                : "Someone joined after this was decided, so it does not count them yet. Re-run it once everyone is done."
+              : "Someone's answers have changed since this was decided, so it may no longer fit. Re-run it once everyone is done."}
           </p>
         )}
         {showPlan ? (

@@ -46,6 +46,8 @@ export type EventSummary = {
   inviteCode: string;
   creatorId: string;
   decided: boolean;
+  /** Set on the list of someone's plans: it was run, and no place and time worked. */
+  stuck?: boolean;
   /** What the group is deciding. Plans stored before scenarios existed are meals. */
   scenario: ScenarioId;
   /** Where the plan happens, as typed by the creator. Public. */
@@ -390,6 +392,19 @@ async function requireMember(eventId: string, userId: string) {
   if (!(await isMember(eventId, userId))) throw new AccessError("You're not part of this plan");
 }
 
+/** A run that found nothing is not a decided plan, and the list of plans should not call it one. */
+function withStuck(event: EventSummary, row: Record<string, unknown>): EventSummary {
+  if (!event.decided) return event;
+  let stuck = false;
+  try {
+    const stored = JSON.parse(decryptOrPlain(String(row.result_json), scope.plan(event.id, "result")));
+    stuck = stored?.status === "no_deal";
+  } catch {
+    // An unreadable result is listed as decided; the plan page is where it is dealt with.
+  }
+  return { ...event, stuck };
+}
+
 export async function listMyEvents(userId: string): Promise<EventSummary[]> {
   const client = await db();
   const { rows } = await client.execute({
@@ -399,7 +414,7 @@ export async function listMyEvents(userId: string): Promise<EventSummary[]> {
   // Newest first. When each plan was made is encrypted, so the order is worked out here.
   return rows
     .map((r) => ({
-      event: rowToEvent(r as Record<string, unknown>),
+      event: withStuck(rowToEvent(r as Record<string, unknown>), r as Record<string, unknown>),
       at: readMeta(r as Record<string, unknown>).createdAt,
     }))
     .sort((a, b) => b.at - a.at)
