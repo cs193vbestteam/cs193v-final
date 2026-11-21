@@ -1,7 +1,7 @@
 import type { LatLng } from "./geo";
 import { openOn } from "./opening-hours";
 import type { DietaryNeed, PersonPreferences, Style } from "./optimizer-input";
-import { NEARBY_PAGE_SIZE, mergePools, nearbyRestaurants, toPlaces } from "./places";
+import { NEARBY_PAGE_SIZE, mergePools, nearbyRestaurants, placesByName, toPlaces } from "./places";
 import type { Place } from "./restaurants";
 
 /**
@@ -12,8 +12,8 @@ import type { Place } from "./restaurants";
  * calls depends on what the group said and never on how many cuisines exist. This file is
  * pure apart from the searches themselves; reading and writing the plan is pool-refresh.ts.
  *
- * What goes to Google is a list of place types and the plan's location. Nothing says who
- * asked for what, or how many people did. A search for halal or vegan places does tell Google
+ * What goes to Google is a list of place types, the names of restaurants people asked for, and
+ * the plan's location. Nothing says who asked for what, or how many people did. A search for halal or vegan places does tell Google
  * that somebody in a group meeting near that location keeps that diet, and nothing more.
  */
 
@@ -101,6 +101,67 @@ export function searchPlan(wanted: readonly string[], meta: PoolMeta): string[][
   if (left === 0 || todo.length === 0) return [];
   if (todo.length <= left) return todo.map((t) => [t]);
   return [...todo.slice(0, left - 1).map((t) => [t]), todo.slice(left - 1)];
+}
+
+/** Named restaurants searched for in one refresh. Each is one billed call, and counts toward MAX_EXTRA_CALLS. */
+export const MAX_NAMED_SEARCHES = 2;
+/** A restaurant found by name further than this from the plan's location is somewhere else with the same name. */
+export const MAX_NAMED_TRAVEL_MIN = 45;
+
+/** How a name is remembered in `searched`, so the same restaurant is not looked up twice. */
+export const namedKey = (name: string) => `name:${name.trim().toLowerCase()}`;
+
+/**
+ * Look up restaurants people asked for by name that are not in the pool. The names to search
+ * are the ones nobody has searched before, most asked-for first. A result is added only when
+ * `matches` says it is the place that was named, it is near the plan, and it can take a start
+ * time on the plan's date. A name is recorded as searched whether or not it was found, so a
+ * place that does not exist is asked about once.
+ */
+export async function addNamedPlaces(
+  places: readonly Place[],
+  meta: PoolMeta,
+  names: readonly string[],
+  matches: (name: string, candidates: readonly Place[]) => string | null,
+  date: string,
+  key: string,
+  fetcher: typeof fetch = fetch,
+): Promise<Extended> {
+  const count = new Map<string, { name: string; n: number }>();
+  for (const name of names) {
+    const k = namedKey(name);
+    if (meta.searched.includes(k) || matches(name, places)) continue;
+    count.set(k, { name, n: (count.get(k)?.n ?? 0) + 1 });
+  }
+  const left = Math.max(0, MAX_EXTRA_CALLS - meta.calls);
+  const todo = [...count.values()]
+    .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))
+    .slice(0, Math.min(MAX_NAMED_SEARCHES, left));
+  if (todo.length === 0) return { places: [...places], meta, added: 0, calls: 0, failedCalls: 0 };
+
+  const settled = await Promise.allSettled(todo.map((t) => placesByName(t.name, meta.center, key, fetcher)));
+  const searched = [...meta.searched];
+  const found: Place[] = [];
+  let failedCalls = 0;
+  settled.forEach((s, i) => {
+    if (s.status === "rejected") return void failedCalls++;
+    searched.push(namedKey(todo[i].name));
+    const near = toPlaces(s.value, meta.center)
+      .filter((p) => p.travelMin <= MAX_NAMED_TRAVEL_MIN)
+      .map((p) => openOn(p, date))
+      .filter((p) => p.open.length > 0);
+    const id = matches(todo[i].name, near);
+    const place = near.find((p) => p.id === id);
+    if (place) found.push(place);
+  });
+  const merged = mergePools(places, [found], places.length + found.length);
+  return {
+    places: merged,
+    meta: { center: meta.center, searched, calls: meta.calls + todo.length },
+    added: merged.length - places.length,
+    calls: todo.length,
+    failedCalls,
+  };
 }
 
 export type Extended = { places: Place[]; meta: PoolMeta; added: number; calls: number; failedCalls: number };

@@ -5,7 +5,7 @@ import { db } from "./db";
 import type { MemberState } from "./member-state";
 import type { NamedRestaurant } from "./optimizer-input";
 import { todayPacific } from "./plan-date";
-import { extendPool, parsePoolMeta, wantedTypes } from "./pool-extend";
+import { addNamedPlaces, extendPool, parsePoolMeta, wantedTypes } from "./pool-extend";
 import type { Place } from "./restaurants";
 import { parseScenarioId, scenarioFor } from "./scenario";
 
@@ -49,7 +49,18 @@ export async function refreshPool(
 
     const date = row.event_date ? decryptOrPlain(String(row.event_date), scope.plan(eventId, "date")) : todayPacific();
     const wanted = wantedTypes(states.map((s) => s.state.prefs));
-    const out = await extendPool(places, meta, wanted, date, key, fetcher);
+    const byKind = await extendPool(places, meta, wanted, date, key, fetcher);
+    // Then the restaurants people asked for by name that are still not in the pool.
+    const named = states.flatMap((s) =>
+      (s.state.prefs.wantedRestaurants ?? []).filter((r) => r.id === null).map((r) => r.name),
+    );
+    const byName = await addNamedPlaces(byKind.places, byKind.meta, named, matchRestaurant, date, key, fetcher);
+    const out = {
+      places: byName.places,
+      meta: byName.meta,
+      added: byKind.added + byName.added,
+      calls: byKind.calls + byName.calls,
+    };
     if (out.calls === 0) return false;
 
     await client.execute({

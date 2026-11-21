@@ -322,6 +322,31 @@ export async function geocode(
   return loc ? { lat: loc.latitude, lng: loc.longitude } : null;
 }
 
+/**
+ * Places called `name` near a point, by Text Search. Used for a restaurant somebody asked for
+ * by name that the searches by kind of food did not bring in. The search is biased to the
+ * plan's area, not restricted to it, so the caller checks how far away a result is.
+ */
+export async function placesByName(
+  name: string,
+  center: LatLng,
+  key: string,
+  fetcher: Fetcher = fetch,
+): Promise<PlaceResult[]> {
+  const data = await postPlaces<{ places?: PlaceResult[] }>(
+    "places:searchText",
+    {
+      textQuery: name,
+      maxResultCount: 3,
+      locationBias: { circle: { center: { latitude: center.lat, longitude: center.lng }, radius: 10_000 } },
+    },
+    key,
+    PLACE_FIELDS,
+    fetcher,
+  );
+  return data.places ?? [];
+}
+
 /** Restaurants of the given Places types within `radiusM` of a point (Nearby Search caps at 20 results). */
 export async function nearbyRestaurants(
   center: LatLng,

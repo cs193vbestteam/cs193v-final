@@ -1,5 +1,5 @@
 {
-  "about": "Cases for the private assistant itself (Claude), not for the rule-based reader. Each turn has what the person says and `model`: what a careful model would return for it. Tests replay `model` through the real code path, so they check everything code does with a model's answer. `npm run sim:extract -- --llm` ignores `model`, asks the real model instead, and compares what ends up stored with `expected`. Paths in `expected` and `absent` are dotted paths into the stored member state.",
+  "about": "Cases for the private assistant itself (Claude), not for the rule-based reader. Each turn has what the person says and `model`: what a careful model would return for it. Tests replay `model` through the real code path, so they check everything code does with a model's answer. `npm run sim:extract -- --llm` ignores `model`, asks the real model instead, and compares what ends up stored with `expected`. Paths in `expected` and `absent` are dotted paths into the stored member state. A case with a `source` uses a person's own words from a user test.",
   "cases": [
     {
       "id": "indirect-01",
@@ -880,7 +880,8 @@
       ],
       "replyMustNotMatch": [
         "can't look for|cannot (?:match|look|search)|can't match|won't change which"
-      ]
+      ],
+      "source": "user test, 2026-11-16 (docs/user-tests/2026-11-16/03-private-assistant.md)"
     },
     {
       "id": "taste-02",
@@ -1002,7 +1003,8 @@
         "Chinese food",
         "good taste",
         "taste matters"
-      ]
+      ],
+      "source": "user test, 2026-11-16 (docs/user-tests/2026-11-16/03-private-assistant.md)"
     },
     {
       "id": "place-01",
@@ -1194,6 +1196,53 @@
       },
       "absent": [
         "prefs.features"
+      ]
+    },
+    {
+      "id": "user-test-01",
+      "about": "from the user test",
+      "source": "user test, 2026-11-16 (docs/user-tests/2026-11-16/03-private-assistant.md)",
+      "note": "The second participant's own two messages, in order: a restaurant by name, then two wishes about what the food is like. Neither is turned away.",
+      "turns": [
+        {
+          "user": "The restaurant name is Imperial Treasure.",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "wantedRestaurants": [
+                "Imperial Treasure"
+              ]
+            }
+          }
+        },
+        {
+          "user": "I like spicy food, but I'm also trying to lose weight.",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "spicy",
+                  "healthy"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.wantedRestaurants.0.name": {
+          "$includes": "Imperial Treasure"
+        },
+        "prefs.cuisine.scores.thai_restaurant": 1,
+        "prefs.cuisine.scores.salad_shop": 1
+      },
+      "replyMustNotMatch": [
+        "can't look for|cannot (?:match|look|search)|can't match|won't change which"
       ]
     }
   ]
