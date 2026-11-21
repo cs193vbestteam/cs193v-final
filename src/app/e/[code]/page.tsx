@@ -16,6 +16,7 @@ import {
   countMembers,
   getEventByCode,
   getMyConstraints,
+  myPlanMatches,
   getMyMessages,
   getResult,
   isMember,
@@ -92,6 +93,11 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
   const planUrl = `${origin}/e/${code}`;
+  // What this person asked for that the plan gives them: for their eyes only, never in the shared result.
+  const mine =
+    result?.proposal && result.status !== "no_deal" && result.engine === "optimizer"
+      ? await myPlanMatches(event.id, user.id, result.proposal)
+      : [];
   const chosen =
     result?.proposal && result.status !== "no_deal"
       ? (result.places?.[result.proposal.restaurantId] ?? getRestaurant(result.proposal.restaurantId))
@@ -241,7 +247,15 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           <h2 id="plan-heading" className="plan-hero-label">
             The plan
           </h2>
-          <ResultCard result={result} sample={sample} date={event.date} stale={stale} actions={share} rerun={rerun} />
+          <ResultCard
+            result={result}
+            sample={sample}
+            date={event.date}
+            stale={stale}
+            mine={mine}
+            actions={share}
+            rerun={rerun}
+          />
         </section>
       )}
 

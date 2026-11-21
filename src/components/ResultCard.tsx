@@ -26,6 +26,7 @@ export function ResultCard({
   sample = false,
   date,
   stale = null,
+  mine = [],
   actions,
   rerun,
 }: {
@@ -38,6 +39,11 @@ export function ResultCard({
    * claims to work for the people it was made for.
    */
   stale?: "changed" | "joined" | null;
+  /**
+   * What this viewer asked for that the plan gives them, worked out for them alone on the server
+   * (my-matches.ts). It is not part of the group's result and nobody else is sent it.
+   */
+  mine?: string[];
   /** The buttons that act on the plan (share it, run it again); the page owns them. */
   actions?: React.ReactNode;
   /** Running it again comes last: it is the one thing here most people never need. */
@@ -115,6 +121,8 @@ export function ResultCard({
       { label: "Cost", value: `~$${r.pricePerPerson}/person` },
       ...(r.travelMin !== undefined ? [{ label: "Travel", value: `${r.travelMin} min away` }] : []),
       { label: "Kind", value: kindOf(r) },
+      // What the place itself offers, from Google: the same line for everyone in the group.
+      ...("offers" in r && r.offers?.length ? [{ label: "Has", value: r.offers.join(" · ") }] : []),
     ];
   })();
 
@@ -154,6 +162,12 @@ export function ResultCard({
                 </div>
               ))}
             </dl>
+            {mine.length > 0 && !stale && (
+              <p className="mt-4 max-w-2xl text-sm text-ink-2" data-testid="for-you">
+                <span className="font-medium">For you:</span> {mine.join(" · ")}.{" "}
+                <span className="text-ink-3">Only you see this line.</span>
+              </p>
+            )}
             {result.status === "partial" && (
               <p className="mt-4 max-w-2xl text-sm text-ink-2">
                 This is the closest plan there is. A diet, a time or a place someone ruled out keeps{" "}
