@@ -10,13 +10,17 @@ import type { PlaceResult } from "@/lib/places";
 import { poolForEvent } from "@/lib/pool";
 import {
   MAX_EXTRA_CALLS,
+  MAX_NAMED_SEARCHES,
   POOL_CAP,
+  addNamedPlaces,
   extendPool,
+  namedKey,
   newPoolMeta,
   parsePoolMeta,
   searchPlan,
   wantedTypes,
 } from "@/lib/pool-extend";
+import { matchRestaurant } from "@/lib/assistant";
 import { refreshPool } from "@/lib/pool-refresh";
 import type { Place } from "@/lib/restaurants";
 
@@ -39,11 +43,19 @@ const page = (type: string, n = 3, extra: Partial<PlaceResult> = {}) => ({
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
 
 /** A fetch that geocodes to CENTER and answers each Nearby Search by the types it asks for. */
-function googleFetch(failing: string[] = []) {
+function googleFetch(failing: string[] = [], named: Record<string, { places: PlaceResult[] }> = {}) {
   const queries: string[] = [];
   const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
-    if (String(url).includes("searchText"))
-      return json({ places: [{ location: { latitude: CENTER.lat, longitude: CENTER.lng } }] });
+    if (String(url).includes("searchText")) {
+      const headers = (init?.headers ?? {}) as Record<string, string>;
+      // Finding the plan's location asks for a location only; a search by name asks for whole places.
+      if (headers["X-Goog-FieldMask"] === "places.location")
+        return json({ places: [{ location: { latitude: CENTER.lat, longitude: CENTER.lng } }] });
+      const name = (JSON.parse(String(init?.body)) as { textQuery: string }).textQuery;
+      queries.push(`name:${name}`);
+      if (failing.includes(`name:${name}`)) return new Response("backend error", { status: 500 });
+      return json(named[name] ?? { places: [] });
+    }
     const types = (JSON.parse(String(init?.body)) as { includedTypes: string[] }).includedTypes;
     const q = types.join(",");
     queries.push(q);
@@ -231,6 +243,75 @@ describe("widening a pool", () => {
   });
 });
 
+describe("a restaurant somebody asked for by name", () => {
+  const venue = (id: string, name: string, extra: Partial<PlaceResult> = {}): PlaceResult => ({
+    id,
+    displayName: { text: name },
+    primaryType: "chinese_restaurant",
+    types: ["chinese_restaurant", "restaurant"],
+    location: { latitude: 37.44, longitude: -122.16 },
+    regularOpeningHours: { periods: EVERY_DAY },
+    ...extra,
+  });
+  const IMPERIAL = venue("imp", "Imperial Treasure");
+  const meta = newPoolMeta(CENTER);
+
+  it("is searched for by name and added when it is the place that was named", async () => {
+    const { fetcher, queries } = googleFetch([], { "Imperial Treasure": { places: [IMPERIAL] } });
+    const out = await addNamedPlaces([], meta, ["Imperial Treasure"], matchRestaurant, DATE, "k", fetcher);
+    expect(queries).toEqual(["name:Imperial Treasure"]);
+    expect(out.places.map((p) => p.id)).toEqual(["imp"]);
+    expect(out.meta).toEqual({ center: CENTER, searched: [namedKey("Imperial Treasure")], calls: 1 });
+  });
+
+  it("is not searched for when it is already in the pool, or was searched before", async () => {
+    const { fetcher, queries } = googleFetch([], { "Imperial Treasure": { places: [IMPERIAL] } });
+    const first = await addNamedPlaces([], meta, ["Imperial Treasure"], matchRestaurant, DATE, "k", fetcher);
+    await addNamedPlaces(first.places, first.meta, ["imperial treasure"], matchRestaurant, DATE, "k", fetcher);
+    // Not found the first time: still asked about only once.
+    const none = await addNamedPlaces([], meta, ["Nowhere Diner"], matchRestaurant, DATE, "k", fetcher);
+    await addNamedPlaces(none.places, none.meta, ["Nowhere Diner"], matchRestaurant, DATE, "k", fetcher);
+    expect(queries).toEqual(["name:Imperial Treasure", "name:Nowhere Diner"]);
+    expect(none.added).toBe(0);
+    expect(none.meta.calls).toBe(1);
+  });
+
+  it("does not add a different place that Google returned for the name", async () => {
+    const { fetcher } = googleFetch([], { "Imperial Treasure": { places: [venue("other", "Golden Dragon Palace")] } });
+    const out = await addNamedPlaces([], meta, ["Imperial Treasure"], matchRestaurant, DATE, "k", fetcher);
+    expect(out.places).toEqual([]);
+  });
+
+  it("does not add a place of that name far from the plan, or one closed that day", async () => {
+    const far = venue("far", "Imperial Treasure", { location: { latitude: 34.05, longitude: -118.24 } });
+    const closed = venue("closed", "Imperial Treasure", { regularOpeningHours: { periods: [] } });
+    for (const place of [far, closed]) {
+      const { fetcher } = googleFetch([], { "Imperial Treasure": { places: [place] } });
+      const out = await addNamedPlaces([], meta, ["Imperial Treasure"], matchRestaurant, DATE, "k", fetcher);
+      expect(out.places, place.id).toEqual([]);
+    }
+  });
+
+  it("looks up the most asked-for names first, a couple at a time, within the plan's cap", async () => {
+    const { fetcher, queries } = googleFetch();
+    const names = ["A Place", "B Place", "B Place", "C Place"];
+    await addNamedPlaces([], meta, names, matchRestaurant, DATE, "k", fetcher);
+    expect(queries).toEqual(["name:B Place", "name:A Place"]);
+    expect(queries).toHaveLength(MAX_NAMED_SEARCHES);
+    const spent = { ...meta, calls: MAX_EXTRA_CALLS };
+    const out = await addNamedPlaces([], spent, ["D Place"], matchRestaurant, DATE, "k", fetcher);
+    expect(out.calls).toBe(0);
+    expect(queries).toHaveLength(MAX_NAMED_SEARCHES);
+  });
+
+  it("a failed search costs its call and can be tried again", async () => {
+    const { fetcher } = googleFetch(["name:Imperial Treasure"]);
+    const out = await addNamedPlaces([], meta, ["Imperial Treasure"], matchRestaurant, DATE, "k", fetcher);
+    expect(out).toMatchObject({ added: 0, calls: 1, failedCalls: 1 });
+    expect(out.meta.searched).toEqual([]);
+  });
+});
+
 describe("a plan from creation to decision", () => {
   beforeEach(() => {
     delete process.env.ANTHROPIC_API_KEY; // the rule-based reader, so the test needs no model
@@ -327,6 +408,39 @@ describe("a plan from creation to decision", () => {
     expect(google.queries).toEqual(["restaurant", "halal_restaurant", "korean_restaurant"]);
     const { input } = await loadOptimizerInput(event.id);
     expect(input.candidates.filter((c) => c.types.includes("halal_restaurant")).length).toBe(3);
+  });
+
+  it("brings in a restaurant somebody named, and marks it as theirs", async () => {
+    const google = googleFetch([], {
+      "Imperial Treasure": {
+        places: [
+          {
+            id: "imp",
+            displayName: { text: "Imperial Treasure" },
+            primaryType: "chinese_restaurant",
+            types: ["chinese_restaurant", "restaurant"],
+            location: { latitude: 37.44, longitude: -122.16 },
+            regularOpeningHours: { periods: EVERY_DAY },
+          },
+        ],
+      },
+    });
+    vi.stubGlobal("fetch", google.fetcher);
+    const alice = await makeUser("Alice");
+    const bob = await makeUser("Bob");
+    const event = await createEvent(alice.id, "Saturday dinner", "Palo Alto", "meal", DATE);
+    await joinEvent(event.inviteCode, bob.id);
+    await setPrefs(event.id, alice.id, prefs({ wantedRestaurants: [{ name: "Imperial Treasure", id: null }] }));
+
+    expect(await refreshPool(event.id)).toBe(true);
+    expect(google.queries).toEqual(["restaurant", "name:Imperial Treasure"]);
+    expect((await poolForEvent(event.id)).places.map((p) => p.id)).toContain("imp");
+    expect((await getMyConstraints(event.id, alice.id)).prefs.wantedRestaurants).toEqual([
+      { name: "Imperial Treasure", id: "imp" },
+    ]);
+    // Asked about once: a second refresh makes no further call.
+    await refreshPool(event.id);
+    expect(google.queries).toHaveLength(2);
   });
 
   it("decides with the pool it has when Google fails", async () => {
