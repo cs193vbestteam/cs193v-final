@@ -208,6 +208,42 @@ const StyleSchema = z
     if (both.length > 0) ctx.addIssue({ code: "custom", message: `${both[0]} is both wanted and excluded` });
   });
 
+/**
+ * Things about a place itself that Google Places says yes or no to, and that people ask for:
+ * room for a group, somewhere a child or a wheelchair can go, a table outside, a drink.
+ * `well_rated` is worked out from Google's rating (places.ts).
+ */
+export const FEATURES = [
+  "groups",
+  "kids",
+  "outdoor",
+  "wheelchair",
+  "reservable",
+  "alcohol",
+  "parking",
+  "dogs",
+  "live_music",
+  "well_rated",
+] as const;
+export type Feature = (typeof FEATURES)[number];
+
+/**
+ * `needed`: they cannot go without it (step-free access). A place Google says lacks it is out
+ * for them; one Google says nothing about is a maybe. `wanted`: nice to have, scored.
+ */
+const FeaturesSchema = z
+  .strictObject({
+    needed: uniqueList(z.enum(FEATURES), FEATURES.length).optional(),
+    wanted: uniqueList(z.enum(FEATURES), FEATURES.length).optional(),
+    strength: StrengthSchema,
+  })
+  .superRefine((f, ctx) => {
+    if (!f.needed?.length && !f.wanted?.length)
+      ctx.addIssue({ code: "custom", message: "features needs something needed or wanted; leave it out otherwise" });
+    const both = overlap(f.needed ?? [], f.wanted ?? []);
+    if (both.length > 0) ctx.addIssue({ code: "custom", message: `${both[0]} is both needed and wanted` });
+  });
+
 /** The name as the person typed it, and the candidate it was matched to by code (or null). */
 const NamedRestaurantSchema = z.strictObject({
   name: z.string().trim().min(1).max(LIMITS.nameChars),
@@ -231,6 +267,7 @@ export const PersonPreferencesSchema = z
     dietary: uniqueList(z.enum(DIETARY_NEEDS), DIETARY_NEEDS.length).optional(),
     cuisine: CuisineSchema.optional(),
     style: StyleSchema.optional(),
+    features: FeaturesSchema.optional(),
     priority: uniqueList(z.enum(PRIORITY_DIMS), PRIORITY_DIMS.length).optional(),
     wantedRestaurants: z.array(NamedRestaurantSchema).max(LIMITS.namedRestaurants).optional(),
     excludedRestaurants: z.array(NamedRestaurantSchema).max(LIMITS.namedRestaurants).optional(),
@@ -283,6 +320,8 @@ export const CandidateRestaurantSchema = z.strictObject({
     .refine((p) => p.low <= p.high, { message: "price low must not be above high" })
     .nullable(),
   servesVegetarian: z.boolean().nullable(),
+  /** What Google says about the place: true, false, or null when it does not say. Left out for pools stored before this was kept. */
+  features: z.partialRecord(z.enum(FEATURES), z.boolean().nullable()).optional(),
   openAt: uniqueList(StartTimeSchema, START_TIMES.length).nullable(),
   travelMin: z.record(z.string().min(1), z.number().nonnegative()),
 });

@@ -7,7 +7,7 @@ import {
   type MemberState,
   type Variable,
 } from "./member-state";
-import { DIETARY_NEEDS, MEALS, PRIORITY_DIMS, STRENGTHS, STYLES } from "./optimizer-input";
+import { DIETARY_NEEDS, FEATURES, MEALS, PRIORITY_DIMS, STRENGTHS, STYLES } from "./optimizer-input";
 
 /**
  * The private assistant's instructions (#83). Two parts:
@@ -81,6 +81,11 @@ A wish to AVOID what the food is like ("nothing spicy", "not too heavy") goes in
 Code tells the person what a broad word or a wish was taken to mean, and says so when a word cannot be looked for; you do not need to list cuisines yourself. After a broad word, if cuisine is still on your list in STATE, your one question may be whether they have a favourite among them.
 
 style: the kind of place, wanted and excluded, again as the words they used ("fast food", "fine dining", "somewhere fancy", "a café", "a bar"). Code maps them to ${LIST(STYLES)}. Only when they bring it up.
+
+features: what the place itself should offer, from this list only: ${LIST(FEATURES)}.
+- groups: room for a big party. kids: children are coming ("bringing my toddler", "family friendly"). outdoor: a table outside, a patio. wheelchair: step-free access ("I use a wheelchair", "my dad can't do stairs"). reservable: they want to book. alcohol: they want a drink with the meal. parking: they are driving and need to park. dogs: bringing a dog. live_music. well_rated: they want somewhere good ("tastes good", "highly rated", "popular", "a place people love").
+- needed: they cannot go without it. Use it for access and for who is coming: wheelchair, kids when a child is coming, dogs when the dog is coming. wanted: everything else. When unsure, wanted.
+Use what you understand about the sentence: "it's my grandmother's 80th and she uses a walker" is needed ["wheelchair"]; "somewhere we can sit outside if it's nice" is wanted ["outdoor"]. Something about the place that is not on the list (quiet, romantic, good view) goes in notes with type "other".
 
 priority: only when they say what matters most, in their order, from ${LIST(PRIORITY_DIMS)}. Never rank things for them and never give a number for importance.
 
@@ -258,6 +263,19 @@ export const TOOL = {
             properties: {
               wanted: { type: "array", items: { type: "string" }, description: "Kind of place, in their words." },
               excluded: { type: "array", items: { type: "string" }, description: "Kind of place, in their words." },
+              strength: STRENGTH,
+            },
+          },
+          features: {
+            type: "object",
+            description: "What the place itself should offer.",
+            properties: {
+              needed: {
+                type: "array",
+                items: { type: "string", enum: [...FEATURES] },
+                description: "They cannot go without it.",
+              },
+              wanted: { type: "array", items: { type: "string", enum: [...FEATURES] }, description: "Nice to have." },
               strength: STRENGTH,
             },
           },

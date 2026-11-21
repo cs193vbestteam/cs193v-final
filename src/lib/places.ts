@@ -2,6 +2,7 @@ import type { Cuisine } from "./constraints";
 import { isMealCandidate, stylesOf } from "./cuisine-table";
 import { travelMinutes, type LatLng } from "./geo";
 import { weeklyHoursFromGoogle } from "./opening-hours";
+import type { Feature } from "./optimizer-input";
 import { hasLegacyCuisine, type Place, type Restaurant } from "./restaurants";
 
 export { KM_PER_MIN, haversineKm, type LatLng } from "./geo";
@@ -34,6 +35,18 @@ export type PlaceResult = {
   priceRange?: { startPrice?: { units?: string }; endPrice?: { units?: string } };
   location?: { latitude: number; longitude: number };
   servesVegetarianFood?: boolean;
+  goodForGroups?: boolean;
+  goodForChildren?: boolean;
+  menuForChildren?: boolean;
+  outdoorSeating?: boolean;
+  liveMusic?: boolean;
+  servesBeer?: boolean;
+  servesWine?: boolean;
+  servesCocktails?: boolean;
+  reservable?: boolean;
+  allowsDogs?: boolean;
+  accessibilityOptions?: { wheelchairAccessibleEntrance?: boolean };
+  parkingOptions?: Record<string, boolean | undefined>;
   rating?: number;
   userRatingCount?: number;
   /** OPERATIONAL, CLOSED_TEMPORARILY or CLOSED_PERMANENTLY. */
@@ -57,6 +70,19 @@ export const PLACE_FIELDS = [
   "places.priceRange",
   "places.location",
   "places.servesVegetarianFood",
+  // The same billing tier as the vegetarian answer above: what the place is like to be at.
+  "places.goodForGroups",
+  "places.goodForChildren",
+  "places.menuForChildren",
+  "places.outdoorSeating",
+  "places.liveMusic",
+  "places.servesBeer",
+  "places.servesWine",
+  "places.servesCocktails",
+  "places.reservable",
+  "places.allowsDogs",
+  "places.accessibilityOptions",
+  "places.parkingOptions",
   "places.regularOpeningHours",
   // Rating fields are in the same billing tier as price level and hours, which we already ask for;
   // status, address and the Maps link are in a lower one.
@@ -155,6 +181,34 @@ export function cleanPlaceName(raw: string | undefined): string | null {
   return text.length > MAX_PLACE_NAME_CHARS ? text.slice(0, MAX_PLACE_NAME_CHARS).trimEnd() : text;
 }
 
+/** A place counts as well rated at this Google rating or above, once enough people have rated it. */
+export const WELL_RATED = 4.4;
+
+/**
+ * What Google says about the place itself, as yes, no or null (it does not say). Nothing is
+ * guessed: a place with no answer about dogs is not a place that refuses them.
+ */
+export function featuresOf(p: PlaceResult): Partial<Record<Feature, boolean | null>> {
+  const said = (v: boolean | undefined) => v ?? null;
+  // Yes if any is yes, no only if every one is a stated no.
+  const any = (vs: (boolean | undefined)[]) =>
+    vs.some((v) => v === true) ? true : vs.length > 0 && vs.every((v) => v === false) ? false : null;
+  const parking = p.parkingOptions ? Object.values(p.parkingOptions) : [];
+  const reviews = p.userRatingCount ?? 0;
+  return {
+    groups: said(p.goodForGroups),
+    kids: any([p.goodForChildren, p.menuForChildren]),
+    outdoor: said(p.outdoorSeating),
+    wheelchair: said(p.accessibilityOptions?.wheelchairAccessibleEntrance),
+    reservable: said(p.reservable),
+    alcohol: any([p.servesBeer, p.servesWine, p.servesCocktails]),
+    parking: p.parkingOptions ? parking.some((v) => v === true) : null,
+    dogs: said(p.allowsDogs),
+    live_music: said(p.liveMusic),
+    well_rated: p.rating !== undefined && reviews >= MIN_REVIEWS ? p.rating >= WELL_RATED : null,
+  };
+}
+
 /**
  * Map one Places result onto our shape. Returns null for things we can't place. A place whose
  * food is none of the ten older cuisines is kept, with `cuisine: null` (see `Place`).
@@ -183,6 +237,7 @@ export function toPlace(p: PlaceResult, center: LatLng): Place | null {
     cuisine,
     types: primaryType && !placeTypes.includes(primaryType) ? [primaryType, ...placeTypes] : placeTypes,
     ...(primaryType ? { primaryType } : {}),
+    features: featuresOf(p),
     style: stylesOf(placeTypes, primaryType),
     pricePerPerson: PRICE_BY_LEVEL[p.priceLevel ?? ""] ?? DEFAULT_PRICE,
     price: priceOf(p),

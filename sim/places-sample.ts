@@ -39,6 +39,27 @@ function withoutIdentity(p: PlaceResult, i: number): PlaceResult {
       ? { location: { latitude: round(p.location.latitude), longitude: round(p.location.longitude) } }
       : {}),
     ...(p.servesVegetarianFood !== undefined ? { servesVegetarianFood: p.servesVegetarianFood } : {}),
+    // What the place is like to be at, and how well it is rated: none of it says which place it is.
+    ...Object.fromEntries(
+      (
+        [
+          "goodForGroups",
+          "goodForChildren",
+          "menuForChildren",
+          "outdoorSeating",
+          "liveMusic",
+          "servesBeer",
+          "servesWine",
+          "servesCocktails",
+          "reservable",
+          "allowsDogs",
+          "accessibilityOptions",
+          "parkingOptions",
+          "rating",
+          "userRatingCount",
+        ] as const
+      ).flatMap((k) => (p[k] !== undefined ? [[k, p[k]]] : [])),
+    ),
     ...(p.businessStatus ? { businessStatus: p.businessStatus } : {}),
     ...(p.regularOpeningHours?.periods ? { regularOpeningHours: { periods: p.regularOpeningHours.periods } } : {}),
   };

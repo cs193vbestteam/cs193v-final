@@ -2,7 +2,7 @@ import type { Cuisine, Slot } from "./constraints";
 import { LEGACY_CUISINE_TYPE, stylesOf } from "./cuisine-table";
 import type { LatLng } from "./geo";
 import { dailyHours, openStartTimes, type WeeklyHours } from "./opening-hours";
-import type { Style } from "./optimizer-input";
+import type { Feature, Style } from "./optimizer-input";
 
 /**
  * Hard-coded, fictional restaurant data: the seed pool, used when a plan has no
@@ -21,6 +21,8 @@ export type Restaurant = {
   types?: string[];
   /** The one type Google calls the place's main one, when it names one. Also in `types`. Places results only. */
   primaryType?: string;
+  /** What Google says about the place itself (room for groups, outdoor tables, …); null where it does not say. */
+  features?: Partial<Record<Feature, boolean | null>>;
   /** The kind of place, worked out from `types` (`stylesOf`). Present whenever `types` is. */
   style?: Style[];
   /** Typical spend per person, in dollars. */

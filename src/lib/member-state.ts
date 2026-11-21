@@ -5,6 +5,7 @@ import {
   PersonPreferencesSchema,
   START_TIMES,
   startTimesIn,
+  type Feature,
   type PersonPreferences,
   type StartTime,
   type Strength,
@@ -203,6 +204,34 @@ export function availableTimes(prefs: PersonPreferences): StartTime[] {
  * guarantee (optimizer.ts), so it is not called a must here: the words promise what the
  * program does.
  */
+/** A feature of a place, as its owner reads it in their summary and in the assistant's replies. */
+export const FEATURE_WORDS: Record<Feature, string> = {
+  groups: "room for a group",
+  kids: "good for children",
+  outdoor: "outdoor seating",
+  wheelchair: "a step-free entrance",
+  reservable: "takes reservations",
+  alcohol: "serves alcohol",
+  parking: "parking",
+  dogs: "dogs allowed",
+  live_music: "live music",
+  well_rated: "well reviewed",
+};
+
+/** The same, as the end of "places that …", for a reply. */
+export const FEATURE_PHRASES: Record<Feature, string> = {
+  groups: "have room for a group",
+  kids: "are good for children",
+  outdoor: "have outdoor seating",
+  wheelchair: "have a step-free entrance",
+  reservable: "take reservations",
+  alcohol: "serve alcohol",
+  parking: "have parking",
+  dogs: "allow dogs",
+  live_music: "have live music",
+  well_rated: "are well reviewed",
+};
+
 const STRENGTH_WORDS: Record<Strength, string> = { must: " (matters most)", strong: " (matters a lot)", mild: "" };
 const PRIORITY_WORDS: Record<string, string> = {
   time: "the time",
@@ -274,6 +303,13 @@ export function describeState(state: MemberState): string[] {
     );
   if (prefs.style?.excluded?.length)
     lines.push(`Not this kind of place: ${prefs.style.excluded.map((s) => s.replaceAll("_", " ")).join(", ")}`);
+
+  if (prefs.features?.needed?.length)
+    lines.push(`Needs: ${prefs.features.needed.map((f) => FEATURE_WORDS[f]).join(", ")}`);
+  if (prefs.features?.wanted?.length)
+    lines.push(
+      `Would like: ${prefs.features.wanted.map((f) => FEATURE_WORDS[f]).join(", ")}${STRENGTH_WORDS[prefs.features.strength]}`,
+    );
 
   // Whether a named place is among the plan's places is not known until its pool is complete.
   const named = (r: { name: string }) => r.name;
