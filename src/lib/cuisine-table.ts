@@ -225,6 +225,13 @@ export type RegionDef = {
   cuisines: CuisineDef[];
 };
 export type GroupDef = { id: string; label: string; types: PlaceFoodType[]; regions: string[] };
+/**
+ * A wish about what the food is like rather than where it is from ("spicy", "something light").
+ * No restaurant is listed by that, and Google has no such type, but the wish still says
+ * something: these are the kinds of food where people most reliably find it. `leaning` names
+ * what restaurants are not listed by, for the reply.
+ */
+export type LeaningDef = { id: string; label: string; types: PlaceFoodType[]; leaning: string };
 
 const c = (type: PlaceFoodType, label: string, dishes: [PlaceFoodType, string][] = []): CuisineDef => ({
   type,
@@ -439,6 +446,52 @@ export const GROUPS: GroupDef[] = [
   { id: "western", label: "Western", types: ["western_restaurant"], regions: ["european", "north_american"] },
 ];
 
+/**
+ * Kept short on purpose: each one is a judgement about food, not a fact from Google. A wish that
+ * is not here can still be turned into kinds of food by the assistant (see `closest` in
+ * assistant.ts), at a lower score, because that is a guess made for one person.
+ */
+export const LEANINGS: LeaningDef[] = [
+  {
+    id: "spicy",
+    label: "spicy food",
+    types: ["thai_restaurant", "indian_restaurant", "korean_restaurant", "mexican_restaurant", "hot_pot_restaurant"],
+    leaning: "how spicy the food is",
+  },
+  {
+    id: "light",
+    label: "lighter food",
+    types: [
+      "salad_shop",
+      "vegetarian_restaurant",
+      "vegan_restaurant",
+      "mediterranean_restaurant",
+      "sushi_restaurant",
+      "vietnamese_restaurant",
+    ],
+    leaning: "how light or healthy the food is",
+  },
+  {
+    id: "hearty",
+    label: "meat-heavy food",
+    types: ["steak_house", "barbecue_restaurant", "korean_barbecue_restaurant", "brazilian_restaurant"],
+    leaning: "how much meat is on the menu",
+  },
+  {
+    id: "warm",
+    label: "warm, soupy food",
+    types: ["ramen_restaurant", "hot_pot_restaurant", "soup_restaurant", "noodle_shop"],
+    leaning: "how warming the food is",
+  },
+];
+
+const LEANING_BY_ID = new Map(LEANINGS.map((l) => [l.id, l]));
+
+/** What a "what the food is like" wish cannot be searched by ("how spicy the food is"), or null for any other match. */
+export function leaningOf(match: CuisineMatch): string | null {
+  return match.level === "leaning" ? (LEANING_BY_ID.get(match.id)?.leaning ?? null) : null;
+}
+
 /** A wish for one cuisine is worth this much at its neighbours; a wish for one dish, this much at its cuisine. */
 export const NEAR_SCORE = 0.5;
 /** A wish for one dish is worth this much at the other dishes of the same cuisine. */
@@ -492,8 +545,8 @@ export function labelOf(type: string): string {
 // ---------------------------------------------------------------------------------------
 
 export type CuisineMatch = {
-  level: "group" | "region" | "cuisine" | "dish";
-  /** A group or region id, or a Google type name for a cuisine or dish. */
+  level: "group" | "region" | "cuisine" | "dish" | "leaning";
+  /** A group, region or leaning id, or a Google type name for a cuisine or dish. */
   id: string;
   label: string;
 };
@@ -501,6 +554,33 @@ export type CuisineMatch = {
 /** Extra words for groups and regions, beyond their labels. */
 const BROAD_WORDS: Record<string, string[]> = {
   asian: ["asia", "亚洲菜", "亚洲", "亚洲料理", "亚洲餐"],
+  spicy: ["spicy", "something spicy", "spice", "hot and spicy", "辣", "辣的", "吃辣", "重口味"],
+  hearty: ["meat", "lots of meat", "meaty", "meat lover", "high protein", "protein", "吃肉", "肉", "大口吃肉"],
+  warm: ["something warm", "warm food", "warming food", "something hot", "热乎的", "热的", "暖和的"],
+  light: [
+    "light food",
+    "light",
+    "something light",
+    "healthy",
+    "healthy food",
+    "something healthy",
+    "low calorie",
+    "low-calorie",
+    "low cal",
+    "diet food",
+    "lose weight",
+    "losing weight",
+    "trying to lose weight",
+    "watching my weight",
+    "清淡",
+    "清淡的",
+    "健康",
+    "健康的",
+    "轻食",
+    "减肥",
+    "减脂",
+    "低卡",
+  ],
   western: ["西餐", "西式", "西方菜"],
   east_asian: ["east asia", "东亚", "东亚菜"],
   southeast_asian: ["south east asian", "southeast asia", "东南亚", "东南亚菜"],
@@ -647,6 +727,10 @@ for (const group of GROUPS) {
   const match: CuisineMatch = { level: "group", id: group.id, label: group.label };
   for (const w of [group.label, ...(BROAD_WORDS[group.id] ?? [])]) register(w, match, true);
 }
+for (const leaning of LEANINGS) {
+  const match: CuisineMatch = { level: "leaning", id: leaning.id, label: leaning.label };
+  for (const w of [leaning.label, ...(BROAD_WORDS[leaning.id] ?? [])]) register(w, match, true);
+}
 for (const region of REGIONS) {
   if (!region.label) continue;
   const match: CuisineMatch = { level: "region", id: region.id, label: region.label };
@@ -720,7 +804,9 @@ export function scoresFor(match: CuisineMatch): Record<string, number> {
   const set = (types: string[], score: number) => {
     for (const t of types) scores[t] = Math.max(scores[t] ?? 0, score);
   };
-  if (match.level === "group" || match.level === "region") {
+  if (match.level === "leaning") {
+    set(LEANING_BY_ID.get(match.id)?.types ?? [], 1);
+  } else if (match.level === "group" || match.level === "region") {
     const own = match.level === "group" ? (GROUP_BY_ID.get(match.id)?.types ?? []) : [];
     set(fit([...own, ...regionsOf(match).flatMap(regionTypes)]), 1);
   } else if (match.level === "cuisine") {
@@ -754,6 +840,8 @@ export function mergeScores(...maps: Record<string, number>[]): Record<string, n
  * because plenty of people who say it still eat at Japanese places.
  */
 export function excludedFor(match: CuisineMatch): string[] {
+  // A leaning is a guess at where such food is found; it never rules a kind of food out.
+  if (match.level === "leaning") return [];
   if (match.level === "dish") return [match.id];
   if (match.level === "cuisine") {
     const entry = CUISINE_BY_TYPE.get(match.id);
@@ -788,6 +876,11 @@ export function matchCuisine(
 
 /** What a word was taken to mean, to say back: "Japanese, Chinese, Korean, …". */
 export function describeMatch(match: CuisineMatch): string {
+  if (leaningOf(match)) {
+    const plainName = (t: string) =>
+      CUISINE_BY_TYPE.get(t)?.def.label ?? DISH_BY_TYPE.get(t)?.def.label ?? stem(t).replace(/_/g, " ");
+    return (LEANING_BY_ID.get(match.id)?.types ?? []).map(plainName).join(", ");
+  }
   if (match.level === "group" || match.level === "region") {
     return regionsOf(match)
       .flatMap((r) => r.cuisines.filter((cu) => !cu.generic).map((cu) => cu.label))

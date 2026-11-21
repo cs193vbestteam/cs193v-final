@@ -850,6 +850,178 @@
       "absent": [
         "prefs.budget.max"
       ]
+    },
+    {
+      "id": "taste-01",
+      "about": "what the food is like",
+      "note": "From the user test (#158): both wishes are understood and lean toward kinds of food; neither is turned away.",
+      "turns": [
+        {
+          "user": "I like spicy food, but I'm also trying to lose weight",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "spicy",
+                  "healthy"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.scores.thai_restaurant": 1,
+        "prefs.cuisine.scores.salad_shop": 1
+      },
+      "replyMustMatch": [
+        "lean toward food known for it"
+      ],
+      "replyMustNotMatch": [
+        "can't look for|cannot (?:match|look|search)|can't match|won't change which"
+      ]
+    },
+    {
+      "id": "taste-02",
+      "about": "what the food is like",
+      "note": "A wish the table does not have: the model names the nearest kinds of food, code keeps the ones it knows at a lower score.",
+      "turns": [
+        {
+          "user": "Honestly I just want comfort food",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "comfort food"
+                ],
+                "closest": [
+                  {
+                    "wish": "comfort food",
+                    "like": [
+                      "American",
+                      "Italian",
+                      "ramen"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.scores": {
+          "$includes": "_restaurant"
+        },
+        "prefs.notes": {
+          "$includes": "comfort food"
+        }
+      },
+      "replyMustMatch": [
+        "I'll lean toward"
+      ],
+      "replyMustNotMatch": [
+        "can't look for|cannot (?:match|look|search)|can't match|won't change which"
+      ]
+    },
+    {
+      "id": "taste-03",
+      "about": "what the food is like",
+      "note": "Not wanting spicy food is kept as a note and rules no kind of food out.",
+      "turns": [
+        {
+          "user": "Nothing too spicy for me please",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "excluded": [
+                  "spicy"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.notes": {
+          "$includes": "spicy"
+        }
+      },
+      "absent": [
+        "prefs.cuisine.excluded"
+      ]
+    },
+    {
+      "id": "brief-01",
+      "about": "short replies",
+      "note": "From the user test (#156): the first message is not repeated back.",
+      "turns": [
+        {
+          "user": "Chinese restaurant under 70 per person, taste good.",
+          "model": {
+            "reply": "Got it, I'll try hard to keep it under $70. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "Chinese"
+                ]
+              },
+              "budget": {
+                "max": 70,
+                "strength": "must"
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.scores.chinese_restaurant": 1,
+        "prefs.budget.max": 70
+      },
+      "replyMustNotMatch": [
+        "Chinese food",
+        "good taste",
+        "taste matters"
+      ]
+    },
+    {
+      "id": "place-01",
+      "about": "named restaurant",
+      "note": "From the user test (#158): a named place is acknowledged as a place, whether or not it is in the pool yet.",
+      "turns": [
+        {
+          "user": "Can we go to Imperial Treasure?",
+          "model": {
+            "reply": "Got it. When can you make it, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "wantedRestaurants": [
+                "Imperial Treasure"
+              ]
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.wantedRestaurants.0.name": {
+          "$includes": "Imperial Treasure"
+        }
+      },
+      "replyMustMatch": [
+        "Imperial Treasure"
+      ]
     }
   ]
 }

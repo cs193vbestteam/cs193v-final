@@ -43,6 +43,8 @@ export type AssistantCase = {
   absent?: string[];
   /** Patterns at least one reply must match. */
   replyMustMatch?: string[];
+  /** Patterns no reply may match: a wish turned away, or an answer repeated back. */
+  replyMustNotMatch?: string[];
 };
 
 export function loadAssistantCases(file = join(process.cwd(), "tests/fixtures/assistant-cases.json")): AssistantCase[] {
@@ -160,6 +162,9 @@ export async function runAssistantCase(c: AssistantCase): Promise<AssistantCaseR
   for (const pattern of c.replyMustMatch ?? [])
     if (!replies.some((r) => new RegExp(pattern, "i").test(r)))
       fields.push({ path: `reply ~ /${pattern}/`, ok: false, expected: pattern, got: replies.join(" | ") });
+  for (const pattern of c.replyMustNotMatch ?? [])
+    if (replies.some((r) => new RegExp(pattern, "i").test(r)))
+      fields.push({ path: `reply !~ /${pattern}/`, ok: false, expected: `not ${pattern}`, got: replies.join(" | ") });
 
   return {
     id: c.id,

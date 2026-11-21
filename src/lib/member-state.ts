@@ -144,7 +144,13 @@ export function answerProgress(state: MemberState): AnswerStep[] {
 export function allowedToAsk(state: MemberState): Variable[] {
   const { asked, answered, turns } = state.chat;
   if (turns >= MAX_ASSISTANT_TURNS) return [];
-  return VARIABLES.filter((v) => !answered.includes(v) && (!asked.includes(v) || REQUIRED.includes(v)));
+  // The two things the plan cannot do without may be asked until they are answered.
+  const needed = REQUIRED.filter((v) => !answered.includes(v));
+  // Everything else shares ONE question (#156): people in the user test wanted to stop after a
+  // few messages. Once any of them has been asked about, none of the others is.
+  const optional = VARIABLES.filter((v) => !REQUIRED.includes(v));
+  const extra = optional.some((v) => asked.includes(v)) ? [] : optional.filter((v) => !answered.includes(v));
+  return VARIABLES.filter((v) => needed.includes(v) || extra.includes(v));
 }
 
 /** Whether what the person wants changed between two states. Chat bookkeeping does not count. */
