@@ -140,7 +140,8 @@ describe("the bar in the chat", () => {
 
   it("offers answers to the question the assistant is asking, not to the first unanswered one", async () => {
     const el = await render(steps([]).map((s) => ({ ...s, asking: s.topic === "budget" })));
-    expect(el.querySelector("[aria-label='Quick answers']")?.textContent).toContain("Budget?");
+    // The row is answers only: no label in front of them naming the question.
+    expect(el.querySelector("[aria-label='Quick answers']")?.textContent).toBe(quickAnswers(el).join(""));
     expect(quickAnswers(el)).toEqual(["Around $30", "Up to $50", "No budget limit"]);
     const chips = [...el.querySelectorAll("ol[aria-labelledby='answers-label'] button")];
     expect(chips[1].textContent).toContain("Budget: the assistant is asking this now");
@@ -161,7 +162,6 @@ describe("the bar in the chat", () => {
 
   it("offers both sets of answers when the assistant asked about two things at once", async () => {
     const el = await render(steps([]).map((s) => ({ ...s, asking: s.topic === "budget" || s.topic === "travel" })));
-    expect(el.querySelector("[aria-label='Quick answers']")?.textContent).toContain("Budget or Distance?");
     expect(quickAnswers(el)).toEqual(["Around $30", "Up to $50", "15 minutes at most", "30 minutes at most"]);
   });
 

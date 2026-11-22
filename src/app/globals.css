@@ -2215,17 +2215,6 @@ form:focus-within .plan-ticket {
 .quick-row::-webkit-scrollbar {
   display: none;
 }
-.quick-row-label {
-  flex: none;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-surface) 88%, transparent);
-  padding: 0.15rem 0.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-ink-3);
-}
 .quick-row .quick-chip {
   flex: none;
   /* Messages pass under the row, so each answer carries its own ground. */
