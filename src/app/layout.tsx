@@ -29,7 +29,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Settle — group plans without the group chat",
+  title: "Settle — your group chat is stuck. Settle it.",
   description:
     "Tell your own assistant your real constraints in private. Settle picks a place and a time that fit the group, and nobody's numbers are shown to anyone.",
 };
