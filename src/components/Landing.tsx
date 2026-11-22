@@ -241,7 +241,8 @@ export function Landing() {
               ))}
             </dl>
           </div>
-          <div className="rise lg:col-span-6 lg:col-start-7" style={d(0.35)}>
+          {/* The demo comes in once the headline's first line is there (see --hold in globals.css). */}
+          <div className="rise lg:col-span-6 lg:col-start-7" style={d(1)}>
             <div data-tilt>
               <HeroDemo />
             </div>
