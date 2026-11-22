@@ -529,12 +529,23 @@ export function PrivateChat({
               </span>
               {summary.length ? (
                 <ul className="flex min-w-0 flex-wrap gap-x-3 gap-y-0.5">
-                  {summary.map((s) => (
-                    <li key={s} className="flex gap-1.5">
-                      <span aria-hidden className="mt-[0.6em] h-1 w-1 shrink-0 rounded-full bg-ink-3" />
-                      <span>{s}</span>
-                    </li>
-                  ))}
+                  {summary.map((s) => {
+                    // "Budget: no limit": what it is about stands out, the answer reads after it.
+                    const cut = s.indexOf(": ");
+                    return (
+                      <li key={s} className="flex gap-1.5">
+                        <span aria-hidden className="mt-[0.6em] h-1 w-1 shrink-0 rounded-full bg-line-strong" />
+                        {cut < 0 ? (
+                          <span>{s}</span>
+                        ) : (
+                          <span>
+                            <strong className="font-semibold text-ink">{s.slice(0, cut + 1)}</strong>
+                            {s.slice(cut + 1)}
+                          </span>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <span className="text-ink-3">Nothing yet. Just talk to it like a friend who keeps secrets.</span>
