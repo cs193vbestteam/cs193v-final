@@ -29,6 +29,7 @@ import {
 import { loadOptimizerInput } from "@/lib/optimizer-source";
 import { RESTAURANTS } from "@/lib/restaurants";
 import { AREAS, CASES_DIR, buildInput, type CaseMember, type PlacesFile } from "../sim/optimizer-cases";
+import { upcomingSaturday } from "./fixtures/plan-date";
 
 /**
  * Adversarial tests for the optimizer (src/lib/optimizer.ts): attempts to make it crash, break
@@ -1333,7 +1334,7 @@ describe("the finishing order as storage records it", () => {
   it("keeps a place through a message that changes nothing, and gives it up on one that changes an answer", async () => {
     const alice = await createUser({ email: "alice@adversarial.dev", displayName: "Alice", password: "password123" });
     const bob = await createUser({ email: "bob@adversarial.dev", displayName: "Bob", password: "password123" });
-    const event = await createEvent(alice.id, "Saturday dinner", null, "meal", "2026-11-21");
+    const event = await createEvent(alice.id, "Saturday dinner", null, "meal", upcomingSaturday());
     await joinEvent(event.inviteCode, bob.id);
     const state = async () => {
       const { input, ready } = await loadOptimizerInput(event.id);

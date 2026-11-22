@@ -23,9 +23,11 @@ import {
 import { matchRestaurant } from "@/lib/assistant";
 import { refreshPool } from "@/lib/pool-refresh";
 import type { Place } from "@/lib/restaurants";
+import { upcomingSaturday } from "./fixtures/plan-date";
 
 const CENTER = { lat: 37.44, lng: -122.16 };
-const DATE = "2026-11-21";
+// A plan made through the app needs a day that has not passed.
+const DATE = upcomingSaturday();
 const EVERY_DAY = Array.from({ length: 7 }, (_, day) => ({ open: { day, hour: 10 }, close: { day, hour: 23 } }));
 
 /** A page of `n` distinct places of one Google type, open every day unless told otherwise. */
