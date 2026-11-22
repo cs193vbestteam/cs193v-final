@@ -7,6 +7,7 @@ import { OptimizerInputSchema, assembleOptimizerInput, type OptimizerInput } fro
 import { START_TIMES, type CandidateRestaurant, type PersonPreferences } from "@/lib/optimizer-input";
 import { loadOptimizerInput } from "@/lib/optimizer-source";
 import { RESTAURANTS } from "@/lib/restaurants";
+import { upcomingSaturday } from "./fixtures/plan-date";
 
 /**
  * Whoever finished telling their assistant first wins an exact tie, and nothing more than a
@@ -120,7 +121,7 @@ describe("the order as storage records it", () => {
   it("follows who became ready first, and gives up the place of someone who stops being ready", async () => {
     const alice = await createUser({ email: "alice@finish.dev", displayName: "Alice", password: "password123" });
     const bob = await createUser({ email: "bob@finish.dev", displayName: "Bob", password: "password123" });
-    const event = await createEvent(alice.id, "Saturday dinner", null, "meal", "2026-11-21");
+    const event = await createEvent(alice.id, "Saturday dinner", null, "meal", upcomingSaturday());
     await joinEvent(event.inviteCode, bob.id);
     await sendMessage(event.id, alice.id, "dinner works, I'm vegetarian, under $40");
     await sendMessage(event.id, bob.id, "lunch or dinner, no restrictions");

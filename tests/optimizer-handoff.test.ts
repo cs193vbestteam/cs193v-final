@@ -22,8 +22,12 @@ import { loadOptimizerInput } from "@/lib/optimizer-source";
 import { openOn } from "@/lib/opening-hours";
 import { priceOf, toPool, toRestaurant, type PlaceResult } from "@/lib/places";
 import { RESTAURANTS, type Restaurant } from "@/lib/restaurants";
+import { upcomingSaturday } from "./fixtures/plan-date";
 
+// The sample input in tests/fixtures is for this day. Nothing checks it against today.
 const DATE = "2026-11-21";
+// A plan made through the app needs a day that has not passed.
+const PLAN_DATE = upcomingSaturday();
 const FIXTURE = path.resolve(__dirname, "fixtures/optimizer-input.sample.json");
 
 /**
@@ -339,7 +343,7 @@ describe("reading a plan out of storage", () => {
   it("returns schema-valid input for a plan made through the app, with counts and no identities", async () => {
     const alice = await makeUser("Alice");
     const bob = await makeUser("Bob");
-    const event = await createEvent(alice.id, "Saturday dinner", null, "meal", DATE);
+    const event = await createEvent(alice.id, "Saturday dinner", null, "meal", PLAN_DATE);
     await joinEvent(event.inviteCode, bob.id);
     await sendMessage(event.id, alice.id, "dinner works, I'm vegetarian, under $40");
     await sendMessage(event.id, bob.id, "lunch or dinner, no restrictions");
@@ -349,7 +353,7 @@ describe("reading a plan out of storage", () => {
     expect(members).toBe(2);
     expect(ready).toBe(1);
     expect(OptimizerInputSchema.parse(input)).toEqual(input);
-    expect(input.plan.date).toBe(DATE);
+    expect(input.plan.date).toBe(PLAN_DATE);
     expect(input.people.map((p) => p.id)).toEqual(["p1", "p2"]);
     expect(input.people[0].prefs.dietary).toEqual(["vegetarian"]);
     expect(input.people[0].prefs.budget?.max).toBe(40);
