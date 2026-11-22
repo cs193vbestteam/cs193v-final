@@ -825,12 +825,79 @@ form:focus-within .plan-ticket {
 }
 
 /* ── Landing page ───────────────────────────────────────────── */
+/* The headline is sized by the width it has, so its first line always fits on one line. */
+.hero-title-box {
+  container-type: inline-size;
+}
 .hero-title {
-  font-size: clamp(3.5rem, 11.4vw, 8.5rem);
-  line-height: 0.9;
+  font-size: clamp(2rem, 12.6cqw, 8.5rem);
+  line-height: 1.04;
   letter-spacing: -0.03em;
 }
-/* The group chat, crossed out: one line in seal red drawn through the words once the page has settled. */
+.hero-line {
+  display: block;
+  white-space: nowrap;
+}
+.blur-words > .hero-line {
+  animation: none;
+}
+/* Each word comes into focus in turn. */
+.hero-line > span {
+  display: inline-block;
+  animation: blur-word 0.9s var(--ease-out-expo) both;
+  animation-delay: calc(0.08s + var(--i, 0) * 0.11s);
+}
+/* "Settle" does what it says: it comes down a little crooked, overshoots, and comes to rest.
+   Then one stroke is drawn under it, the way the strike was drawn through "stuck". */
+.settle-word {
+  position: relative;
+  display: inline-block;
+  transform-origin: 30% 80%;
+  animation: settle-in 1.1s cubic-bezier(0.3, 1.5, 0.5, 1) 1.75s both;
+}
+.settle-word svg {
+  position: absolute;
+  left: -0.02em;
+  bottom: -0.06em;
+  width: 100%;
+  height: 0.16em;
+  overflow: visible;
+}
+.settle-word path {
+  fill: none;
+  stroke: var(--color-seal);
+  stroke-width: max(2px, 0.045em);
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: settle-line 0.7s var(--ease-in-out-quart) 2.75s forwards;
+}
+.hero-line > .settle-after {
+  animation-delay: 2.15s;
+}
+@keyframes settle-in {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(-0.32em) rotate(-7deg);
+  }
+  45% {
+    opacity: 1;
+    filter: none;
+  }
+  to {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+}
+@keyframes settle-line {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* Being stuck, crossed out: one line in seal red drawn through the word once the page has settled. */
 .strike-draw {
   position: relative;
   white-space: nowrap;
@@ -2678,6 +2745,14 @@ form:focus-within .plan-ticket {
   .strike-draw::after {
     animation: none;
     transform: rotate(-2deg) scaleX(1);
+  }
+  .hero-line > span,
+  .settle-word {
+    animation: none;
+  }
+  .settle-word path {
+    animation: none;
+    stroke-dashoffset: 0;
   }
   .size-roll {
     animation: none;

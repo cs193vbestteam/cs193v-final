@@ -180,14 +180,28 @@ export function Landing() {
           <p className="eyebrow">Group decisions · private constraints</p>
           <p className="eyebrow hidden sm:block">First edition · dinner</p>
         </div>
-        {/* Each word comes into focus in turn. The words themselves are plain text, in order. */}
-        <h1 className="display hero-title blur-words mt-5">
-          <span style={w(0)}>Group</span> <span style={w(1)}>plans,</span> <em style={w(2)}>without</em>{" "}
-          <span style={w(3)}>the</span>{" "}
-          <span style={w(4)}>
-            <span className="strike-draw">group chat</span>.
-          </span>
-        </h1>
+        {/* Two lines: what is wrong, then what to do about it. The first is sized to stay on one line. */}
+        <div className="hero-title-box mt-5">
+          <h1 className="display hero-title blur-words">
+            <span className="hero-line">
+              <span style={w(0)}>Your</span> <span style={w(1)}>group</span> <span style={w(2)}>chat</span>{" "}
+              <span style={w(3)}>is</span>{" "}
+              <span style={w(4)}>
+                <span className="strike-draw">stuck</span>.
+              </span>
+            </span>{" "}
+            {/* Once "stuck" is crossed out, the answer drops in, comes to rest, and is underlined. */}
+            <span className="hero-line">
+              <em className="settle-word">
+                Settle
+                <svg aria-hidden viewBox="0 0 300 24" preserveAspectRatio="none">
+                  <path d="M4 15 C 70 4, 150 22, 296 9" pathLength={1} />
+                </svg>
+              </em>{" "}
+              <span className="settle-after">it.</span>
+            </span>
+          </h1>
+        </div>
 
         <div className="mt-10 grid gap-12 lg:mt-14 lg:grid-cols-12 lg:gap-8">
           <div className="lg:col-span-5 lg:pt-6">
