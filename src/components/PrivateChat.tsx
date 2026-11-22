@@ -365,9 +365,6 @@ export function PrivateChat({
               data-away={hidden.below || undefined}
               inert={hidden.below || undefined}
             >
-              <span className="quick-row-label">
-                {shown.length ? `${shown.map((s) => s.label).join(" or ")}?` : "Try"}
-              </span>
               {quick.map((answer, n) => (
                 <button
                   key={answer}
