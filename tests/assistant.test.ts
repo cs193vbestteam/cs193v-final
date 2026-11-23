@@ -32,7 +32,7 @@ import {
   type PersonPreferences,
 } from "@/lib/optimizer-input";
 import { RESTAURANTS } from "@/lib/restaurants";
-import { START_UNAVAILABLE } from "@/lib/start-point";
+import { START_UNAVAILABLE, startNotFoundKeeping } from "@/lib/start-point";
 import {
   loadAssistantCases,
   matches,
@@ -1242,6 +1242,63 @@ describe("where they are coming from", () => {
   });
 });
 
+describe("taking something back", () => {
+  const having = (prefs: Record<string, unknown>, extra: Record<string, unknown> = {}) => ({
+    ...emptyMemberState(),
+    ...extra,
+    prefs: { version: 1 as const, ...prefs },
+  });
+  const say = (text: string, from: ReturnType<typeof having>) =>
+    assistantTurn([{ role: "user", content: text }], from as never, RESTAURANTS);
+
+  it("removes a diet recorded by mistake, which is a hard rule and used to stay for good", async () => {
+    stubModel(() => ({ reply: "Removed.", asks: "none", forget: ["dietary"], update: {} }));
+    const turn = await say("I'm not vegetarian after all", having({ dietary: ["vegetarian"] }));
+    expect(turn.state.prefs.dietary).toBeUndefined();
+    expect(turn.changed).toBe(true);
+  });
+
+  it("replaces a diet when the old one is taken back in the same message, and adds to it otherwise", async () => {
+    stubModel(() => ({ reply: "Halal.", asks: "none", forget: ["dietary"], update: { dietary: ["halal"] } }));
+    expect((await say("not vegetarian, halal", having({ dietary: ["vegetarian"] }))).state.prefs.dietary).toEqual([
+      "halal",
+    ]);
+    stubModel(() => ({ reply: "And halal.", asks: "none", update: { dietary: ["halal"] } }));
+    expect((await say("also halal", having({ dietary: ["vegetarian"] }))).state.prefs.dietary).toEqual([
+      "vegetarian",
+      "halal",
+    ]);
+  });
+
+  it("drops a limit they withdrew, and does not ask about it again", async () => {
+    const travel = { maxMin: 15, mode: "walk", strength: "must" };
+    stubModel(() => ({ reply: "No limit then.", asks: "none", forget: ["travel"], update: {} }));
+    const turn = await say("actually distance doesn't matter", having({ travel }, { travelMode: "walk" }));
+    expect(turn.state.prefs.travel).toBeUndefined();
+    expect(turn.state.travelMode).toBeNull();
+    expect(turn.state.chat.answered).toContain("travel");
+    // Said together with a new value, the new value is what they want.
+    stubModel(() => ({ reply: "30.", asks: "none", forget: ["travel"], update: { travel: { maxMin: 30 } } }));
+    expect((await say("not 15, say 30", having({ travel }))).state.prefs.travel).toMatchObject({ maxMin: 30 });
+  });
+
+  it("forgets where they are coming from when asked to", async () => {
+    const startPoint = { label: "Stanford Main Quad", lat: 37.4275, lng: -122.1697 };
+    stubModel(() => ({ reply: "Forgotten.", asks: "none", forget: ["start"], update: {} }));
+    const turn = await say("forget where I'm coming from", having({}, { startPoint }));
+    expect(turn.state.startPoint).toBeNull();
+    expect(turn.changed).toBe(true);
+  });
+
+  it("ignores a word that is not something it can forget", async () => {
+    stubModel(() => ({ reply: "Ok.", asks: "none", forget: ["everything", 7], update: {} }));
+    const before = having({ dietary: ["vegetarian"] });
+    const turn = await say("hmm", before);
+    expect(turn.source).toBe("llm");
+    expect(turn.state.prefs).toEqual(before.prefs);
+  });
+});
+
 describe("a travel limit needs a starting point", () => {
   const located = RESTAURANTS.map((r, i) => ({ ...r, location: { lat: 37.44 + i * 0.001, lng: -122.16 } }));
   const plan = { date: "2026-11-28", location: "Palo Alto, CA" };
@@ -1322,6 +1379,45 @@ describe("a travel limit needs a starting point", () => {
     stubModel(() => ({ reply: "$20 a person, got it.", asks: "none", update: { budget: { ideal: 20 } } }));
     // With a unit it is not unclear.
     expect((await say("$20", before)).state.prefs.budget).toMatchObject({ ideal: 20 });
+  });
+
+  it("says so at once when even the nearest place is past their limit", async () => {
+    // The places are in downtown Palo Alto; the Main Quad is about 1.6 km away.
+    const quad = { label: "Stanford Main Quad", lat: 37.4275, lng: -122.1697 };
+    const from = { ...emptyMemberState(), startPoint: quad };
+    stubModel(() => ({ reply: "A 10 minute walk at most.", asks: "none", update: walk }));
+    const turn = await say("no more than a 10 minute walk", from);
+    expect(turn.reply).toMatch(
+      /The nearest places I have are about \d+ min on foot from Stanford Main Quad, more than the 10 you asked for/,
+    );
+    // Said when it changes, not on every message after.
+    stubModel(() => ({ reply: "Dinner, noted.", asks: "none", update: { time: { preferred: [{ meal: "dinner" }] } } }));
+    expect((await say("dinner would be nice", turn.state)).reply).toBe("Dinner, noted.");
+    // A limit the nearest place meets is not remarked on.
+    stubModel(() => ({ reply: "Ok.", asks: "none", update: { travel: { maxMin: 20, mode: "drive" } } }));
+    expect((await say("20 minutes by car", from)).reply).not.toContain("nearest places");
+  });
+
+  it("keeps the earlier start point when a new one cannot be placed, and says which it is using", async () => {
+    const quad = { label: "Stanford Main Quad", lat: 37.4275, lng: -122.1697 };
+    const fetchMock = vi.fn(async (url: unknown) =>
+      String(url).includes("anthropic")
+        ? Response.json({
+            content: [
+              {
+                type: "tool_use",
+                input: { reply: "Ok.", onTopic: true, asks: "none", update: { startText: "Bob's place" } },
+              },
+            ],
+          })
+        : Response.json({ places: [] }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    process.env.ANTHROPIC_API_KEY = "test-key-not-real";
+    const turn = await say("from Bob's place", { ...emptyMemberState(), startPoint: quad });
+    expect(turn.state.startPoint).toEqual(quad);
+    expect(turn.reply).toContain(startNotFoundKeeping("Bob's place", "Stanford Main Quad"));
+    expect(turn.reply).not.toContain("the plan's location");
   });
 
   it("takes the start point whether the model filed it beside travel or inside it", async () => {

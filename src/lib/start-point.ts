@@ -31,6 +31,9 @@ export const START_UNAVAILABLE =
 export const startNotFound = (text: string) =>
   `(I couldn't place "${text}" on the map, so I'll keep measuring travel from the plan's location. A neighbourhood or cross street usually works.)`;
 
+export const startNotFoundKeeping = (text: string, kept: string) =>
+  `(I couldn't place "${text}" on the map, so I'll keep measuring from ${kept}. A neighbourhood or cross street usually works.)`;
+
 /**
  * Replace `startText` in an extractor update with a resolved `startPoint`.
  * When the place can't be resolved the update simply drops it and the reply
