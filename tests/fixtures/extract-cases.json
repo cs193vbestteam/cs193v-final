@@ -375,7 +375,7 @@
     },
 
     {
-      "id": "multi-turn-01",
+      "id": "multi-turn-01", "rulesOrder": true,
       "category": "multi_turn",
       "note": "Bare answers to the question the assistant just asked.",
       "turns": ["Dinner", "$40", "20", "nothing"],
@@ -424,7 +424,7 @@
       }
     },
     {
-      "id": "multi-turn-05",
+      "id": "multi-turn-05", "rulesOrder": true,
       "category": "multi_turn",
       "note": "Issue #63: bare answers, each to the question just asked. The 20 is minutes, not a budget.",
       "turns": ["7", "40", "20", "nothing"],

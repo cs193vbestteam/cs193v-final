@@ -1244,6 +1244,256 @@
       "replyMustNotMatch": [
         "can't look for|cannot (?:match|look|search)|can't match|won't change which"
       ]
+    },
+    {
+      "id": "walk-no-start-01",
+      "about": "travel needs a start",
+      "note": "A walking limit means nothing until we know where the walk starts. The limit and the way of travelling are recorded, and the assistant asks where they are coming from.",
+      "turns": [
+        {
+          "user": "I don't want to walk more than 10 minutes",
+          "model": {
+            "reply": "I'll do my best to keep it within a 10 minute walk. Where will you be coming from?",
+            "onTopic": true,
+            "asks": "travel",
+            "update": {
+              "travel": {
+                "maxMin": 10,
+                "mode": "walk",
+                "strength": "must"
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.travel": {
+          "maxMin": 10,
+          "mode": "walk",
+          "strength": "must"
+        }
+      },
+      "replyMustMatch": [
+        "where\\b[^.?!]*\\b(from|start)"
+      ]
+    },
+    {
+      "id": "walk-with-start-01",
+      "about": "travel needs a start",
+      "note": "They said where the walk starts, so there is nothing to ask about it.",
+      "turns": [
+        {
+          "user": "Somewhere within a 10 minute walk of the Stanford Main Quad please",
+          "model": {
+            "reply": "A 10 minute walk from the Main Quad, got it. When can you eat that day, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "travel": {
+                "maxMin": 10,
+                "mode": "walk",
+                "strength": "mild"
+              },
+              "startText": "Stanford Main Quad"
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.travel.maxMin": 10,
+        "prefs.travel.mode": "walk"
+      },
+      "replyMustNotMatch": [
+        "where (will|are|would) you"
+      ]
+    },
+    {
+      "id": "drive-no-start-01",
+      "about": "travel needs a start",
+      "note": "The same for a drive: the way of travelling is recorded, and the start is asked for.",
+      "turns": [
+        {
+          "user": "I'm driving, 20 minutes tops",
+          "model": {
+            "reply": "A 20 minute drive at most; I'll do my best to keep to it. Where will you be driving from?",
+            "onTopic": true,
+            "asks": "travel",
+            "update": {
+              "travel": {
+                "maxMin": 20,
+                "mode": "drive",
+                "strength": "must"
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.travel": {
+          "maxMin": 20,
+          "mode": "drive",
+          "strength": "must"
+        }
+      },
+      "replyMustMatch": [
+        "where\\b[^.?!]*\\b(from|start)"
+      ]
+    },
+    {
+      "id": "mode-then-limit-01",
+      "about": "travel needs a start",
+      "note": "How they travel is said first and the limit later. The limit is recorded with the way of travelling they gave earlier.",
+      "turns": [
+        {
+          "user": "I'll be biking over",
+          "model": {
+            "reply": "Biking, noted. Is there a limit on how long a ride you'd make?",
+            "onTopic": true,
+            "asks": "travel",
+            "update": {
+              "travel": {
+                "mode": "bike"
+              }
+            }
+          }
+        },
+        {
+          "user": "No more than 15 minutes",
+          "model": {
+            "reply": "I'll do my best to keep it within a 15 minute ride. Where will you be coming from?",
+            "onTopic": true,
+            "asks": "travel",
+            "update": {
+              "travel": {
+                "maxMin": 15,
+                "strength": "must"
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.travel": {
+          "maxMin": 15,
+          "mode": "bike",
+          "strength": "must"
+        }
+      }
+    },
+    {
+      "id": "no-start-question-01",
+      "about": "travel needs a start",
+      "note": "Someone who never mentions distance is not asked where they are coming from.",
+      "turns": [
+        {
+          "user": "Dinner works for me, I eat everything, and about $30 a person",
+          "model": {
+            "reply": "Thanks. Anything else that matters, like food you're in the mood for?",
+            "onTopic": true,
+            "asks": "cuisine",
+            "update": {
+              "time": {
+                "preferred": [
+                  {
+                    "meal": "dinner"
+                  }
+                ]
+              },
+              "nothingTheyCannotEat": true,
+              "budget": {
+                "ideal": 30,
+                "strength": "mild"
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.budget": {
+          "ideal": 30,
+          "strength": "mild"
+        }
+      },
+      "absent": [
+        "prefs.travel"
+      ],
+      "replyMustNotMatch": [
+        "coming from",
+        "walking or driving"
+      ]
+    },
+    {
+      "id": "plan-day-01",
+      "about": "knows the plan",
+      "plan": {
+        "date": "2026-11-28",
+        "location": "Palo Alto, CA"
+      },
+      "note": "The plan is on a Saturday. Only what they said about Saturdays applies.",
+      "turns": [
+        {
+          "user": "On Saturdays I can't do anything before 8pm. Other days I'm free from 6",
+          "model": {
+            "reply": "From 8 PM on then, since this is a Saturday. Is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "diet",
+            "update": {
+              "time": {
+                "only": [
+                  {
+                    "from": "20:00"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.time.unavailable": [{ "from": "10:00", "to": "19:00" }]
+      }
+    },
+    {
+      "id": "bare-number-01",
+      "about": "a number with no question behind it",
+      "note": "A bare 20 after a question about diet could be dollars or minutes. Nothing is recorded, the budget they gave stays, and the assistant asks.",
+      "turns": [
+        {
+          "user": "Around $40 a person would be good",
+          "model": {
+            "reply": "Got it. When can you eat that day, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "budget": {
+                "ideal": 40,
+                "strength": "mild"
+              }
+            }
+          }
+        },
+        {
+          "user": "20",
+          "model": {
+            "reply": "Is that 20 minutes of travel, or $20 a person?",
+            "onTopic": true,
+            "asks": "none",
+            "update": {}
+          }
+        }
+      ],
+      "expected": {
+        "prefs.budget": {
+          "ideal": 40,
+          "strength": "mild"
+        }
+      },
+      "absent": [
+        "prefs.travel"
+      ],
+      "replyMustMatch": [
+        "minutes|dollars|\\$20|mean"
+      ]
     }
   ]
 }

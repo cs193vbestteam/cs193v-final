@@ -1,5 +1,7 @@
 import { labelOf, matchCuisine } from "./cuisine-table";
-import { FEATURE_WORDS } from "./member-state";
+import type { LatLng } from "./geo";
+import { FEATURE_WORDS, MODE_WORDS } from "./member-state";
+import { personTravelMin } from "./optimizer-handoff";
 import { startTimesIn, type PersonPreferences, type StartTime } from "./optimizer-input";
 import type { Place } from "./restaurants";
 
@@ -39,4 +41,26 @@ export function myMatches(prefs: PersonPreferences, place: Place, startTime: Sta
   if (limit !== undefined && price !== null && price <= limit) out.push("within your budget");
 
   return out.slice(0, MAX_MATCHES);
+}
+
+/**
+ * How long the trip to the chosen place is for this person: from their own start point by their
+ * own way of travelling, the same figure the optimizer used. Said only when they told us
+ * something about travel and the place can be measured to. Unlike the list above, it is said
+ * even when it is over what they asked: a limit is weighed, not guaranteed, and a person who
+ * gave one should see what they got rather than find out on the way there.
+ */
+export function myTrip(
+  prefs: PersonPreferences,
+  startPoint: (LatLng & { label: string }) | null,
+  place: Pick<Place, "location" | "travelMin">,
+  center: LatLng | null,
+): string | null {
+  if (!prefs.travel && !startPoint) return null;
+  if (!place.location || !(startPoint ?? center)) return null;
+  const minutes = personTravelMin(prefs, startPoint, place, center);
+  const limit = prefs.travel?.maxMin ?? prefs.travel?.idealMin;
+  const how = MODE_WORDS[prefs.travel?.mode ?? "drive"];
+  const over = limit !== undefined && minutes > limit ? ` (over the ${limit} you asked for)` : "";
+  return `about ${minutes} min ${how} from ${startPoint ? startPoint.label : "the plan's location"}${over}`;
 }

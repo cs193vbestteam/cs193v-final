@@ -56,6 +56,13 @@ export type Case = {
   note?: string;
   /** Constraints already recorded before the first message. */
   start?: Partial<Constraints>;
+  /**
+   * The messages are bare answers ("40", "20") written for the rule reader's fixed order of
+   * questions. The assistant asks fewer questions in a different order, so the same bare
+   * numbers answer nothing it asked; it is not compared on these (assistant-cases.json has
+   * its own case for a bare number).
+   */
+  rulesOrder?: boolean;
   /** The user's messages, in order. */
   turns: string[];
   expected: Partial<Pick<Constraints, CheckedField>>;

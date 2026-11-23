@@ -2,7 +2,9 @@ import { labelOf } from "./cuisine-table";
 import { FEATURE_WORDS } from "./member-state";
 import type { Feature } from "./optimizer-input";
 import { db } from "./db";
-import { decryptOrPlain, scope } from "./crypto";
+import { decrypt, decryptOrPlain, scope } from "./crypto";
+import type { LatLng } from "./geo";
+import { parsePoolMeta } from "./pool-extend";
 import type { Place, Restaurant } from "./restaurants";
 import { parseScenarioId, scenarioFor, type ScenarioId } from "./scenario";
 
@@ -18,12 +20,26 @@ export type PoolSource = "places" | "yelp" | "seed";
  * `restaurants` is what the current negotiation engine and the chat use: places with one of
  * the ten older cuisines. `places` is everything stored, for the optimizer.
  */
-export async function poolForEvent(
-  eventId: string,
-): Promise<{ restaurants: Restaurant[]; places: Place[]; source: PoolSource; scenario: ScenarioId }> {
+function centerOf(eventId: string, poolMeta: unknown): LatLng | null {
+  if (!poolMeta) return null;
+  try {
+    return parsePoolMeta(decrypt(String(poolMeta), scope.plan(eventId, "pool_meta")))?.center ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function poolForEvent(eventId: string): Promise<{
+  restaurants: Restaurant[];
+  places: Place[];
+  source: PoolSource;
+  scenario: ScenarioId;
+  /** Where the plan is: the point its places were searched from. Null for a plan on the made-up seed. */
+  center: LatLng | null;
+}> {
   const client = await db();
   const { rows } = await client.execute({
-    sql: "SELECT pool_json, pool_source, scenario FROM events WHERE id = ?",
+    sql: "SELECT pool_json, pool_source, pool_meta, scenario FROM events WHERE id = ?",
     args: [eventId],
   });
   const scenario = parseScenarioId(rows[0]?.scenario);
@@ -36,10 +52,11 @@ export async function poolForEvent(
         places,
         source: (rows[0].pool_source as PoolSource) ?? "places",
         scenario,
+        center: centerOf(eventId, rows[0].pool_meta),
       };
   }
   const seed = scenarioFor(scenario).seedPool;
-  return { restaurants: seed, places: seed, source: "seed", scenario };
+  return { restaurants: seed, places: seed, source: "seed", scenario, center: null };
 }
 
 /**

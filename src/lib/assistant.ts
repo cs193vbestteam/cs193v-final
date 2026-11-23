@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RUBRIC, TOOL, stateBlock } from "./assistant-prompt";
+import { RUBRIC, TOOL, stateBlock, type PlanContext } from "./assistant-prompt";
 import { MAX_OUTPUT_TOKENS, MAX_REPLY_CHARS } from "./chat-limits";
 import { missingFields, type Pending, type MissingField } from "./constraints";
 import {
@@ -54,6 +54,8 @@ import {
   type Feature,
 } from "./optimizer-input";
 import type { Restaurant } from "./restaurants";
+import { cleanPlaceName } from "./places";
+import { TRAVEL_MODES } from "./geo";
 import { canLocate, resolveStart } from "./start-point";
 import { recordUsage, type Usage } from "./spend-context";
 
@@ -103,7 +105,16 @@ const BLOCKS = {
     strength: StrengthIn,
   }),
   budget: z.object({ ideal: z.number().optional(), max: z.number().optional(), strength: StrengthIn }),
-  travel: z.object({ idealMin: z.number().optional(), maxMin: z.number().optional(), strength: StrengthIn }),
+  travel: z.object({
+    idealMin: z.number().optional(),
+    maxMin: z.number().optional(),
+    // How they get there. An unknown word is dropped rather than failing the whole block.
+    mode: z.enum(TRAVEL_MODES).optional().catch(undefined),
+    // The model often files the start under travel, where it belongs in its head. Taken from
+    // either place: dropped here, the reply would say "measuring from the Quad" and nothing would be.
+    startText: z.string().trim().min(2).max(120).optional().catch(undefined),
+    strength: StrengthIn,
+  }),
   startText: z.string().trim().min(2).max(120),
   dietary: z.array(z.enum(DIETARY_NEEDS)),
   nothingTheyCannotEat: z.boolean(),
@@ -168,7 +179,17 @@ const ToolOutput = z.object({
     .optional(),
   // Now and then the model sends the whole update as a JSON string instead of an object.
   // That is the same answer in a different wrapper, so it is unwrapped, not thrown away.
-  update: z.preprocess(unwrapJson, z.record(z.string(), z.unknown())).optional(),
+  // An empty string (or "none") is the model saying there is nothing to record, which happens
+  // on a question or an off-topic message: that is an empty update. Any other text still fails.
+  update: z
+    .preprocess(
+      (raw) => {
+        const value = unwrapJson(raw);
+        return typeof value === "string" && /^\s*(?:none|null|nothing)?\s*$/i.test(value) ? {} : value;
+      },
+      z.record(z.string(), z.unknown()),
+    )
+    .optional(),
 });
 export type AssistantOutput = z.infer<typeof ToolOutput>;
 
@@ -398,6 +419,17 @@ function fileBareNumber(latest: string, lastAsked: Variable | null, blocks: Bloc
   return budget && !travel ? blocks : { ...rest, budget: { max: n } };
 }
 
+/** The number in a message that is nothing but a number with no unit, unless a question about one was asked. */
+function unclearNumber(latest: string, lastAsked: Variable | null): number | null {
+  const m = latest.match(BARE_NUMBER);
+  if (!m || m[2] || latest.includes("$")) return null;
+  if (lastAsked === "budget" || lastAsked === "travel") return null;
+  return Number(m[1]);
+}
+
+/** What the person is asked when their number could be either. */
+export const whichNumber = (n: number) => `Is that ${n} minutes of travel, or $${n} a person?`;
+
 // ---------------------------------------------------------------------------------------
 // Applying a model turn
 // ---------------------------------------------------------------------------------------
@@ -461,7 +493,9 @@ function finishTurn(
     chat: {
       ...after.chat,
       asked: asked ? uniq([...after.chat.asked, asked]) : after.chat.asked,
-      lastAsked: asked,
+      // A follow-up about where they start or how they travel is not one of the listed topics,
+      // but a short answer to it ("walking", "20") still has to be read as about travel.
+      lastAsked: asked ?? (!capped && asks === "travel" && after.prefs.travel ? "travel" : null),
       alsoAsked: alsoAskedIn(reply, asked, allowed),
       turns: before.chat.turns + 1,
     },
@@ -587,10 +621,23 @@ export function applyAssistantOutput(
     else dropped.push(name);
   }
   blocks = fileBareNumber(latestMessage, state.chat.lastAsked, blocks);
+  // A number with no unit and no numeric question behind it could be dollars or minutes. It
+  // records neither, and never replaces a figure they already gave: the person is asked.
+  let unclear = unclearNumber(latestMessage, state.chat.lastAsked);
+  // After a question about time the number may simply be the hour: if the model read a time
+  // from it, that stands, and only a budget or distance made out of it is dropped.
+  const readAsTime = state.chat.lastAsked === "time" && blocks.time !== undefined;
+  if (unclear !== null) {
+    blocks = { ...blocks };
+    delete blocks.budget;
+    delete blocks.travel;
+    if (readAsTime) unclear = null;
+  }
 
   let prefs: PersonPreferences = state.prefs;
   const answered = new Set<Variable>(state.chat.answered);
   /** Store the first candidate that keeps the whole record valid; otherwise leave it and say so. */
+  let travelMode = state.travelMode;
   const put = (key: keyof PersonPreferences, ...candidates: unknown[]): boolean => {
     for (const value of candidates) {
       const next: Record<string, unknown> = { ...prefs };
@@ -633,12 +680,20 @@ export function applyAssistantOutput(
       ...(blocks.travel.idealMin !== undefined ? { idealMin: Math.round(blocks.travel.idealMin) } : {}),
       ...(blocks.travel.maxMin !== undefined ? { maxMin: Math.round(blocks.travel.maxMin) } : {}),
     };
-    const merged = { ...(prefs.travel ?? {}), ...given };
+    // How they travel is remembered even before there is a limit to attach it to.
+    travelMode = blocks.travel.mode ?? travelMode;
+    const mode = travelMode ? { mode: travelMode } : {};
+    const merged = { ...(prefs.travel ?? {}), ...given, ...mode };
     const strengthFor = (b: { maxMin?: number }): Strength => {
       const s = blocks.travel!.strength ?? prefs.travel?.strength ?? "mild";
       return s === "must" && b.maxMin === undefined ? "strong" : s;
     };
-    if (put("travel", { ...merged, strength: strengthFor(merged) }, { ...given, strength: strengthFor(given) }))
+    // "I'll be walking" with no number yet is not a limit: only the mode is kept.
+    if (merged.idealMin === undefined && merged.maxMin === undefined) {
+      /* nothing to store yet */
+    } else if (
+      put("travel", { ...merged, strength: strengthFor(merged) }, { ...given, ...mode, strength: strengthFor(given) })
+    )
       answered.add("travel");
   }
 
@@ -799,7 +854,7 @@ export function applyAssistantOutput(
   for (const v of output.dontMind ?? []) if (isVariable(v)) answered.add(v);
 
   // The cap is on the model's own text. The sentences below are written by code and are short.
-  let reply = capReply(output.reply);
+  let reply = unclear !== null ? whichNumber(unclear) : capReply(output.reply);
   if (blocks.nothingTheyCannotEat) {
     const said = Object.entries(blocks).filter(
       ([, v]) => v !== undefined && v !== false && !(Array.isArray(v) && !v.length),
@@ -854,10 +909,10 @@ export function applyAssistantOutput(
       .join(" and ")}; could you say it another way?)`;
 
   return {
-    state: { ...state, prefs, chat: { ...state.chat, answered: [...answered] } },
+    state: { ...state, prefs, travelMode, chat: { ...state.chat, answered: [...answered] } },
     reply,
     asks: isVariable(output.asks) ? output.asks : null,
-    startText: blocks.startText,
+    startText: blocks.startText ?? blocks.travel?.startText,
     dropped,
   };
 }
@@ -866,7 +921,12 @@ export function applyAssistantOutput(
 // The two paths
 // ---------------------------------------------------------------------------------------
 
-async function callModel(history: ChatTurn[], state: MemberState, apiKey: string): Promise<AssistantOutput> {
+async function callModel(
+  history: ChatTurn[],
+  state: MemberState,
+  apiKey: string,
+  plan?: PlanContext,
+): Promise<AssistantOutput> {
   const model = process.env.ANTHROPIC_MODEL || "claude-haiku-5-5";
   const messages = history.slice(-20).map((t) => ({ role: t.role, content: t.content }));
   // The API requires the first message to be from the user.
@@ -878,7 +938,7 @@ async function callModel(history: ChatTurn[], state: MemberState, apiKey: string
     body: JSON.stringify({
       model,
       max_tokens: MAX_OUTPUT_TOKENS,
-      system: `${RUBRIC}\n\n${stateBlock(state)}`,
+      system: `${RUBRIC}\n\n${stateBlock(state, plan)}`,
       tools: [TOOL],
       // Forcing the tool is the most reliable way to get structured output, but not every model
       // accepts it (claude-sonnet-5-5 answers 400). ANTHROPIC_TOOL_CHOICE=auto leaves the choice
@@ -908,17 +968,47 @@ async function withStart(
     : { state, reply: resolved.reply };
 }
 
+/** A question in the reply about where the person starts from. */
+const ASKS_START =
+  /\b(?:where|which)\b[^.?!]*\b(?:coming from|start(?:ing)?|leav(?:e|ing) from|head(?:ing)? from|be (?:coming|walking|driving|travell?ing) from|from)\b[^.?!]*\?|从哪|出发/i;
+
+/** What the person is told when they have a travel limit and nothing says where they start. */
+export const startNote = (location: string | null) =>
+  ` (I'm measuring that from ${location ? `the plan's location, ${location}` : "the plan's location"}. Tell me where you'll be coming from and I'll measure from there.)`;
+
+/**
+ * A travel limit only means something from a starting point. The prompt asks the model to find
+ * out; this makes sure the person hears it once either way: if they gave a limit, no start is
+ * known, this plan can measure from one, and the reply did not ask, code says what it is
+ * measured from. Said once per person.
+ */
+function tellStart(
+  turn: { state: MemberState; reply: string },
+  namedStart: boolean,
+  pool: readonly Restaurant[],
+  plan?: PlanContext,
+): { state: MemberState; reply: string } {
+  const { state, reply } = turn;
+  if (!state.prefs.travel || state.startPoint || state.chat.startTold || namedStart || !canLocate(pool)) return turn;
+  const told = { ...state, chat: { ...state.chat, startTold: true } };
+  if (ASKS_START.test(reply)) return { state: told, reply };
+  const where = plan?.location ? cleanPlaceName(plan.location) : null;
+  return { state: told, reply: reply + startNote(where) };
+}
+
 async function modelTurn(
   history: ChatTurn[],
   state: MemberState,
   pool: readonly Restaurant[],
   apiKey: string,
+  plan?: PlanContext,
 ): Promise<AssistantTurn> {
   const latest = [...history].reverse().find((t) => t.role === "user")?.content ?? "";
-  const output = await callModel(history, state, apiKey);
+  const output = await callModel(history, state, apiKey, plan);
   if (!output.onTopic) return offTopicTurn(state);
   const applied = applyAssistantOutput(state, output, pool, latest);
-  const placed = await withStart(applied.state, applied.reply, applied.startText, pool);
+  const located = await withStart(applied.state, applied.reply, applied.startText, pool);
+  const placed = tellStart(located, applied.startText !== undefined, pool, plan);
   const done = finishTurn(state, placed.state, placed.reply, applied.asks);
   return { ...done, changed: preferencesChanged(state, done.state), source: "llm" };
 }
@@ -961,12 +1051,12 @@ export async function assistantTurn(
   state: MemberState,
   pool: readonly Restaurant[],
   /** false once the plan has used up its model budget for the day: the rule-based reader answers. */
-  { allowLLM = true }: { allowLLM?: boolean } = {},
+  { allowLLM = true, plan }: { allowLLM?: boolean; plan?: PlanContext } = {},
 ): Promise<AssistantTurn> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (apiKey && allowLLM) {
     try {
-      return await modelTurn(history, state, pool, apiKey);
+      return await modelTurn(history, state, pool, apiKey, plan);
     } catch (err) {
       console.error("The assistant's model call failed, falling back to rules:", (err as Error).message);
     }

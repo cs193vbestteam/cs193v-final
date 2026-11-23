@@ -77,6 +77,6 @@ describe("confirming that there is nothing they cannot eat (#157)", () => {
 describe("what the model is told", () => {
   it("is given the words to use, and the ones to avoid", () => {
     expect(RUBRIC).toContain("there's nothing you can't eat");
-    expect(RUBRIC).toContain("it reads as the opposite");
+    expect(RUBRIC).toContain("which reads as the opposite");
   });
 });

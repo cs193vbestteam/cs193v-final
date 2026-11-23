@@ -52,7 +52,8 @@ export type Scenario = {
     current: MemberState,
     pool: readonly Restaurant[],
     /** `allowLLM: false` once the plan has used up its LLM budget: answer with the rule-based extractor. */
-    options?: { allowLLM?: boolean },
+    /** `plan`: the plan's own date and location, which the assistant is told. */
+    options?: { allowLLM?: boolean; plan?: { date: string | null; location: string | null } },
     /** `changed`: what the member wants is different now, not just the chat's bookkeeping. */
   ): Promise<{ reply: string; constraints: MemberState; changed: boolean }>;
 
