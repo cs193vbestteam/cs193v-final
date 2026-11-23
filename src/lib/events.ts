@@ -446,21 +446,33 @@ export async function getMyMessages(eventId: string, userId: string): Promise<Ch
   }));
 }
 
-/** A member's stored constraints together with the scenario that defines them. */
+/**
+ * A member's stored constraints together with the scenario that defines them, their status, and
+ * the plan's own day and place. One read, because a chat message needs all of it.
+ */
 async function loadConstraints(eventId: string, userId: string) {
-  await requireMember(eventId, userId);
   const client = await db();
   const { rows } = await client.execute({
-    sql: `SELECT m.constraints_enc, e.scenario FROM members m JOIN events e ON e.id = m.event_id
+    sql: `SELECT m.constraints_enc, e.scenario, e.location, e.event_date, ${prefixed("m", STATUS_COLUMNS)}
+          FROM members m JOIN events e ON e.id = m.event_id
           WHERE m.event_id = ? AND m.user_id = ?`,
     args: [eventId, userId],
   });
-  const scenario = scenarioFor(parseScenarioId(rows[0].scenario));
+  // No row means they are not in the plan: this read is also the membership check.
+  const row = rows[0];
+  if (!row) throw new AccessError("You're not part of this plan");
+  const scenario = scenarioFor(parseScenarioId(row.scenario));
   return {
     scenario,
     constraints: scenario.parseConstraints(
-      decryptJson(String(rows[0].constraints_enc), scope.constraints(eventId, userId)),
+      decryptJson(String(row.constraints_enc), scope.constraints(eventId, userId)),
     ),
+    status: readStatus(row, eventId, userId),
+    /** Told to the member's assistant (assistant-prompt.ts). */
+    plan: {
+      date: row.event_date ? decryptOrPlain(String(row.event_date), scope.plan(eventId, "date")) : null,
+      location: row.location ? decryptOrPlain(String(row.location), scope.plan(eventId, "location")) : null,
+    },
   };
 }
 
@@ -475,6 +487,8 @@ async function saveConstraints(
   ready: boolean,
   /** Whether what they want is different from before; only the chat can make it so. */
   changed = false,
+  /** Their status as just read, when the caller has it; saves reading it again. */
+  prev?: MemberStatus,
 ) {
   const client = await db();
   // `readyAt` is when they became ready and have stayed so: kept while they stay ready, set when
@@ -486,7 +500,7 @@ async function saveConstraints(
           WHERE event_id = ? AND user_id = ?`,
     args: [
       encryptJson(c, scope.constraints(eventId, userId)),
-      encryptStatus(nextStatus(await memberStatus(eventId, userId), ready, changed), eventId, userId),
+      encryptStatus(nextStatus(prev ?? (await memberStatus(eventId, userId)), ready, changed), eventId, userId),
       eventId,
       userId,
     ],
@@ -512,36 +526,20 @@ function nextStatus(prev: MemberStatus, ready: boolean, changed: boolean, now = 
   };
 }
 
-/** The plan's date and location, which its members' assistants are told (assistant-prompt.ts). */
-async function planWhenWhere(eventId: string): Promise<{ date: string | null; location: string | null }> {
-  const client = await db();
-  const { rows } = await client.execute({
-    sql: "SELECT location, event_date FROM events WHERE id = ?",
-    args: [eventId],
-  });
-  const row = rows[0];
-  return {
-    date: row?.event_date ? decryptOrPlain(String(row.event_date), scope.plan(eventId, "date")) : null,
-    location: row?.location ? decryptOrPlain(String(row.location), scope.plan(eventId, "location")) : null,
-  };
-}
-
 export async function sendMessage(
   eventId: string,
   userId: string,
   text: string,
 ): Promise<{ messages: ChatTurn[]; constraints: MemberState; scenario: ScenarioId }> {
   const content = MessageSchema.parse(text);
-  const { scenario, constraints: current } = await loadConstraints(eventId, userId); // also checks membership
+  const { scenario, constraints: current, status, plan } = await loadConstraints(eventId, userId); // also checks membership
   const chat = await hit(rateKey.chat(userId), LIMITS.chatPerUser);
   if (!chat.allowed) {
     throw new RateLimitError(`You're sending messages very quickly. Please try again ${waitText(chat.retryAfterMs)}.`);
   }
   await addMessage(eventId, userId, "user", content);
 
-  const history = await getMyMessages(eventId, userId);
-  const { restaurants } = await poolForEvent(eventId);
-  const { date, location } = await planWhenWhere(eventId);
+  const [history, { restaurants }] = await Promise.all([getMyMessages(eventId, userId), poolForEvent(eventId)]);
   // Only count LLM calls when there is a key to spend; past the plan's daily budget, or past your
   // own monthly spending cap (or the app's), use the rules. Your chat is charged to you.
   const allowLLM =
@@ -553,14 +551,15 @@ export async function sendMessage(
     reply,
     constraints: next,
     changed,
-  } = await withPayer(userId, () =>
-    scenario.chatTurn(history, current, restaurants, { allowLLM, plan: { date, location } }),
-  );
-  const wasReady = (await memberStatus(eventId, userId)).ready;
-  await saveConstraints(eventId, userId, next, wasReady && !changed, changed);
+  } = await withPayer(userId, () => scenario.chatTurn(history, current, restaurants, { allowLLM, plan }));
+  // Their status was read with their constraints at the top; nothing else changes it in between
+  // but their own "I'm done", which the page does not offer while a message is being sent.
+  await saveConstraints(eventId, userId, next, status.ready && !changed, changed, status);
   await addMessage(eventId, userId, "assistant", reply);
 
-  return { messages: await getMyMessages(eventId, userId), constraints: next, scenario: scenario.id };
+  // What was read before the model call, plus its reply: the same list a fresh read would give.
+  const messages: ChatTurn[] = [...history, { role: "assistant", content: reply }];
+  return { messages, constraints: next, scenario: scenario.id };
 }
 
 export async function setReady(eventId: string, userId: string, ready: boolean): Promise<void> {
@@ -613,6 +612,31 @@ async function runState(eventId: string) {
   };
 }
 
+/**
+ * A short string that changes whenever what the plan page shows could have changed: someone
+ * joined, left, finished or changed an answer, the plan was found or cleared, its settings were
+ * edited. The open page asks for this every few seconds and re-renders only when it differs,
+ * instead of re-reading and decrypting everything each time.
+ *
+ * One query, nothing decrypted: every stored value is re-encrypted with a fresh nonce when it
+ * is written, so a hash of the ciphertexts changes exactly when something was written. Null
+ * for someone who is not in the plan.
+ */
+export async function planPulse(eventId: string, userId: string): Promise<string | null> {
+  const client = await db();
+  const { rows } = await client.execute({
+    sql: `SELECT md5(coalesce(e.result_json, '') || coalesce(e.meta_enc, '') || e.title || coalesce(e.invite_code, '')) AS plan,
+                 (SELECT md5(coalesce(string_agg(m.user_id || ':' || coalesce(m.status_enc, ''), ',' ORDER BY m.user_id), ''))
+                    FROM members m WHERE m.event_id = e.id) AS people,
+                 EXISTS (SELECT 1 FROM members m WHERE m.event_id = e.id AND m.user_id = ?) AS mine
+          FROM events e WHERE e.id = ?`,
+    args: [userId, eventId],
+  });
+  const row = rows[0];
+  if (!row || !(row.mine === true || row.mine === "t" || row.mine === 1)) return null;
+  return `${String(row.plan)}.${String(row.people)}`;
+}
+
 /** Whether pressing "Re-run" would do anything: only once someone has changed an answer or joined. */
 export async function canRerun(eventId: string, userId: string): Promise<boolean> {
   await requireMember(eventId, userId);
@@ -629,6 +653,21 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
     throw new AccessError("Everyone who joined must be ready before finding a plan");
   }
   if (state.decided && !state.changedSince) throw new AccessError(NOTHING_CHANGED);
+  // One run at a time per plan. Two people pressing the button together would otherwise both
+  // search Google and both write the pool, the later write undoing the earlier one's count.
+  const lock = rateKey.running(eventId);
+  if (!(await hit(lock, LIMITS.running)).allowed) throw new AccessError(ALREADY_RUNNING);
+  try {
+    return await countedRun(eventId);
+  } finally {
+    await clearRateKey(lock);
+  }
+}
+
+/** Shown to someone who presses the button while another member's run is still going. */
+export const ALREADY_RUNNING = "The plan is being worked out right now. It will show up here in a moment.";
+
+async function countedRun(eventId: string): Promise<StoredResult> {
   const quota = await hit(rateKey.runs(eventId), LIMITS.runsPerPlan);
   if (!quota.allowed) {
     throw new RateLimitError(

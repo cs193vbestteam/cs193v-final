@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { runNegotiationAction } from "@/app/actions";
+import { planPulseAction, runNegotiationAction } from "@/app/actions";
 
 export function NegotiateButton({
   eventId,
@@ -187,12 +187,40 @@ export function ShareMessage({
   );
 }
 
-/** Lightweight live updates: re-fetch server data every few seconds. */
-export function AutoRefresh({ ms = 5000 }: { ms?: number }) {
+/**
+ * Live updates. Every few seconds the page asks the server one small question: has anything
+ * about this plan changed since it was rendered? Only then is the page re-rendered. A hidden
+ * tab asks nothing, and asks at once when it is looked at again.
+ */
+export function AutoRefresh({ eventId, pulse, ms = 5000 }: { eventId: string; pulse: string | null; ms?: number }) {
   const router = useRouter();
+  const shown = useRef(pulse);
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), ms);
-    return () => clearInterval(id);
-  }, [router, ms]);
+    shown.current = pulse;
+  }, [pulse]);
+  useEffect(() => {
+    let busy = false;
+    async function check() {
+      if (busy || document.hidden) return;
+      busy = true;
+      try {
+        const now = await planPulseAction(eventId);
+        if (now !== shown.current) {
+          shown.current = now;
+          router.refresh();
+        }
+      } catch {
+        // Offline or mid-deploy: the next tick asks again.
+      } finally {
+        busy = false;
+      }
+    }
+    const id = setInterval(check, ms);
+    document.addEventListener("visibilitychange", check);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", check);
+    };
+  }, [router, eventId, ms]);
   return null;
 }

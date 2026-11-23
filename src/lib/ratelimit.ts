@@ -33,6 +33,9 @@ export const LIMITS = {
    * the same instant; only the one who takes the claim starts the run. Longer than a run can last.
    */
   autoNegotiate: { max: 1, windowMs: 2 * MINUTE },
+  // Held while a plan is being worked out and dropped when it ends. The window only matters if
+  // the server dies mid-run: it is longer than a run may take (60 s), so the lock then expires.
+  running: { max: 1, windowMs: 90 * 1000 },
   /**
    * Times a plan can be decided in a day, the first time included. Every run shows the group a
    * plan made from everyone's answers, so someone who keeps changing their own answers and running
@@ -54,6 +57,7 @@ export const rateKey = {
   createPlan: (userId: string) => `create-plan:${anon(userId)}`,
   autoNegotiate: (eventId: string) => `auto-negotiate:${anon(eventId)}`,
   runs: (eventId: string) => `runs:${anon(eventId)}`,
+  running: (eventId: string) => `running:${anon(eventId)}`,
   loginEmail: (email: string) => `login-email:${blindIndex(email, "ratelimit")}`,
   loginIp: (ip: string) => `login-ip:${blindIndex(ip, "ratelimit")}`,
   signupIp: (ip: string) => `signup-ip:${blindIndex(ip, "ratelimit")}`,

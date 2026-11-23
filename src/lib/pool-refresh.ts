@@ -74,14 +74,17 @@ export async function refreshPool(
     if (out.added === 0) return false;
 
     // A place somebody named that was not in the first pool may be in it now.
-    for (const { userId, state } of states) {
-      const next = rematched(state, out.places);
-      if (!next) continue;
-      await client.execute({
-        sql: "UPDATE members SET constraints_enc = ? WHERE event_id = ? AND user_id = ?",
-        args: [encryptJson(next, scope.constraints(eventId, userId)), eventId, userId],
-      });
-    }
+    await Promise.all(
+      states.map(({ userId, state }) => {
+        const next = rematched(state, out.places);
+        return next
+          ? client.execute({
+              sql: "UPDATE members SET constraints_enc = ? WHERE event_id = ? AND user_id = ?",
+              args: [encryptJson(next, scope.constraints(eventId, userId)), eventId, userId],
+            })
+          : null;
+      }),
+    );
     return true;
   } catch (err) {
     console.error("Could not widen the plan's pool:", (err as Error).message);
