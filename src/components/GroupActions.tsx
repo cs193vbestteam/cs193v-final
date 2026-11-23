@@ -64,8 +64,8 @@ export function CopyInvite({ url }: { url: string }) {
   const status = feedback?.url === url ? feedback.status : null;
 
   useEffect(() => {
-    setFeedback(null);
-    // Ignore results from a previous URL or an unmounted component.
+    // Ignore results from a previous URL or an unmounted component. Feedback for an old URL
+    // needs no clearing: `status` above only reads feedback that belongs to the current one.
     return () => {
       request.current += 1;
     };

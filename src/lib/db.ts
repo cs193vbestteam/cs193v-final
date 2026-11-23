@@ -222,9 +222,23 @@ export function isUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: unknown }).code === "23505";
 }
 
-/** Tests only: drop the connection so the next call gets a fresh in-memory database. */
-export async function resetDbForTests() {
+/**
+ * Tests only: an empty database for the next test.
+ *
+ * The open in-memory database is emptied, not thrown away: starting a new one costs seconds
+ * (PGlite boots a Postgres in WASM and the schema runs again), and doing that before every test
+ * is what pushed tests past their timeout when the whole suite ran at once. `fresh: true` does
+ * close it, for the tests that are about creating the schema.
+ */
+export async function resetDbForTests({ fresh = false }: { fresh?: boolean } = {}) {
   const old = backend;
+  const open = old ? await old.catch(() => null) : null;
+  if (open && !fresh) {
+    const { rows } = await open.query("SELECT tablename FROM pg_tables WHERE schemaname = 'public'", []);
+    const tables = rows.map((r) => `"${String(r.tablename)}"`).join(", ");
+    if (tables) await open.exec(`TRUNCATE ${tables} RESTART IDENTITY CASCADE`);
+    return;
+  }
   backend = null;
-  if (old) await (await old.catch(() => null))?.close();
+  await open?.close();
 }

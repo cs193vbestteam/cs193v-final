@@ -8,6 +8,7 @@ import {
   getUserBySession,
   hashPassword,
   verifyPassword,
+  passwordCost,
 } from "@/lib/auth";
 import { db, resetDbForTests } from "@/lib/db";
 
@@ -19,7 +20,11 @@ describe("password hashing", () => {
   it("hashes with a per-hash salt and verifies", async () => {
     const [a, b] = await Promise.all([hashPassword("hunter22!"), hashPassword("hunter22!")]);
     expect(a).not.toBe(b); // different salts
-    expect(a).toMatch(/^\$2[aby]\$12\$/); // bcrypt, cost 12
+    expect(a).toMatch(/^\$2[aby]\$\d\d\$/); // bcrypt
+    // Cost 12 everywhere except under the test runner, which hashes hundreds of passwords.
+    for (const env of ["production", "development", undefined, "", "Test", "testing"])
+      expect(passwordCost(env)).toBe(12);
+    expect(passwordCost("test")).toBe(4);
     expect(await verifyPassword("hunter22!", a)).toBe(true);
     expect(await verifyPassword("wrong", a)).toBe(false);
   });

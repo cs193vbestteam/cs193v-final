@@ -5,7 +5,7 @@
 1. **Issue first.** Every piece of work has an issue, made with the *Bug report* or *Feature or task* template. Give it a type label, an area label and a priority, and assign it to the person doing it.
 2. **Branch.** Never commit to `main`. Branch from the latest `main`, named after the issue: `feat/12-places-radius`, `fix/15-chat-refresh`, `chore/...`.
 3. **Pull request.** Open a PR against `main` using the template. Its first line is `Closes #<issue>`, so GitHub links the PR and closes the issue when it merges.
-4. **Review.** At least one teammate reviews and approves before merging. CI (lint, typecheck, tests, build, secret scan) must be green.
+4. **Review.** At least one teammate reviews and approves before merging. CI (lint, format check, typecheck, tests, build, end-to-end tests, secret scan) must be green.
 5. **Merge.** Use **Rebase and merge**; it's the only merge method enabled, which keeps `main` linear. The branch is deleted automatically afterwards.
 
 ## Labels
@@ -19,11 +19,14 @@
 ## Before you push
 
 ```bash
-npm run lint          # ESLint
-npm run format        # Prettier: format your changed files (CI will check this after the one-time repo-wide format)
+npm run lint          # ESLint; a warning fails it
+npm run format        # Prettier: format your changed files (CI runs `npm run format:check`)
 npm run typecheck
 npm test
+ENCRYPTION_KEY="$(openssl rand -base64 32)" npm run build
 ```
+
+CI also runs the end-to-end tests (`npm run test:e2e`). Run them yourself when a change affects what a user sees or does across pages.
 
 ## Tests
 
@@ -43,6 +46,6 @@ End-to-end tests live in `e2e/` (Playwright). `npm run test:e2e` builds the app 
 
 - **Never commit secrets.** Real values live only in `.env.local` (git-ignored) on your machine, in Vercel → Project → Settings → Environment Variables for deploys, and in GitHub → Settings → Secrets if a workflow ever needs one. `.env.example` lists names only.
 - **Secret scanning:** the *Secret scan* workflow runs gitleaks over the full history on every PR. To scan locally before pushing: `brew install gitleaks && gitleaks git .`
-- **If a secret leaks**, rotate it at the provider immediately (Anthropic console, Google Cloud, Turso), then remove it from the code. Deleting the commit is not enough, since it is already in history and forks.
+- **If a secret leaks**, rotate it at the provider immediately (Anthropic console, Google Cloud, Neon), then remove it from the code. Deleting the commit is not enough, since it is already in history and forks.
 - **`ENCRYPTION_KEY`** encrypts chat messages, constraints and emails at rest (AES-256-GCM). Generate it with `npm run gen-key`, keep a copy in the team's password manager, and never change it in production: existing data could no longer be decrypted. Use different keys for local, preview and production.
 - Don't paste real user data, keys or tokens into issues, PRs, logs or screenshots.
