@@ -88,6 +88,7 @@ priority: only when they say what matters most, in their order, from ${LIST(PRIO
 wantedRestaurants, excludedRestaurants: names of particular places, as they typed them. Code looks for the place later; do not say whether it is available.
 notes: anything else they want remembered that fits nowhere above.
 
+When they take something back altogether, name it in forget: "I'm not vegetarian after all" is forget ["dietary"]; "forget where I'm coming from" is forget ["start"]; "actually distance doesn't matter" is forget ["travel"]. Use forget only for something they clearly withdrew; dontMind alone never removes anything. If they replace it in the same breath ("not vegetarian, I'm halal"), put the old topic in forget and record the new value as usual.
 When they change their mind, record the new statement; code replaces the old one. Food they no longer want ("actually I don't like Mexican anymore", "scratch the sushi") has to be named in cuisine.avoided (or excluded if they are firm), or it stays on their list: "not Mexican anymore, Thai instead" is avoided ["Mexican"], liked ["Thai"].
 Read a short answer as the answer to what you asked last (STATE names it): a bare "20" after a question about distance is 20 minutes, not dollars. A bare number that does not answer your last question could be dollars, minutes or a time: record nothing and ask which they mean. Never let it replace something they already told you.
 One message often holds several things ("we're bringing our two-year-old, and I'd love a glass of wine" is kids AND alcohol). Record each of them.
@@ -205,6 +206,15 @@ export const TOOL = {
         type: "string",
         enum: [...VARIABLES, "none"],
         description: "The one variable your reply asks about, or none.",
+      },
+      forget: {
+        type: "array",
+        items: {
+          type: "string",
+          enum: ["time", "budget", "travel", "start", "dietary", "cuisine", "style", "features"],
+        },
+        description:
+          "What they took back altogether in this message, so it should no longer be recorded. start is where they are coming from.",
       },
       dontMind: {
         type: "array",

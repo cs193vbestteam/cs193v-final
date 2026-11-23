@@ -33,6 +33,7 @@ import {
   type MemberState,
   type Variable,
   FEATURE_PHRASES,
+  MODE_WORDS,
 } from "./member-state";
 import {
   DIETARY_NEEDS,
@@ -55,8 +56,8 @@ import {
 } from "./optimizer-input";
 import type { Restaurant } from "./restaurants";
 import { cleanPlaceName } from "./places";
-import { TRAVEL_MODES } from "./geo";
-import { canLocate, resolveStart } from "./start-point";
+import { centroid, TRAVEL_MODES, travelMinutes } from "./geo";
+import { canLocate, resolveStart, startNotFound, startNotFoundKeeping } from "./start-point";
 import { recordUsage, type Usage } from "./spend-context";
 
 /**
@@ -171,6 +172,9 @@ const ToolOutput = z.object({
   onTopic: z.boolean(),
   asks: z.string().optional(),
   // The same slip as `update` below: a list sent as a string, or one name sent bare.
+  // What they took back altogether ("I'm not vegetarian after all", "forget where I'm coming
+  // from"). Words outside the list are dropped, not failed on.
+  forget: z.array(z.string()).optional().catch(undefined),
   dontMind: z
     .preprocess((v) => {
       const x = unwrapJson(v);
@@ -701,7 +705,9 @@ export function applyAssistantOutput(
   // a cuisine ("vegetarian food") and then belongs with the diets.
   const words = readFoodWords(blocks.cuisine, blocks.style);
   const diets = uniq([...(blocks.dietary ?? []), ...words.dietary]);
-  if (diets.length && put("dietary", uniq([...(prefs.dietary ?? []), ...diets]))) answered.add("diet");
+  // Diets add up ("vegetarian", later "and halal"), unless this message takes the old ones back.
+  const keptDiets = (output.forget ?? []).includes("dietary") ? [] : (prefs.dietary ?? []);
+  if (diets.length && put("dietary", uniq([...keptDiets, ...diets]))) answered.add("diet");
   // "No pork", said in passing before the question was ever asked, still answers it.
   if (blocks.nothingTheyCannotEat || blocks.saidWhatTheyCannotEat) answered.add("diet");
 
@@ -850,8 +856,29 @@ export function applyAssistantOutput(
     otherNoted || words.excluded.length > 0 || words.avoided.length > 0 || words.unknown.some((u) => !u.wanted);
   if (allergyNoted || (state.chat.lastAsked === "diet" && saidWhatTheyAvoid)) answered.add("diet");
 
-  // "I don't mind" settles a question and changes nothing that is already recorded.
+  // "I don't mind" settles a question and changes nothing that is already recorded: a model
+  // that lists it too freely ("the rest is fine") must not be able to wipe a rule.
   for (const v of output.dontMind ?? []) if (isVariable(v)) answered.add(v);
+  const DROPS: Partial<Record<Variable, keyof PersonPreferences>> = {
+    time: "time",
+    budget: "budget",
+    travel: "travel",
+    cuisine: "cuisine",
+  };
+  // Taken back in so many words. A hard rule recorded by mistake would otherwise stay for good:
+  // diets only ever grew, and a start point could be replaced but never removed.
+  let forgetStart = false;
+  for (const what of uniq(output.forget ?? [])) {
+    if (what === "start") forgetStart = true;
+    else if (what === "dietary" && !diets.length) put("dietary", undefined);
+    else if (what === "features" && !blocks.features) put("features", undefined);
+    else if (what === "style" && !blocks.style) put("style", undefined);
+    else if (isVariable(what) && DROPS[what] && !(DROPS[what]! in blocks)) {
+      put(DROPS[what]!, undefined);
+      if (what === "travel") travelMode = null;
+      answered.add(what); // they have said what they think about it: it is not asked again
+    }
+  }
 
   // The cap is on the model's own text. The sentences below are written by code and are short.
   let reply = unclear !== null ? whichNumber(unclear) : capReply(output.reply);
@@ -909,7 +936,15 @@ export function applyAssistantOutput(
       .join(" and ")}; could you say it another way?)`;
 
   return {
-    state: { ...state, prefs, travelMode, chat: { ...state.chat, answered: [...answered] } },
+    state: {
+      ...state,
+      prefs,
+      travelMode,
+      ...(forgetStart && blocks.startText === undefined && blocks.travel?.startText === undefined
+        ? { startPoint: null }
+        : {}),
+      chat: { ...state.chat, answered: [...answered] },
+    },
     reply,
     asks: isVariable(output.asks) ? output.asks : null,
     startText: blocks.startText ?? blocks.travel?.startText,
@@ -963,9 +998,14 @@ async function withStart(
 ): Promise<{ state: MemberState; reply: string }> {
   if (startText === undefined) return { state, reply };
   const resolved = await resolveStart({ startText }, reply, pool);
-  return resolved.update.startPoint
-    ? { state: { ...state, startPoint: resolved.update.startPoint }, reply: resolved.reply }
-    : { state, reply: resolved.reply };
+  if (resolved.update.startPoint)
+    return { state: { ...state, startPoint: resolved.update.startPoint }, reply: resolved.reply };
+  // The note says travel falls back to the plan's location. With an earlier start point on
+  // record that is not what happens: the earlier one stays, and the person is told so.
+  const kept = state.startPoint
+    ? resolved.reply.replace(startNotFound(startText), startNotFoundKeeping(startText, state.startPoint.label))
+    : resolved.reply;
+  return { state, reply: kept };
 }
 
 /** A question in the reply about where the person starts from. */
@@ -996,6 +1036,36 @@ function tellStart(
   return { state: told, reply: reply + startNote(where) };
 }
 
+/** What the person is told when even the nearest place is past their travel limit. */
+export const reachNote = (minutes: number, how: string, from: string, limit: number) =>
+  ` (The nearest places I have are about ${minutes} min ${how} from ${from}, more than the ${limit} you asked for. I'll pick the closest that suits the group, but it may go over.)`;
+
+/**
+ * A limit nothing can meet should be heard about now, not on the result page. When the limit,
+ * the way of travelling or the start point has just changed, the nearest candidate is measured
+ * the way the optimizer will measure it; if even that is over the limit, the reply says so.
+ */
+function tellReach(
+  before: MemberState,
+  turn: { state: MemberState; reply: string },
+  pool: readonly Restaurant[],
+): { state: MemberState; reply: string } {
+  const { state, reply } = turn;
+  const travel = state.prefs.travel;
+  const limit = travel?.maxMin;
+  if (!travel || limit === undefined) return turn;
+  const same =
+    JSON.stringify(before.prefs.travel) === JSON.stringify(travel) &&
+    JSON.stringify(before.startPoint) === JSON.stringify(state.startPoint);
+  const places = pool.flatMap((r) => (r.location ? [r.location] : []));
+  const from = state.startPoint ?? centroid(places);
+  if (same || !from || places.length === 0) return turn;
+  const nearest = Math.min(...places.map((p) => travelMinutes(from, p, travel.mode)));
+  if (nearest <= limit) return turn;
+  const where = state.startPoint ? state.startPoint.label : "the plan's location";
+  return { state, reply: reply + reachNote(nearest, MODE_WORDS[travel.mode ?? "drive"], where, limit) };
+}
+
 async function modelTurn(
   history: ChatTurn[],
   state: MemberState,
@@ -1008,7 +1078,7 @@ async function modelTurn(
   if (!output.onTopic) return offTopicTurn(state);
   const applied = applyAssistantOutput(state, output, pool, latest);
   const located = await withStart(applied.state, applied.reply, applied.startText, pool);
-  const placed = tellStart(located, applied.startText !== undefined, pool, plan);
+  const placed = tellReach(state, tellStart(located, applied.startText !== undefined, pool, plan), pool);
   const done = finishTurn(state, placed.state, placed.reply, applied.asks);
   return { ...done, changed: preferencesChanged(state, done.state), source: "llm" };
 }

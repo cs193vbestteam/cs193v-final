@@ -189,7 +189,11 @@ export function applyLegacyUpdate(state: MemberState, update: ConstraintsUpdate)
   }
 
   if (touches(update, ["maxTravelMin", "travelNoLimit"])) {
-    if (after.maxTravelMin !== null) prefs.travel = { maxMin: after.maxTravelMin, strength: "must" };
+    // The rule reader knows minutes only. How they said they travel, recorded earlier by the
+    // model, is kept: without it a walk would be worked out as a drive.
+    const mode = prefs.travel?.mode ?? state.travelMode ?? undefined;
+    if (after.maxTravelMin !== null)
+      prefs.travel = { maxMin: after.maxTravelMin, ...(mode ? { mode } : {}), strength: "must" };
     else delete prefs.travel;
     if (after.maxTravelMin !== null || after.travelNoLimit) answered.add("travel");
   }

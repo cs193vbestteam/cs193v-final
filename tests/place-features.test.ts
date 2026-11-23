@@ -198,6 +198,6 @@ describe("the owner's summary", () => {
     };
     const lines = describeState(state);
     expect(lines).toContain("Needs: a step-free entrance");
-    expect(lines).toContain("Would like: outdoor seating, well reviewed (matters a lot)");
+    expect(lines).toContain("Nice to have: outdoor seating, well reviewed (matters a lot)");
   });
 });

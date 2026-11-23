@@ -1494,6 +1494,145 @@
       "replyMustMatch": [
         "minutes|dollars|\\$20|mean"
       ]
+    },
+    {
+      "id": "take-back-diet-01",
+      "about": "taking something back",
+      "note": "A diet is a hard rule. Said by mistake and taken back, it must be gone, not kept beside the correction.",
+      "turns": [
+        {
+          "user": "I'm vegetarian",
+          "model": {
+            "reply": "Got it. When can you eat that day?",
+            "onTopic": true,
+            "asks": "time",
+            "update": {
+              "dietary": [
+                "vegetarian"
+              ],
+              "saidWhatTheyCannotEat": true
+            }
+          }
+        },
+        {
+          "user": "Sorry, scratch that, I'm not vegetarian. I eat everything",
+          "model": {
+            "reply": "Got it: there's nothing you can't eat. When can you eat that day?",
+            "onTopic": true,
+            "asks": "time",
+            "forget": [
+              "dietary"
+            ],
+            "update": {
+              "nothingTheyCannotEat": true
+            }
+          }
+        }
+      ],
+      "expected": {
+        "chat.answered": [
+          "diet"
+        ]
+      },
+      "absent": [
+        "prefs.dietary"
+      ]
+    },
+    {
+      "id": "take-back-travel-01",
+      "about": "taking something back",
+      "note": "A limit they withdraw is removed. What they said about food in the first message stays.",
+      "turns": [
+        {
+          "user": "Thai would be great, and no more than 15 minutes by car",
+          "model": {
+            "reply": "Got it. Where will you be coming from?",
+            "onTopic": true,
+            "asks": "travel",
+            "update": {
+              "cuisine": {
+                "liked": [
+                  "Thai"
+                ]
+              },
+              "travel": {
+                "maxMin": 15,
+                "mode": "drive",
+                "strength": "must"
+              }
+            }
+          }
+        },
+        {
+          "user": "Actually forget the distance thing, it doesn't matter",
+          "model": {
+            "reply": "No limit on distance then. When can you eat that day, and is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "time",
+            "forget": [
+              "travel"
+            ],
+            "dontMind": [
+              "travel"
+            ],
+            "update": {}
+          }
+        }
+      ],
+      "expected": {
+        "prefs.cuisine.scores.thai_restaurant": 1
+      },
+      "absent": [
+        "prefs.travel"
+      ]
+    },
+    {
+      "id": "keep-on-dont-mind-01",
+      "about": "taking something back",
+      "note": "\"The rest is fine\" withdraws nothing: the time they cannot make stays.",
+      "turns": [
+        {
+          "user": "I can't do lunch",
+          "model": {
+            "reply": "Got it. Is there anything you can't eat?",
+            "onTopic": true,
+            "asks": "diet",
+            "update": {
+              "time": {
+                "unavailable": [
+                  {
+                    "meal": "lunch"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "user": "No, and I don't mind about anything else",
+          "model": {
+            "reply": "Got it: there's nothing you can't eat. Add anything else, or press \"I'm done\".",
+            "onTopic": true,
+            "asks": "none",
+            "dontMind": [
+              "budget",
+              "travel",
+              "cuisine"
+            ],
+            "update": {
+              "nothingTheyCannotEat": true
+            }
+          }
+        }
+      ],
+      "expected": {
+        "prefs.time.unavailable": [
+          {
+            "from": "11:00",
+            "to": "13:00"
+          }
+        ]
+      }
     }
   ]
 }

@@ -270,7 +270,7 @@ export function describeState(state: MemberState): string[] {
     lines.push(`Free: ${describeSlots(availableTimes(prefs) as Slot[])}`);
     if (prefs.time.strength !== "must" && prefs.time.preferred?.length)
       lines.push(
-        `Would like: ${describeSlots(timesIn(prefs.time.preferred) as Slot[])}${STRENGTH_WORDS[prefs.time.strength]}`,
+        `Best time: ${describeSlots(timesIn(prefs.time.preferred) as Slot[])}${STRENGTH_WORDS[prefs.time.strength]}`,
       );
   } else if (settled("time")) lines.push("Free: any time");
 
@@ -295,7 +295,8 @@ export function describeState(state: MemberState): string[] {
           : `around ${idealMin} min`;
     const how = prefs.travel.mode ? ` ${MODE_WORDS[prefs.travel.mode]}` : "";
     lines.push(`Travel: ${text}${how}${STRENGTH_WORDS[strength]}`);
-  } else if (settled("travel")) lines.push("Travel: any distance");
+  } else if (state.travelMode) lines.push(`Travel: ${MODE_WORDS[state.travelMode]}, no limit given`);
+  else if (settled("travel")) lines.push("Travel: any distance");
   if (state.startPoint) lines.push(`Coming from: ${state.startPoint.label}`);
 
   const allergies = (prefs.notes ?? []).filter((n) => n.type === "allergy");
@@ -328,7 +329,7 @@ export function describeState(state: MemberState): string[] {
     lines.push(`Needs: ${prefs.features.needed.map((f) => FEATURE_WORDS[f]).join(", ")}`);
   if (prefs.features?.wanted?.length)
     lines.push(
-      `Would like: ${prefs.features.wanted.map((f) => FEATURE_WORDS[f]).join(", ")}${STRENGTH_WORDS[prefs.features.strength]}`,
+      `Nice to have: ${prefs.features.wanted.map((f) => FEATURE_WORDS[f]).join(", ")}${STRENGTH_WORDS[prefs.features.strength]}`,
     );
 
   // Whether a named place is among the plan's places is not known until its pool is complete.
