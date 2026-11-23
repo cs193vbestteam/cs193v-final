@@ -5,7 +5,10 @@ import { blindIndex, decrypt, decryptOrPlain, encrypt, legacyBlindIndex, randomT
 import { hit, LIMITS, rateKey, waitText } from "./ratelimit";
 
 /** bcrypt generates and embeds a random salt per hash. */
-const BCRYPT_ROUNDS = 12;
+// Cost 12 everywhere real. Tests hash hundreds of passwords and are not protecting anything, so
+// they use the minimum; the check is for exactly "test", which only the test runner sets.
+export const passwordCost = (nodeEnv: string | undefined) => (nodeEnv === "test" ? 4 : 12);
+const BCRYPT_ROUNDS = passwordCost(process.env.NODE_ENV);
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const SignupSchema = z.object({

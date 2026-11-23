@@ -11,11 +11,6 @@ export default defineConfig([
     files: ["**/*.cjs"],
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },
-  {
-    // Existing pattern in GroupActions; tracked as a follow-up instead of rewriting it here.
-    files: ["src/**/*.{ts,tsx}"],
-    rules: { "react-hooks/set-state-in-effect": "warn" },
-  },
   // Must stay last: turns off stylistic rules that Prettier owns.
   prettier,
   globalIgnores([

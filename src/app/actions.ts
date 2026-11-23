@@ -193,6 +193,8 @@ export async function setReadyAction(
   ready: boolean,
 ): Promise<{ error?: string; notice?: string }> {
   const user = await requireUser(`/e/${inviteCode}`);
+  // A server action can be called with any JSON: the string "false" must not count as done.
+  if (typeof ready !== "boolean") return { error: "Something went wrong. Please try again." };
   try {
     await setReady(eventId, user.id, ready);
   } catch (err) {

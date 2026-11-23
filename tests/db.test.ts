@@ -75,12 +75,12 @@ describe("production driver (pg over the Postgres wire protocol)", () => {
     server = new PGLiteSocketServer({ db: pglite, port: 0, host: "127.0.0.1", maxConnections: 5 });
     await server.start();
     const port = Number(String(server.getServerConn()).split(":").pop());
-    await resetDbForTests();
+    await resetDbForTests({ fresh: true });
     process.env.DATABASE_URL = `postgresql://postgres:postgres@127.0.0.1:${port}/postgres`;
   });
 
   afterAll(async () => {
-    await resetDbForTests();
+    await resetDbForTests({ fresh: true });
     process.env.DATABASE_URL = oldUrl;
     await server.stop();
     await pglite.close();
@@ -96,7 +96,7 @@ describe("production driver (pg over the Postgres wire protocol)", () => {
 
   it("adds the plan columns to an events table created before they existed", async () => {
     await pglite.exec("ALTER TABLE events DROP COLUMN location, DROP COLUMN pool_json, DROP COLUMN pool_source");
-    await resetDbForTests();
+    await resetDbForTests({ fresh: true });
     const a = await createUser({ email: "old-pg@test.dev", displayName: "Old", password: "password123" });
     const e = await createEvent(a.id, "Brunch", "Palo Alto, CA");
     expect(e.location).toBe("Palo Alto, CA");
@@ -106,7 +106,7 @@ describe("production driver (pg over the Postgres wire protocol)", () => {
     const a = await createUser({ email: "pre-scenario@test.dev", displayName: "Pre", password: "password123" });
     const e = await createEvent(a.id, "Old dinner");
     await pglite.exec("ALTER TABLE events DROP COLUMN scenario");
-    await resetDbForTests();
+    await resetDbForTests({ fresh: true });
     expect((await getEventByCode(e.inviteCode))?.scenario).toBe("meal");
     expect((await sendMessage(e.id, a.id, "Saturday dinner, under $30")).scenario).toBe("meal");
   });
