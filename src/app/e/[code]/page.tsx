@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { PlanDangerZone } from "@/components/DangerActions";
@@ -21,6 +22,7 @@ import {
   getResult,
   isMember,
   listMembers,
+  planPulse,
 } from "@/lib/events";
 import { formatPlanDate, formatWhen } from "@/lib/plan-date";
 import { getRestaurant } from "@/lib/restaurants";
@@ -33,17 +35,20 @@ export const maxDuration = 60;
 
 const POOL_LABEL = { places: "real places", yelp: "places from the Yelp Open Dataset", seed: "sample places" } as const;
 
+/** Read once per request: the tab's title and the page both need the plan, and reading it decrypts its pool. */
+const eventByCode = cache(getEventByCode);
+
 /** The tab is named after the plan, for people who are signed in; the plan's name is on the invitation anyway. */
 export async function generateMetadata({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const event = (await currentUser()) ? await getEventByCode(code) : null;
+  const event = (await currentUser()) ? await eventByCode(code) : null;
   return { title: event ? `${event.title} — Settle` : "Plan — Settle" };
 }
 
 export default async function EventPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
   const user = await requireUser(`/e/${code}`);
-  const event = await getEventByCode(code);
+  const event = await eventByCode(code);
   if (!event) notFound();
 
   if (!(await isMember(event.id, user.id))) {
@@ -80,6 +85,9 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
     );
   }
 
+  // The pulse is read first: if something changes while the rest loads, the page's pulse is
+  // the older one and the next check re-renders, rather than the change being missed.
+  const pulse = await planPulse(event.id, user.id);
   const [members, messages, constraints, result] = await Promise.all([
     listMembers(event.id, user.id),
     getMyMessages(event.id, user.id),
@@ -199,7 +207,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
 
   return (
     <div className="mt-6 sm:mt-10">
-      <AutoRefresh />
+      <AutoRefresh eventId={event.id} pulse={pulse} />
       <PlanReadyWatcher eventId={event.id} title={event.title} ready={!!result} />
       <div className="rise flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-line pb-5">
         <div className="min-w-0">

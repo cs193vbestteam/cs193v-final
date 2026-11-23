@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   expires_at BIGINT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS sessions_by_user ON sessions (user_id);
+
 CREATE TABLE IF NOT EXISTS events (
   id          TEXT PRIMARY KEY,
   title       TEXT NOT NULL,
@@ -65,6 +67,8 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS max_members INTEGER NOT NULL DEFAULT
 ALTER TABLE events ADD COLUMN IF NOT EXISTS invite_enc TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS meta_enc TEXT;
 
+CREATE INDEX IF NOT EXISTS events_by_creator ON events (creator_id);
+
 CREATE TABLE IF NOT EXISTS members (
   event_id        TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
   user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -83,6 +87,8 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS changed_at BIGINT;
 -- ready = 0, joined_at = 0 and NULL times, so only status_enc says who did what when.
 ALTER TABLE members ADD COLUMN IF NOT EXISTS status_enc TEXT;
 
+CREATE INDEX IF NOT EXISTS members_by_user ON members (user_id);
+
 CREATE TABLE IF NOT EXISTS messages (
   id          BIGSERIAL PRIMARY KEY,
   event_id    TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -93,6 +99,9 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE INDEX IF NOT EXISTS messages_by_chat ON messages (event_id, user_id, id);
+-- Lookups by person: the home page lists your plans, and deleting an account removes your rows.
+-- The primary keys above lead with the plan (or the token), so these would otherwise scan.
+CREATE INDEX IF NOT EXISTS messages_by_user ON messages (user_id);
 
 -- Fixed-window rate-limit counters (src/lib/ratelimit.ts). Emails and IPs appear only as HMACs.
 CREATE TABLE IF NOT EXISTS rate_limits (

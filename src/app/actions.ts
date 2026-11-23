@@ -25,6 +25,7 @@ import {
   sendMessage,
   setMaxMembers,
   setReady,
+  planPulse,
 } from "@/lib/events";
 import { planDateSchema } from "@/lib/plan-date";
 import { DEFAULT_SCENARIO, ScenarioIdSchema, scenarioFor } from "@/lib/scenario";
@@ -310,4 +311,14 @@ export async function deleteAccountAction(_: FormState, form: FormData): Promise
     return { error: friendly(err) };
   }
   redirect("/signup");
+}
+
+/**
+ * What the open plan page asks every few seconds (GroupActions.tsx): a short string that
+ * differs when the page would. Null for someone signed out or not in the plan.
+ */
+export async function planPulseAction(eventId: string): Promise<string | null> {
+  const user = await currentUser();
+  if (!user || typeof eventId !== "string") return null;
+  return planPulse(eventId, user.id);
 }

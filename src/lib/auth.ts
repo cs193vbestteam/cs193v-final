@@ -162,6 +162,10 @@ export async function createSession(userId: string): Promise<{ token: string; ex
     sql: "INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
     args: [sha256(token), userId, expiresAt],
   });
+  // Expired sessions are otherwise removed only when their own token is shown again, which a
+  // closed browser never does. Now and then a new login clears them all.
+  if (Math.random() < 0.02)
+    await client.execute({ sql: "DELETE FROM sessions WHERE expires_at < ?", args: [Date.now()] });
   return { token, expiresAt };
 }
 
