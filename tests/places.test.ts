@@ -19,6 +19,8 @@ import {
   toPool,
   toRestaurant,
   type PlaceResult,
+  geocode,
+  HOME_REGION,
 } from "@/lib/places";
 import { candidatePool, shortlist } from "@/lib/mediator";
 import { summarize } from "@/lib/pool";
@@ -285,6 +287,29 @@ describe("resolvePool", () => {
     expect(headers["X-Goog-Api-Key"]).toBe("k");
     expect(headers["X-Goog-FieldMask"]).toContain("places.regularOpeningHours");
     expect((JSON.parse(String(init!.body)) as { maxResultCount: number }).maxResultCount).toBe(20);
+  });
+
+  it("reads a plan's location as an area near home, not a business with the same name far away", async () => {
+    // What Google returned for a bare "Palo Alto" from a server on the east coast: a company's
+    // New York office first, the town after it.
+    const bodies: { locationBias?: { circle: { center: { latitude: number } } }; maxResultCount: number }[] = [];
+    const fetcher = (async (_url: unknown, init?: { body?: unknown }) => {
+      bodies.push(JSON.parse(String(init?.body)));
+      return Response.json({
+        places: [
+          { location: { latitude: 40.74, longitude: -73.99 }, types: ["point_of_interest", "establishment"] },
+          { location: { latitude: 37.44, longitude: -122.14 }, types: ["locality", "political"] },
+        ],
+      });
+    }) as unknown as typeof fetch;
+    expect(await geocode("Palo Alto", "k", fetcher)).toEqual({ lat: 37.44, lng: -122.14 });
+    expect(bodies[0].locationBias?.circle.center.latitude).toBe(HOME_REGION.lat);
+    expect(bodies[0].maxResultCount).toBe(5);
+    // A person's start point is often a building: near the plan's places, the first result is it.
+    const near = { lat: 37.44, lng: -122.16 };
+    expect(await geocode("Main Quad", "k", fetcher, near)).toEqual({ lat: 40.74, lng: -73.99 });
+    expect(bodies[1].locationBias?.circle.center.latitude).toBe(near.lat);
+    expect(bodies[1].maxResultCount).toBe(1);
   });
 
   it("keeps a place the current engine has no cuisine for, without counting it as usable", async () => {

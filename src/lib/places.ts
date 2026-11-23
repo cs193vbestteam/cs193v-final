@@ -300,26 +300,60 @@ async function postPlaces<T>(
   return (await res.json()) as T;
 }
 
-/** Text → coordinates, via Text Search (one result). */
+/**
+ * Where a search for a plan's location leans when nothing else says where the group is: the
+ * Stanford campus, because that is where this app is used. It only leans. "Boston" and
+ * "Cambridge" still resolve to those cities; it is what makes a bare "Palo Alto" the one in
+ * California. Without it Google leans towards wherever the server is, and from a data centre
+ * on the east coast "Palo Alto" came back as the office of a company with that name in New York.
+ */
+export const HOME_REGION: LatLng = { lat: 37.4275, lng: -122.1697 };
+
+/** What a lookup of a location asks Google for: where it is, and what kind of thing it is. */
+export const GEOCODE_FIELDS = "places.location,places.types";
+
+/** Result types that are an area on the map rather than a business or a building. */
+const AREA_TYPES = new Set([
+  "locality",
+  "sublocality",
+  "neighborhood",
+  "postal_code",
+  "administrative_area_level_1",
+  "administrative_area_level_2",
+  "colloquial_area",
+  "political",
+]);
+
+/**
+ * Text → coordinates, via Text Search.
+ *
+ * With `near` (a person's start point, searched around the plan's places) the first result is
+ * taken: a start is often a building. Without it (the plan's own location) the search leans
+ * towards HOME_REGION and an area is preferred over a business of the same name.
+ * Either way the lean only orders the results; it does not restrict them.
+ */
 export async function geocode(
   location: string,
   key: string,
   fetcher: Fetcher = fetch,
   near?: LatLng,
 ): Promise<LatLng | null> {
-  // `near` only biases the search (a neighbourhood name exists in many cities); it does not restrict it.
-  const locationBias = near
-    ? { circle: { center: { latitude: near.lat, longitude: near.lng }, radius: 50_000 } }
-    : undefined;
-  const data = await postPlaces<{ places?: { location?: { latitude: number; longitude: number } }[] }>(
+  const lean = near ?? HOME_REGION;
+  type Found = { location?: { latitude: number; longitude: number }; types?: string[] };
+  const data = await postPlaces<{ places?: Found[] }>(
     "places:searchText",
-    { textQuery: location, maxResultCount: 1, ...(locationBias ? { locationBias } : {}) },
+    {
+      textQuery: location,
+      maxResultCount: near ? 1 : 5,
+      locationBias: { circle: { center: { latitude: lean.lat, longitude: lean.lng }, radius: 50_000 } },
+    },
     key,
-    "places.location",
+    GEOCODE_FIELDS,
     fetcher,
   );
-  const loc = data.places?.[0]?.location;
-  return loc ? { lat: loc.latitude, lng: loc.longitude } : null;
+  const found = (data.places ?? []).filter((p) => p.location);
+  const pick = near ? found[0] : (found.find((p) => (p.types ?? []).some((t) => AREA_TYPES.has(t))) ?? found[0]);
+  return pick?.location ? { lat: pick.location.latitude, lng: pick.location.longitude } : null;
 }
 
 /**

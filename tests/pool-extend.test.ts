@@ -51,7 +51,7 @@ function googleFetch(failing: string[] = [], named: Record<string, { places: Pla
     if (String(url).includes("searchText")) {
       const headers = (init?.headers ?? {}) as Record<string, string>;
       // Finding the plan's location asks for a location only; a search by name asks for whole places.
-      if (headers["X-Goog-FieldMask"] === "places.location")
+      if (headers["X-Goog-FieldMask"] === "places.location,places.types")
         return json({ places: [{ location: { latitude: CENTER.lat, longitude: CENTER.lng } }] });
       const name = (JSON.parse(String(init?.body)) as { textQuery: string }).textQuery;
       queries.push(`name:${name}`);
