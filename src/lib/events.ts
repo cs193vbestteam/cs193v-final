@@ -15,7 +15,7 @@ import type { MemberState } from "./member-state";
 import type { ChatTurn } from "./extract";
 import type { Proposal } from "./evaluate";
 import type { NegotiationResult } from "./negotiate";
-import { myMatches } from "./my-matches";
+import { myMatches, myTrip } from "./my-matches";
 import { optimize } from "./optimizer";
 import type { StartTime } from "./optimizer-input";
 import { checkResult, type OptimizerResult } from "./optimizer-handoff";
@@ -512,6 +512,20 @@ function nextStatus(prev: MemberStatus, ready: boolean, changed: boolean, now = 
   };
 }
 
+/** The plan's date and location, which its members' assistants are told (assistant-prompt.ts). */
+async function planWhenWhere(eventId: string): Promise<{ date: string | null; location: string | null }> {
+  const client = await db();
+  const { rows } = await client.execute({
+    sql: "SELECT location, event_date FROM events WHERE id = ?",
+    args: [eventId],
+  });
+  const row = rows[0];
+  return {
+    date: row?.event_date ? decryptOrPlain(String(row.event_date), scope.plan(eventId, "date")) : null,
+    location: row?.location ? decryptOrPlain(String(row.location), scope.plan(eventId, "location")) : null,
+  };
+}
+
 export async function sendMessage(
   eventId: string,
   userId: string,
@@ -527,6 +541,7 @@ export async function sendMessage(
 
   const history = await getMyMessages(eventId, userId);
   const { restaurants } = await poolForEvent(eventId);
+  const { date, location } = await planWhenWhere(eventId);
   // Only count LLM calls when there is a key to spend; past the plan's daily budget, or past your
   // own monthly spending cap (or the app's), use the rules. Your chat is charged to you.
   const allowLLM =
@@ -538,7 +553,9 @@ export async function sendMessage(
     reply,
     constraints: next,
     changed,
-  } = await withPayer(userId, () => scenario.chatTurn(history, current, restaurants, { allowLLM }));
+  } = await withPayer(userId, () =>
+    scenario.chatTurn(history, current, restaurants, { allowLLM, plan: { date, location } }),
+  );
   const wasReady = (await memberStatus(eventId, userId)).ready;
   await saveConstraints(eventId, userId, next, wasReady && !changed, changed);
   await addMessage(eventId, userId, "assistant", reply);
@@ -718,9 +735,11 @@ export async function myPlanMatches(
   proposal: { restaurantId: string; slot: string },
 ): Promise<string[]> {
   const { constraints } = await loadConstraints(eventId, userId); // also checks membership
-  const { places } = await poolForEvent(eventId);
+  const { places, center } = await poolForEvent(eventId);
   const place = places.find((p) => p.id === proposal.restaurantId);
-  return place ? myMatches(constraints.prefs, place, proposal.slot as StartTime) : [];
+  if (!place) return [];
+  const trip = myTrip(constraints.prefs, constraints.startPoint, place, center);
+  return [...myMatches(constraints.prefs, place, proposal.slot as StartTime), ...(trip ? [trip] : [])];
 }
 
 export async function getResult(eventId: string, userId: string): Promise<StoredResult | null> {

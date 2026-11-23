@@ -1,3 +1,4 @@
+import { TRAVEL_MODES, type TravelMode } from "./geo";
 import { z } from "zod";
 import { PENDING, PROBES, StartPointSchema, describeSlots, type MissingField, type Slot } from "./constraints";
 import { describeTypes } from "./cuisine-table";
@@ -50,6 +51,12 @@ const ChatStateSchema = z.object({
    * For display only: it marks them in the progress. It does not count them as asked.
    */
   alsoAsked: z.array(z.enum(VARIABLES)).default([]),
+  /**
+   * The person has been told, once, where their travel is measured from and that they can name
+   * their own start (assistant.ts). Without it "ten minutes on foot" would be measured from the
+   * plan's location and they would never know.
+   */
+  startTold: z.boolean().default(false),
   /** Bookkeeping for the rule-based fallback only (extract-rules.ts). The model path ignores it. */
   rules: z
     .object({
@@ -65,6 +72,8 @@ export const MemberStateSchema = z.object({
   prefs: PersonPreferencesSchema,
   chat: ChatStateSchema,
   startPoint: StartPointSchema.nullable().default(null),
+  /** How they said they travel, kept here until there is a travel limit in `prefs` to carry it. */
+  travelMode: z.enum(TRAVEL_MODES).nullable().default(null),
 });
 export type MemberState = z.infer<typeof MemberStateSchema>;
 
@@ -78,9 +87,11 @@ export function emptyMemberState(): MemberState {
       turns: 0,
       lastAsked: null,
       alsoAsked: [],
+      startTold: false,
       rules: { pending: null, probesAsked: [] },
     },
     startPoint: null,
+    travelMode: null,
   };
 }
 
@@ -241,6 +252,14 @@ const PRIORITY_WORDS: Record<string, string> = {
   style: "the kind of place",
 };
 
+/** How a way of travelling is said after a number of minutes. */
+export const MODE_WORDS: Record<TravelMode, string> = {
+  walk: "on foot",
+  bike: "by bike",
+  drive: "by car",
+  transit: "by transit",
+};
+
 /** What the assistant has recorded, in plain words. Shown ONLY to the person it is about. */
 export function describeState(state: MemberState): string[] {
   const { prefs, chat } = state;
@@ -274,7 +293,8 @@ export function describeState(state: MemberState): string[] {
         : maxMin !== undefined
           ? `up to ${maxMin} min`
           : `around ${idealMin} min`;
-    lines.push(`Travel: ${text}${STRENGTH_WORDS[strength]}`);
+    const how = prefs.travel.mode ? ` ${MODE_WORDS[prefs.travel.mode]}` : "";
+    lines.push(`Travel: ${text}${how}${STRENGTH_WORDS[strength]}`);
   } else if (settled("travel")) lines.push("Travel: any distance");
   if (state.startPoint) lines.push(`Coming from: ${state.startPoint.label}`);
 

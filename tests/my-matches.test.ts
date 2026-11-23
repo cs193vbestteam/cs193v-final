@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_MATCHES, myMatches } from "@/lib/my-matches";
+import { MAX_MATCHES, myMatches, myTrip } from "@/lib/my-matches";
 import type { PersonPreferences } from "@/lib/optimizer-input";
 import { summarizePlaces } from "@/lib/pool";
 import { RESTAURANTS, type Place } from "@/lib/restaurants";
@@ -97,5 +97,27 @@ describe("what everyone sees about the place", () => {
     ]);
     expect(summarizePlaces([place({ features: undefined })], ["p1"]).p1.offers).toBeUndefined();
     expect(summarizePlaces([place({ features: { outdoor: false, kids: null } })], ["p1"]).p1.offers).toBeUndefined();
+  });
+});
+
+describe("the viewer's own trip", () => {
+  const quad = { label: "Main Quad", lat: 37.4275, lng: -122.1697 };
+  const place = { location: { lat: 37.4419, lng: -122.1699 }, travelMin: 5 };
+  const centre = { lat: 37.44, lng: -122.16 };
+  const walker = (maxMin: number) =>
+    ({ version: 1, travel: { maxMin, mode: "walk", strength: "must" } }) as PersonPreferences;
+
+  it("is said from their own start by their own way of travelling", () => {
+    expect(myTrip(walker(40), quad, place, centre)).toMatch(/^about \d+ min on foot from Main Quad$/);
+  });
+
+  it("is measured from the plan's location when they gave no start, and says so", () => {
+    expect(myTrip(walker(40), null, place, centre)).toMatch(/on foot from the plan's location$/);
+  });
+
+  it("is said even when it is over what they asked, and left out when they said nothing about travel", () => {
+    expect(myTrip(walker(10), quad, place, centre)).toMatch(/on foot from Main Quad \(over the 10 you asked for\)$/);
+    expect(myTrip({ version: 1 } as PersonPreferences, null, place, centre)).toBeNull();
+    expect(myTrip(walker(40), quad, { travelMin: 5 }, centre)).toBeNull();
   });
 });

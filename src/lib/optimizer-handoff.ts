@@ -135,6 +135,22 @@ export function checkResult(input: OptimizerInput, result: OptimizerResult): str
 }
 
 /**
+ * One person's trip to one place, in minutes: from where they said they start, or else from the
+ * plan's location, by the way they said they travel. A place with no coordinates (the made-up
+ * seed) keeps its own figure. The start point is used here and returned nowhere.
+ */
+export function personTravelMin(
+  prefs: PersonPreferences,
+  startPoint: LatLng | null,
+  place: Pick<Place, "location" | "travelMin">,
+  center: LatLng | null,
+): number {
+  const from = startPoint ?? center;
+  if (!place.location || !from) return place.travelMin;
+  return travelMinutes(from, place.location, prefs.travel?.mode);
+}
+
+/**
  * One member as storage holds them: what they said, where they start from if they said, and
  * when they finished (any number that grows with time; null or absent when unknown).
  */
@@ -193,6 +209,8 @@ export function assembleOptimizerInput(parts: {
   location: string | null;
   restaurants: readonly Place[];
   members: readonly HandoffMember[];
+  /** Where the plan is (the point its places were searched from). Trips are measured from here for anyone who gave no start. */
+  center?: LatLng | null;
 }): OptimizerInput {
   // The time someone finished becomes a place in the order here and goes no further. A value
   // that is not a real number (a damaged row) counts as unknown, like a missing one.
@@ -207,7 +225,7 @@ export function assembleOptimizerInput(parts: {
   const candidates = parts.restaurants.map((r) => {
     const travel: Record<string, number> = {};
     parts.members.forEach((m, i) => {
-      travel[people[i].id] = m.startPoint && r.location ? travelMinutes(m.startPoint, r.location) : r.travelMin;
+      travel[people[i].id] = personTravelMin(m.prefs, m.startPoint, r, parts.center ?? null);
     });
     return toCandidate(r, travel);
   });

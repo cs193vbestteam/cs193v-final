@@ -35,7 +35,7 @@ export async function loadOptimizerInput(
   const ordered = byJoinOrder(
     rows.map((row) => ({ row, userId: String(row.user_id), status: readStatus(row, eventId, String(row.user_id)) })),
   );
-  const { places: restaurants, scenario } = await poolForEvent(eventId);
+  const { places: restaurants, scenario, center } = await poolForEvent(eventId);
   const parse = scenarioFor(scenario).parseConstraints;
   const members = ordered.map(({ row, userId, status }) => {
     const state = parse(decryptJson(String(row.constraints_enc), scope.constraints(eventId, userId)));
@@ -51,6 +51,7 @@ export async function loadOptimizerInput(
     location,
     restaurants,
     members,
+    center,
   });
   return { input, members: ordered.length, ready: ordered.filter((m) => m.status.ready).length };
 }

@@ -53,7 +53,9 @@ export async function resolveStart(
   let point: LatLng | null = null;
   try {
     point = await geocode(startText, key, fetcher, centre);
-  } catch {
+  } catch (err) {
+    // Said to the person as "couldn't place it"; the cause is only useful to us.
+    console.error("Could not look up a start point:", (err as Error).message);
     point = null;
   }
   if (!point || haversineKm(point, centre) > MAX_START_KM)

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { PlanContext } from "../src/lib/assistant-prompt";
 import { REDIRECT, assistantTurn, type AssistantOutput, type AssistantTurn } from "../src/lib/assistant";
 import { MAX_REPLY_CHARS } from "../src/lib/chat-limits";
 import type { ChatTurn } from "../src/lib/extract";
@@ -36,6 +37,8 @@ export type AssistantCase = {
   note?: string;
   /** Candidate restaurants for this plan, when the case names one. Defaults to the sample pool. */
   pool?: { id: string; name: string }[];
+  /** The plan the person is in. Defaults to `EVAL_PLAN`. */
+  plan?: PlanContext;
   turns: { user: string; model: AssistantOutput }[];
   /** Dotted path into the stored state → the value expected there. `{ "$includes": "x" }` matches loosely. */
   expected: Record<string, unknown>;
@@ -116,6 +119,9 @@ const checked = (path: string) => !(realModel() && path.startsWith("chat."));
 const PRIVACY_LINE = /\b(?:number|amount|budget)s? (?:stays?|is|are|will stay|will be) private\b/i;
 const SHARED_NOTE = /(?:saved|noted|shared|kept) (?:that |it |this )?(?:for|with) (?:your|the) group/i;
 
+/** The plan every case is in unless it says otherwise: a Saturday, near Palo Alto. */
+export const EVAL_PLAN: PlanContext = { date: "2026-11-28", location: "Palo Alto, CA" };
+
 const asPool = (c: AssistantCase): Restaurant[] =>
   c.pool ? c.pool.map((p) => ({ ...RESTAURANTS[0], id: p.id, name: p.name })) : RESTAURANTS;
 
@@ -130,7 +136,7 @@ export async function runAssistantCase(c: AssistantCase): Promise<AssistantCaseR
   for (const turn of c.turns) {
     history.push({ role: "user", content: turn.user });
     const before = state;
-    const out = await assistantTurn(history, state, pool);
+    const out = await assistantTurn(history, state, pool, { plan: c.plan ?? EVAL_PLAN });
     state = out.state;
     sources.push(out.source);
     replies.push(out.reply);
@@ -142,7 +148,9 @@ export async function runAssistantCase(c: AssistantCase): Promise<AssistantCaseR
       violations.push("mentioned the private number in a reply that did not ask about budget");
     if (SHARED_NOTE.test(out.reply)) violations.push("said a note is saved for or shared with the group");
     const again = state.chat.lastAsked;
-    if (again && before.chat.asked.includes(again) && again !== "time" && again !== "diet")
+    // Asking where a travel limit is measured from is a follow-up, not the travel question again.
+    const startFollowUp = again === "travel" && !!state.prefs.travel && !state.startPoint;
+    if (again && before.chat.asked.includes(again) && again !== "time" && again !== "diet" && !startFollowUp)
       violations.push(`asked about ${again} a second time`);
   }
   if (!MemberStateSchema.safeParse(state).success) violations.push("the stored state does not fit its schema");
@@ -238,7 +246,7 @@ export async function runRuleCasesThroughAssistant(
   const misses: string[] = [];
   for (const c of cases) {
     const comparable = COMPARABLE_FIELDS.filter((f) => c.expected[f] !== undefined);
-    if (c.start || comparable.length === 0) continue;
+    if (c.start || c.rulesOrder || comparable.length === 0) continue;
     counted++;
     let state = emptyMemberState();
     const history: ChatTurn[] = [{ role: "assistant", content: OPENING_MESSAGE }];

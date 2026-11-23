@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRAVEL_MODES } from "./geo";
 
 /**
  * What the optimizer is given (issue #82): the plan, each person's preferences as the
@@ -161,7 +162,13 @@ const BudgetSchema = z
 const travelMinutes = z.number().int().positive().max(LIMITS.maxTravelMin);
 
 const TravelSchema = z
-  .strictObject({ idealMin: travelMinutes.optional(), maxMin: travelMinutes.optional(), strength: StrengthSchema })
+  .strictObject({
+    idealMin: travelMinutes.optional(),
+    maxMin: travelMinutes.optional(),
+    /** How they will get there. Left out when they did not say; minutes are then taken as a drive (geo.ts). */
+    mode: z.enum(TRAVEL_MODES).optional(),
+    strength: StrengthSchema,
+  })
   .superRefine((t, ctx) => {
     if (t.idealMin === undefined && t.maxMin === undefined) {
       ctx.addIssue({ code: "custom", message: "travel needs an ideal or a max; leave travel out for no constraint" });
