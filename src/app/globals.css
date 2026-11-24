@@ -758,29 +758,18 @@ form:focus-within .plan-ticket {
     grid-column: 1 / -1;
   }
 }
-/* A person in the group: their initial, ringed in green once they are done. Says nothing the
-   word beside it does not. */
-.member-mark {
-  display: grid;
-  width: 1.75rem;
-  height: 1.75rem;
+/* A person's animal, in a circle. In a plan it is ringed in green once they are done; the word
+   beside it says the same thing. */
+.avatar {
   flex: none;
-  place-items: center;
-  border: 1px solid var(--color-line-strong);
   border-radius: 999px;
-  background: var(--color-paper-2);
-  font-family: var(--font-serif);
-  font-size: 0.9375rem;
-  line-height: 1;
-  color: var(--color-ink-2);
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--color-line-strong);
 }
-.member-mark[data-ready] {
-  border-color: var(--color-moss);
-  background: var(--color-moss-soft);
-  color: var(--color-moss);
+.avatar[data-ready] {
   box-shadow:
     0 0 0 2px var(--color-surface),
-    0 0 0 3px var(--color-moss);
+    0 0 0 3.5px var(--color-moss);
 }
 
 /* Status pills (mono) */

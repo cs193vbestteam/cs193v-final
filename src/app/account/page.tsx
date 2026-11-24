@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Avatar } from "@/components/Avatar";
 import { DeleteAccountForm } from "@/components/DangerActions";
+import { avatarFor } from "@/lib/avatar";
 import { requireUser } from "@/lib/session";
 
 export const metadata = { title: "Account — Settle" };
@@ -9,8 +11,12 @@ export default async function AccountPage() {
   return (
     <div className="mx-auto mt-8 max-w-2xl sm:mt-14">
       <p className="eyebrow rise">Account</p>
-      <h1 className="display rise mt-3 text-4xl sm:text-5xl" style={{ "--d": "0.06s" } as React.CSSProperties}>
-        {user.displayName}
+      <h1
+        className="display rise mt-3 flex items-center gap-4 text-4xl sm:text-5xl"
+        style={{ "--d": "0.06s" } as React.CSSProperties}
+      >
+        <Avatar name={avatarFor(user.id)} size={56} />
+        <span className="min-w-0 truncate">{user.displayName}</span>
       </h1>
 
       <section className="card rise mt-8" style={{ "--d": "0.12s" } as React.CSSProperties}>

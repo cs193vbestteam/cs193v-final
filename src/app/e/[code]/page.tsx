@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { Avatar } from "@/components/Avatar";
 import { PlanDangerZone } from "@/components/DangerActions";
 import { AutoRefresh, CopyInvite, NegotiateButton, ShareMessage } from "@/components/GroupActions";
 import { CreatorControls } from "@/components/CreatorControls";
@@ -24,6 +25,7 @@ import {
   listMembers,
   planPulse,
 } from "@/lib/events";
+import { avatarFor, groupAvatars } from "@/lib/avatar";
 import { formatPlanDate, formatWhen } from "@/lib/plan-date";
 import { getRestaurant } from "@/lib/restaurants";
 import { scenarioFor } from "@/lib/scenario";
@@ -97,6 +99,8 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
   const rerunnable = result ? await canRerun(event.id, user.id) : true;
   const { describeConstraints, missingFields, answerProgress } = scenarioFor(event.scenario);
   const me = members.find((m) => m.userId === user.id)!;
+  // `members` comes in join order, which is what keeps each person's animal the same on every visit.
+  const avatars = groupAvatars(members.map((m) => m.userId));
   const readyCount = members.filter((m) => m.ready).length;
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`;
@@ -295,9 +299,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
               {members.map((m) => (
                 <li key={m.userId} className="flex items-center justify-between gap-3 py-2.5 text-sm">
                   <span className="flex min-w-0 items-center gap-2.5">
-                    <span aria-hidden className="member-mark" data-ready={m.ready || undefined}>
-                      {[...m.displayName.trim()][0]?.toUpperCase() ?? "?"}
-                    </span>
+                    <Avatar name={avatars.get(m.userId) ?? avatarFor(m.userId)} ready={m.ready} />
                     <span className="truncate">
                       {m.displayName}
                       {m.userId === user.id && <span className="text-ink-3"> (you)</span>}
