@@ -1058,9 +1058,8 @@ form:focus-within .plan-ticket {
   line-height: 0.8;
   color: var(--color-seal);
 }
-/* How it works: three sheets. Each stays where it is while the next slides up over it, a little
-   lower than the last, so the edges of the ones underneath stay in view. Plain sticky positioning:
-   it moves only with the page. */
+/* How it works: three sheets, one under the other. That is all of it on a phone, without scripts, or
+   with reduced motion asked for. */
 .stack {
   display: grid;
   gap: 1.5rem;
@@ -1074,7 +1073,6 @@ form:focus-within .plan-ticket {
   padding: clamp(1.5rem, 4vw, 3.5rem);
   box-shadow:
     0 -1px 0 rgb(255 255 255 / 0.6) inset,
-    0 -18px 40px -24px rgb(22 20 15 / 0.35),
     var(--shadow-card);
 }
 .stack-card[data-tone="paper"] {
@@ -1089,10 +1087,10 @@ form:focus-within .plan-ticket {
 .stack-body {
   color: var(--color-ink-2);
 }
-.stack-card[data-tone="ink"] .stack-body {
+.stack:not([data-live]) .stack-card[data-tone="ink"] .stack-body {
   color: rgb(243 238 228 / 0.75);
 }
-.stack-card[data-tone="ink"] .step-num {
+.stack:not([data-live]) .stack-card[data-tone="ink"] .step-num {
   color: var(--color-seal-bright);
 }
 .stack-scene {
@@ -1100,18 +1098,58 @@ form:focus-within .plan-ticket {
   align-self: center;
 }
 @media (min-width: 900px) and (min-height: 620px) {
-  .stack {
-    gap: 5rem;
-    padding-bottom: 3rem;
-  }
-  .stack-card {
-    position: sticky;
-    top: calc(5.5rem + var(--i) * 1.4rem);
+  .stack:not([data-live]) .stack-card {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: center;
     gap: 3.5rem;
-    min-height: min(31rem, calc(100dvh - 11rem));
   }
+}
+/* With motion (LandingMotion sets data-live): the words of the three steps run down the left, and on
+   the right one sheet stays where it is. The three pictures lie on top of each other in it, and the
+   one whose step is being read is the one shown. The list items give up their boxes, so the words
+   and the pictures are placed straight onto the list's grid. */
+.stack[data-live] {
+  --stage-h: min(31rem, calc(100dvh - 11rem));
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: 0 clamp(2.5rem, 5vw, 5rem);
+}
+.stack[data-live] .stack-card {
+  display: contents;
+}
+.stack[data-live] .stack-copy {
+  grid-column: 1;
+  grid-row: calc(var(--i) + 1);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 78dvh;
+  color: var(--color-ink);
+}
+.stack[data-live] .stack-scene {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  position: sticky;
+  top: calc((100dvh - var(--stage-h)) / 2 + 1.5rem);
+  align-self: start;
+  display: grid;
+  align-content: center;
+  height: var(--stage-h);
+  border: 1px solid var(--color-line-strong);
+  border-radius: 2rem;
+  background: var(--color-surface);
+  padding: clamp(1.5rem, 3vw, 3rem);
+  box-shadow:
+    0 -1px 0 rgb(255 255 255 / 0.6) inset,
+    var(--shadow-lift);
+}
+.stack[data-live] .stack-card[data-tone="paper"] .stack-scene {
+  background: var(--color-paper-2);
+}
+.stack[data-live] .stack-card[data-tone="ink"] .stack-scene {
+  border-color: var(--color-ink);
+  background: var(--color-ink);
+  background-image: radial-gradient(90% 70% at 100% 0%, rgb(240 138 102 / 0.16), transparent 60%);
+  color: var(--color-paper);
 }
 /* Step one: the first screen of the private chat, as it really looks. */
 .scene-chat {

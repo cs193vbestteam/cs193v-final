@@ -286,7 +286,7 @@ export function Landing() {
       </section>
 
       {/* Why it happens: the one dark page in the book. */}
-      <section className="inked mt-24 sm:mt-32">
+      <section data-corners className="inked mt-24 sm:mt-32">
         <DotGrid />
         <div className="grid gap-10 lg:grid-cols-12">
           <p className="eyebrow !text-paper/65 lg:col-span-3">The problem</p>
@@ -328,26 +328,25 @@ export function Landing() {
           </h2>
           <span className="split-head-note">three steps · one answer</span>
         </div>
-        {/* Each step is a sheet that stays put while the next one slides up over it. */}
+        {/* Three sheets, one under the other. On a wide screen with motion allowed LandingMotion turns
+            them into one sheet that stays put while the three steps are read past it. */}
         <ol className="stack mt-10">
           {STEPS.map((s, i) => (
             <li
               key={s.n}
               className="stack-card"
-              data-arrive
+              data-corners
               data-tone={i === 2 ? "ink" : i === 1 ? "paper" : "surface"}
               style={w(i)}
             >
-              <div data-arrive-item className="stack-copy">
+              <div className="stack-copy">
                 <span aria-hidden className="step-num">
                   {s.n}
                 </span>
                 <h3 className="mt-6 font-serif text-4xl leading-[1.02] sm:text-5xl">{s.title}</h3>
                 <p className="stack-body mt-4 max-w-md leading-relaxed">{s.body}</p>
               </div>
-              <div data-arrive-item className="stack-scene">
-                {s.scene}
-              </div>
+              <div className="stack-scene">{s.scene}</div>
             </li>
           ))}
         </ol>
