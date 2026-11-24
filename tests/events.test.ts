@@ -38,7 +38,7 @@ describe("events", () => {
     const a = await makeUser("Alice");
     const e = await createEvent(a.id, "  Dinner  ");
     expect(e.title).toBe("Dinner");
-    expect(e.inviteCode).toMatch(/^[a-z2-9]{6}$/);
+    expect(e.inviteCode).toMatch(/^[0-9]{6}$/);
     const msgs = await getMyMessages(e.id, a.id);
     expect(msgs).toHaveLength(1);
     expect(msgs[0].role).toBe("assistant");

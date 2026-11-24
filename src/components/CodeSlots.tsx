@@ -32,7 +32,8 @@ type Props = {
  */
 export function CodeSlots({ id, name, value, onChange, length = 6, invalid = false, describedBy }: Props) {
   const [focused, setFocused] = useState(false);
-  // Codes are six characters now; plans made before that have eight, so the row grows to fit one.
+  // Codes are six digits now; plans made before that have up to eight letters and digits, so the
+  // row grows to fit one, and letters are still taken.
   const slots = Math.max(length, value.length);
   return (
     <div className="code-slots" data-invalid={invalid || undefined} data-focused={focused || undefined}>
@@ -48,6 +49,9 @@ export function CodeSlots({ id, name, value, onChange, length = 6, invalid = fal
         // Room for a pasted link; `tidy` keeps only the code.
         maxLength={200}
         autoComplete="off"
+        // New codes are digits, so a phone offers its number pad. An older code with letters in it
+        // can still be pasted, alone or as its link.
+        inputMode="numeric"
         autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}
