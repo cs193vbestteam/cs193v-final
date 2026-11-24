@@ -39,7 +39,7 @@ export default async function AccountPage() {
       </section>
 
       {user.guest && (
-        <section className="card rise mt-5" style={{ "--d": "0.15s" } as React.CSSProperties}>
+        <section data-arrive className="card mt-5">
           <h2 className="font-serif text-xl">Keep your plans</h2>
           <p className="mt-2 text-sm text-ink-2">
             Add an email and a password to open your plans from any device and to start plans of your own. Everything
@@ -51,7 +51,7 @@ export default async function AccountPage() {
         </section>
       )}
 
-      <section className="card rise mt-5" style={{ "--d": "0.18s" } as React.CSSProperties}>
+      <section data-arrive className="card mt-5">
         <h2 className="font-serif text-xl">Delete account</h2>
         <p className="mt-2 text-sm text-ink-2">
           Removes everything Settle stores about you. To leave a single plan instead, open it from{" "}

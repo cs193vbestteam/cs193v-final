@@ -934,51 +934,112 @@ form:focus-within .plan-ticket {
 .excuses-fill {
   display: none;
 }
-/* Where motion can be tied to scrolling, the two rows slide past each other as the page moves,
-   and stop when it stops: nothing here moves on its own. */
-@supports (animation-timeline: view()) {
-  @media (prefers-reduced-motion: no-preference) {
-    .excuses {
-      display: block;
-      overflow: hidden;
-      padding-block: 0.15em;
-      -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-      mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-    }
-    .excuses-row {
-      display: flex;
-      width: max-content;
-      gap: 1.1em;
-      white-space: nowrap;
-      animation: excuses-left linear both;
-      animation-timeline: view();
-    }
-    .excuses-row + .excuses-row {
-      margin-top: 0.3em;
-    }
-    .excuses-row[data-dir="right"] {
-      animation-name: excuses-right;
-    }
-    .excuses-fill {
-      display: block;
-    }
+/* With LandingMotion running, the two rows slide past each other as the page moves, and stop when
+   it stops: nothing here moves on its own. It marks the strip `data-live`; until then, and with
+   reduced motion, the six phrases sit still. */
+.excuses[data-live] {
+  display: block;
+  overflow: hidden;
+  padding-block: 0.15em;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+.excuses[data-live] .excuses-row {
+  display: flex;
+  width: max-content;
+  gap: 1.1em;
+  white-space: nowrap;
+}
+.excuses[data-live] .excuses-row + .excuses-row {
+  margin-top: 0.3em;
+}
+.excuses[data-live] .excuses-fill {
+  display: block;
+}
+/* A frame for the strip: a dashed rule above and below, and a small cross at each corner. */
+.framed {
+  position: relative;
+}
+.frame-line {
+  position: absolute;
+  inset-inline: 0;
+  border-top: 1px dashed var(--color-line-control);
+}
+.frame-line[data-edge="top"] {
+  top: 0;
+}
+.frame-line[data-edge="bottom"] {
+  bottom: 0;
+}
+.frame-mark {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  margin: -5px;
+  background:
+    linear-gradient(var(--color-ink-2), var(--color-ink-2)) center / 100% 1px no-repeat,
+    linear-gradient(var(--color-ink-2), var(--color-ink-2)) center / 1px 100% no-repeat;
+}
+.frame-mark[data-corner^="t"] {
+  top: 0;
+}
+.frame-mark[data-corner^="b"] {
+  bottom: 0;
+}
+.frame-mark[data-corner$="l"] {
+  left: 0;
+}
+.frame-mark[data-corner$="r"] {
+  right: 0;
+}
+/* "How it works": the heading's two halves at either end of a rule, a note under its middle. */
+.split-head {
+  position: relative;
+}
+.split-head h2 {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.75rem, 2.5vw, 2rem);
+  white-space: nowrap;
+}
+.split-head-rule {
+  flex: 1;
+  min-width: 1.5rem;
+  border-top: 1px solid var(--color-ink);
+}
+.split-head-note {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 0.75rem);
+  transform: translateX(-50%);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--color-ink-3);
+}
+@media (min-width: 640px) {
+  .split-head-note {
+    display: block;
   }
 }
-@keyframes excuses-left {
-  from {
-    transform: translateX(-4%);
-  }
-  to {
-    transform: translateX(-36%);
-  }
-}
-@keyframes excuses-right {
-  from {
-    transform: translateX(-40%);
-  }
-  to {
-    transform: translateX(-8%);
-  }
+/* The best cell of the scoring grid, in flight to the ticket it turns into. Placed by LandingMotion;
+   it has no size and is not shown until then. */
+.flight-chip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 30;
+  width: 0;
+  height: 0;
+  visibility: hidden;
+  pointer-events: none;
+  background: var(--color-ink);
+  outline: 2px solid var(--color-seal);
+  outline-offset: 2px;
+  box-shadow: var(--shadow-lift);
 }
 .inked {
   background: var(--color-ink);
@@ -1090,8 +1151,6 @@ form:focus-within .plan-ticket {
   border-radius: 0.6rem;
   background: color-mix(in srgb, var(--color-moss) calc(var(--fill) * 62%), var(--color-surface));
   color: var(--color-ink);
-  animation: chip-in 0.5s var(--ease-out-expo) backwards;
-  animation-delay: calc(var(--i) * 35ms);
 }
 .score-cell[data-best] {
   background: var(--color-ink);
@@ -1415,18 +1474,36 @@ form:focus-within .plan-ticket {
   animation-delay: var(--d, 0s);
 }
 
-/* Scroll reveal (toggled by <Reveal/>) */
-.reveal {
-  opacity: 0;
-  transform: translateY(22px);
-  transition:
-    opacity 0.9s var(--ease-out-expo),
-    transform 0.9s var(--ease-out-expo);
-  transition-delay: var(--d, 0s);
+/* Arrive (PageMotion): a block marked `data-arrive` comes in when it is scrolled to. Until the
+   script has taken it over it is kept clear, so it does not show and then fade out. Clear, not
+   hidden: it is still read out and found by a search of the page. Only where scripts run and
+   motion is welcome; and if the script never comes, the block shows itself. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  [data-arrive]:not([data-arrive-ready]) {
+    opacity: 0;
+    animation: arrive-anyway 0s 4s forwards;
+  }
 }
-.reveal.is-in {
-  opacity: 1;
-  transform: none;
+@keyframes arrive-anyway {
+  to {
+    opacity: 1;
+  }
+}
+/* Privacy: a hairline across the top that is as full as the page is read. */
+.read-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 50;
+  height: 2px;
+  background: var(--color-ink);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .read-progress {
+    display: none;
+  }
 }
 
 @keyframes pulse-dot {
@@ -2511,9 +2588,16 @@ form:focus-within .plan-ticket {
   animation: stamp 0.6s var(--ease-out-expo) both;
 }
 
-/* ── Hero demo: 20 messages become one line ─────────────────── */
+/* ── Hero demo: a group thread becomes one line ─────────────── */
+/* One loop, in order: the messages arrive, the ones that went nowhere are crossed out, the plan
+   lands on top and is stamped, the whole thread leaves and stays gone, the plan is alone for a
+   while, then it leaves too and the loop starts again from an empty box.
+
+   Every part runs the same --cycle. The messages start one after another (--i), so each is still
+   finishing its own loop a little into the next one; that is why a message makes itself invisible
+   once the thread has gone, and why the thread, not the messages, does the leaving. */
 .demo {
-  --cycle: 12s;
+  --cycle: 15s;
   /* The demo waits for the first line of the headline: the card comes in as "Your group chat is
      stuck." has appeared (about 1s), and the thread starts then. "Settle it." lands over it. */
   --hold: 1.1s;
@@ -2521,8 +2605,22 @@ form:focus-within .plan-ticket {
 .demo[data-paused="true"] * {
   animation-play-state: paused;
 }
-/* The thread stays readable the whole time (WCAG 1.4.3): once the plan lands, the messages are
-   greyed and struck through, not faded out. What sets the plan apart is the dark card landing on top. */
+.demo-thread {
+  animation: demo-thread var(--cycle) var(--ease-out-expo) infinite;
+  animation-delay: var(--hold);
+}
+@keyframes demo-thread {
+  0%,
+  66.7% {
+    opacity: 1;
+    transform: none;
+  }
+  71.3%,
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
 .demo-msg {
   opacity: 0;
   color: var(--color-ink);
@@ -2536,30 +2634,29 @@ form:focus-within .plan-ticket {
     transform: translateY(10px);
     filter: blur(3px);
   }
-  4% {
+  3.5% {
     opacity: 1;
     transform: none;
     filter: blur(0);
   }
-  44% {
+  30.7% {
     opacity: 1;
     transform: none;
     color: var(--color-ink);
     text-decoration-color: transparent;
   }
-  52%,
-  86% {
+  34.7%,
+  72.6% {
     opacity: 1;
     transform: scale(0.985);
     color: var(--color-ink-3);
     text-decoration-color: var(--color-ink-3);
   }
-  92%,
+  /* The thread has left by now. Out until this message's next turn. */
+  72.7%,
   100% {
     opacity: 0;
-    transform: translateY(-8px);
-    color: var(--color-ink-3);
-    text-decoration-color: var(--color-ink-3);
+    transform: none;
   }
 }
 /* The message that sends the link is the turn of the story: it stays as written while the rest is crossed out. */
@@ -2572,39 +2669,39 @@ form:focus-within .plan-ticket {
     transform: translateY(10px);
     filter: blur(3px);
   }
-  4%,
-  86% {
+  3.5%,
+  72.6% {
     opacity: 1;
     transform: none;
     filter: blur(0);
   }
-  92%,
+  72.7%,
   100% {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: none;
   }
 }
 .demo-result {
   opacity: 0;
   animation: demo-result var(--cycle) var(--ease-out-expo) infinite;
-  animation-delay: calc(var(--hold) + 3.4s);
+  animation-delay: var(--hold);
 }
 @keyframes demo-result {
   0%,
-  50% {
+  54.7% {
     opacity: 0;
     transform: translateY(18px) scale(0.92);
   }
-  54% {
+  57.3% {
     opacity: 1;
     transform: translateY(-2px) scale(1.035);
   }
-  58%,
-  86% {
+  60%,
+  89.3% {
     opacity: 1;
     transform: none;
   }
-  92%,
+  94%,
   100% {
     opacity: 0;
     transform: translateY(-8px);
@@ -2614,19 +2711,19 @@ form:focus-within .plan-ticket {
 .demo-ring {
   opacity: 0;
   animation: demo-ring var(--cycle) var(--ease-out-expo) infinite;
-  animation-delay: calc(var(--hold) + 3.4s);
+  animation-delay: var(--hold);
 }
 @keyframes demo-ring {
   0%,
-  53% {
+  57.2% {
     opacity: 0;
     box-shadow: 0 0 0 0 rgb(198 69 31 / 0.55);
   }
-  54% {
+  57.3% {
     opacity: 1;
     box-shadow: 0 0 0 0 rgb(198 69 31 / 0.55);
   }
-  64%,
+  66%,
   100% {
     opacity: 0;
     box-shadow: 0 0 0 18px rgb(198 69 31 / 0);
@@ -2635,27 +2732,24 @@ form:focus-within .plan-ticket {
 .demo-seal {
   opacity: 0;
   animation: demo-seal var(--cycle) var(--ease-out-expo) infinite;
-  animation-delay: calc(var(--hold) + 3.4s);
+  animation-delay: var(--hold);
 }
 @keyframes demo-seal {
   0%,
-  58% {
+  60% {
     opacity: 0;
     transform: scale(1.6) rotate(-8deg);
   }
-  63% {
+  63.3% {
     opacity: 1;
     transform: scale(0.96) rotate(-6deg);
   }
-  65% {
+  64.7%,
+  89.3% {
     opacity: 1;
     transform: scale(1) rotate(-6deg);
   }
-  86% {
-    opacity: 1;
-    transform: scale(1) rotate(-6deg);
-  }
-  92%,
+  94%,
   100% {
     opacity: 0;
     transform: scale(1) rotate(-6deg);
@@ -2663,14 +2757,14 @@ form:focus-within .plan-ticket {
 }
 .demo-count {
   animation: demo-count var(--cycle) steps(1, end) infinite;
-  animation-delay: calc(var(--hold) + 3.4s);
+  animation-delay: var(--hold);
 }
 @keyframes demo-count {
   0%,
-  50% {
+  54.7% {
     opacity: 1;
   }
-  56%,
+  57.3%,
   100% {
     opacity: 0;
   }
@@ -2714,9 +2808,6 @@ form:focus-within .plan-ticket {
   html {
     scroll-behavior: auto;
   }
-  .score-cell {
-    animation: none;
-  }
   .plan-stub,
   .plan-stub-go {
     transition: none;
@@ -2735,13 +2826,15 @@ form:focus-within .plan-ticket {
   .btn-attention {
     animation: none;
   }
-  .rise,
-  .reveal {
+  .rise {
     opacity: 1;
     transform: none;
     animation: none;
     transition: none;
     filter: none;
+  }
+  .demo-thread {
+    animation: none;
   }
   .demo-msg {
     animation: none;
@@ -2874,8 +2967,7 @@ form:focus-within .plan-ticket {
   .btn,
   .btn-ghost,
   .link,
-  .input,
-  .reveal {
+  .input {
     transition: none;
   }
 }

@@ -6,6 +6,7 @@ import { logoutAction } from "./actions";
 import { AuthNav } from "@/components/AuthNav";
 import { Avatar } from "@/components/Avatar";
 import { PointerEffects } from "@/components/Effects";
+import { PageMotion } from "@/components/PageMotion";
 import { Wordmark } from "@/components/Wordmark";
 import { avatarFor } from "@/lib/avatar";
 import { currentUser } from "@/lib/session";
@@ -96,6 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </header>
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-5 pb-20 outline-none sm:px-8">
           {children}
+          <PageMotion />
         </main>
         <footer className="mx-auto w-full max-w-6xl px-5 pb-8 sm:px-8">
           <div className="flex flex-col gap-2 border-t border-line pt-5 text-xs text-ink-3 sm:flex-row sm:items-center sm:justify-between">

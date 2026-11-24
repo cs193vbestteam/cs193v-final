@@ -48,19 +48,21 @@ export default async function Home() {
         )}
       </section>
 
-      <section className="rise mt-12" style={{ "--d": "0.25s" } as React.CSSProperties}>
-        <div className="flex items-baseline justify-between border-b border-line pb-3">
+      <section className="mt-12">
+        <div data-arrive className="flex items-baseline justify-between border-b border-line pb-3">
           <h2 className="font-serif text-2xl">Your plans</h2>
           <span className="font-mono text-xs uppercase tracking-wider text-ink-3">
             {events.length} total{open ? ` · ${open} open` : ""}
           </span>
         </div>
         {events.length === 0 ? (
-          <p className="py-8 text-sm text-ink-3">Nothing yet. Your first plan will show up here.</p>
+          <p data-arrive className="py-8 text-sm text-ink-3">
+            Nothing yet. Your first plan will show up here.
+          </p>
         ) : (
           <ul className="mt-5 grid gap-4 sm:grid-cols-2">
             {events.map((e, i) => (
-              <li key={e.id} className="rise" style={{ "--d": `${0.3 + i * 0.05}s` } as React.CSSProperties}>
+              <li key={e.id} data-arrive>
                 {/* Each plan is the ticket it was started as: ink once it is decided, paper while it is open. */}
                 <Link
                   href={`/e/${e.inviteCode}`}
