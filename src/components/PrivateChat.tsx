@@ -393,26 +393,6 @@ export function PrivateChat({
           {MAX_MESSAGE_CHARS - text.length} characters left. Messages are short on purpose.
         </p>
       )}
-      {/* Who processes the chat, under the message box: a quiet title that opens. The greeting names
-          it too, before anything is typed. The words are AI-CONSENT.md's: what leaves, who gets it,
-          and for how long. */}
-      <div className="chat-foot">
-        <details className="notice">
-          <summary>
-            <LockIcon />
-            Processed by Anthropic&apos;s Claude. Where your messages go
-          </summary>
-          <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
-            Your messages and meal preferences are sent to Anthropic&apos;s Claude. Anthropic does not use API chats for
-            training by default. Its standard retention policy is up to 30 days, with longer retention for flagged
-            content or legal requirements. Your group sees the plan, not your chat.{" "}
-            <a className="link link-small" href="/privacy" target="_blank" rel="noopener">
-              How your data is used<span className="sr-only"> (opens in a new tab)</span>
-            </a>
-          </p>
-        </details>
-      </div>
-
       {/* Under the message box: what is still missing, the way to finish, and what happens after. */}
       {!opening && (
         <div className={`border-t px-5 py-2 ${ready ? "border-moss/30 bg-moss-soft" : "border-line"}`}>
@@ -551,6 +531,25 @@ export function PrivateChat({
           )}
         </div>
       )}
+      {/* Who processes the chat, at the very bottom of the card: a quiet title that opens. The greeting names
+          it too, before anything is typed. The words are AI-CONSENT.md's: what leaves, who gets it,
+          and for how long. */}
+      <div className="chat-foot">
+        <details className="notice">
+          <summary>
+            <LockIcon />
+            Processed by Anthropic&apos;s Claude. Where your messages go
+          </summary>
+          <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
+            Your messages and meal preferences are sent to Anthropic&apos;s Claude. Anthropic does not use API chats for
+            training by default. Its standard retention policy is up to 30 days, with longer retention for flagged
+            content or legal requirements. Your group sees the plan, not your chat.{" "}
+            <a className="link link-small" href="/privacy" target="_blank" rel="noopener">
+              How your data is used<span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </p>
+        </details>
+      </div>
     </section>
   );
 }
