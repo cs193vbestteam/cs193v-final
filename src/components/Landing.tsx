@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Fragment } from "react";
 import { CountUp, DotGrid } from "./Effects";
 import { HeroDemo } from "./HeroDemo";
-import { Reveal } from "./Reveal";
+import { LandingMotion } from "./LandingMotion";
 
 /** What people say in the group chat when they mean something else. */
 const EXCUSES = ["whatever works", "I'm easy", "anything's fine", "up to you", "I don't mind", "you pick"];
@@ -169,8 +169,9 @@ const w = (i: number) => ({ "--i": i }) as React.CSSProperties;
 export function Landing() {
   return (
     <div className="pb-8">
+      <LandingMotion />
       {/* Hero: the headline runs the full width; the demo sits under its last word. */}
-      <section className="relative pt-10 sm:pt-14 lg:pt-16">
+      <section data-scene="hero" className="relative pt-10 sm:pt-14 lg:pt-16">
         <div
           aria-hidden
           className="pointer-events-none absolute -right-40 -top-40 -z-10 h-[38rem] w-[38rem] rounded-full opacity-80 blur-3xl"
@@ -243,18 +244,31 @@ export function Landing() {
           </div>
           {/* The demo comes in once the headline's first line is there (see --hold in globals.css). */}
           <div className="rise lg:col-span-6 lg:col-start-7" style={d(1)}>
-            <div data-tilt>
-              <HeroDemo />
+            {/* Settles back as the page moves on (LandingMotion). Its own wrapper: the one above is
+                held by its entrance, the one below by the pointer. */}
+            <div data-recede>
+              <div data-tilt>
+                <HeroDemo />
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* What everyone says instead */}
-      <Reveal as="section" className="mt-24 border-y border-line py-8 sm:mt-32 sm:py-10">
-        <p className="eyebrow text-center">What everyone says instead</p>
-        {/* Two rows that slide past each other as the page scrolls, where the browser can tie motion
-            to scrolling; otherwise the six sit still. The repeats only fill the rows and are not read out. */}
+      <section className="framed mt-24 py-8 sm:mt-32 sm:py-10">
+        {/* The strip's frame: two dashed rules and a mark at each corner, drawn as it is scrolled to
+            (LandingMotion). Without it they are simply there. */}
+        <i aria-hidden className="frame-line" data-edge="top" />
+        <i aria-hidden className="frame-line" data-edge="bottom" />
+        {["tl", "tr", "bl", "br"].map((c) => (
+          <i key={c} aria-hidden className="frame-mark" data-corner={c} />
+        ))}
+        <p data-arrive className="eyebrow text-center">
+          What everyone says instead
+        </p>
+        {/* Two rows that slide past each other as the page scrolls (LandingMotion); without it the six
+            sit still. The repeats only fill the rows and are not read out. */}
         <div className="excuses mt-5">
           {[EXCUSES.slice(0, 3), EXCUSES.slice(3)].map((row, r) => (
             <ul key={r} className="excuses-row" data-dir={r ? "right" : "left"}>
@@ -269,24 +283,28 @@ export function Landing() {
             </ul>
           ))}
         </div>
-      </Reveal>
+      </section>
 
       {/* Why it happens: the one dark page in the book. */}
-      <Reveal as="section" className="inked mt-24 sm:mt-32">
+      <section className="inked mt-24 sm:mt-32">
         <DotGrid />
         <div className="grid gap-10 lg:grid-cols-12">
           <p className="eyebrow !text-paper/65 lg:col-span-3">The problem</p>
-          <p className="font-serif text-[clamp(1.75rem,3.4vw,2.75rem)] leading-[1.14] tracking-[-0.01em] lg:col-span-9">
+          <p
+            data-read
+            className="font-serif text-[clamp(1.75rem,3.4vw,2.75rem)] leading-[1.14] tracking-[-0.01em] lg:col-span-9"
+          >
             Everyone has real limits: a budget, a Saturday that only works after six, a 20-minute radius. But saying{" "}
             <em>&ldquo;$30 max&rdquo;</em> in the group sounds cheap, and <em>&ldquo;not that far&rdquo;</em> sounds
             difficult. So everyone says &ldquo;whatever&rdquo;, the information stays hidden, and the loudest person
             decides.
           </p>
         </div>
-        <dl className="mt-12 grid border-t border-paper/20 sm:mt-16 sm:grid-cols-3">
+        <dl data-arrive className="mt-12 grid border-t border-paper/20 sm:mt-16 sm:grid-cols-3">
           {SOUNDS_LIKE.map((x, i) => (
             <div
               key={x.said}
+              data-arrive-item
               className={`border-paper/20 py-5 sm:py-6 ${i ? "border-t sm:border-l sm:border-t-0 sm:pl-6" : ""} sm:pr-6`}
             >
               <dt className="font-serif text-3xl italic sm:text-4xl">&ldquo;{x.said}&rdquo;</dt>
@@ -297,52 +315,61 @@ export function Landing() {
             </div>
           ))}
         </dl>
-      </Reveal>
+      </section>
 
       {/* How it works */}
       <section className="mt-24 sm:mt-32">
-        <Reveal className="flex items-end justify-between">
-          <h2 className="display text-5xl sm:text-7xl">How it works</h2>
-          <span className="hidden font-mono text-xs uppercase tracking-[0.14em] text-ink-3 sm:inline">
-            three steps · one answer
-          </span>
-        </Reveal>
+        {/* The heading's two halves start together and part as it is scrolled to, a rule opening
+            between them (LandingMotion). Without it they sit apart, as they end up. */}
+        <div className="split-head">
+          <h2 className="display text-5xl sm:text-7xl">
+            <span data-split="left">How it</span> <i aria-hidden className="split-head-rule" />{" "}
+            <span data-split="right">works</span>
+          </h2>
+          <span className="split-head-note">three steps · one answer</span>
+        </div>
         {/* Each step is a sheet that stays put while the next one slides up over it. */}
         <ol className="stack mt-10">
           {STEPS.map((s, i) => (
             <li
               key={s.n}
               className="stack-card"
+              data-arrive
               data-tone={i === 2 ? "ink" : i === 1 ? "paper" : "surface"}
               style={w(i)}
             >
-              <div className="stack-copy">
+              <div data-arrive-item className="stack-copy">
                 <span aria-hidden className="step-num">
                   {s.n}
                 </span>
                 <h3 className="mt-6 font-serif text-4xl leading-[1.02] sm:text-5xl">{s.title}</h3>
                 <p className="stack-body mt-4 max-w-md leading-relaxed">{s.body}</p>
               </div>
-              <div className="stack-scene">{s.scene}</div>
+              <div data-arrive-item className="stack-scene">
+                {s.scene}
+              </div>
             </li>
           ))}
         </ol>
+        {/* The best cell of step two on its way to being step three's ticket (LandingMotion). */}
+        <div aria-hidden className="flight-chip" />
       </section>
 
       {/* Privacy ledger */}
       <section className="mt-24 sm:mt-32">
-        <Reveal className="grid gap-6 lg:grid-cols-12 lg:items-end">
-          <h2 className="display text-5xl sm:text-7xl lg:col-span-7">
+        <div data-arrive className="grid gap-6 lg:grid-cols-12 lg:items-end">
+          <h2 data-arrive-item className="display text-5xl sm:text-7xl lg:col-span-7">
             Your limits stay <em>yours</em>.
           </h2>
-          <p className="lede lg:col-span-5">
+          <p data-arrive-item className="lede lg:col-span-5">
             To find a plan, a program on our server reads what everyone told their assistant. What it read goes no
             further: the group gets the plan and, with three or more people, how many can come. Here is what that looks
             like.
           </p>
-        </Reveal>
-        <Reveal
-          delay={0.1}
+        </div>
+        <div
+          data-arrive
+          data-ledger
           className="mt-10 overflow-hidden rounded-[1.5rem] border border-ink bg-surface shadow-[var(--shadow-lift)]"
         >
           <div className="hidden border-b border-ink font-mono text-[0.75rem] uppercase tracking-[0.14em] text-ink-3 sm:grid sm:grid-cols-[7rem_1fr_1fr]">
@@ -367,28 +394,28 @@ export function Landing() {
               </div>
             </div>
           ))}
-        </Reveal>
-        <Reveal delay={0.15} className="mt-8 grid gap-x-8 sm:grid-cols-3">
+        </div>
+        <div data-arrive className="mt-8 grid gap-x-8 sm:grid-cols-3">
           {KEPT_SAFE.map(([title, body, how]) => (
-            <div key={title} className="border-t border-line-strong py-5">
+            <div key={title} data-arrive-item className="border-t border-line-strong py-5">
               <p className="font-mono text-xs uppercase tracking-[0.12em] text-ink-3">{how}</p>
               <div className="mt-2 font-serif text-2xl leading-tight text-ink">{title}</div>
               <p className="mt-2 text-sm leading-relaxed text-ink-2">{body}</p>
             </div>
           ))}
-        </Reveal>
+        </div>
       </section>
 
       {/* Closing */}
-      <Reveal as="section" className="relative mt-24 border-t border-ink pt-14 text-center sm:mt-32 sm:pt-20">
+      <section data-arrive className="relative mt-24 border-t border-ink pt-14 text-center sm:mt-32 sm:pt-20">
         <Seal />
-        <h2 className="display mx-auto max-w-4xl text-[clamp(2.75rem,9vw,7rem)]">
+        <h2 data-arrive-item className="display mx-auto max-w-4xl text-[clamp(2.75rem,9vw,7rem)]">
           Stop saying <em>&ldquo;whatever works.&rdquo;</em>
         </h2>
-        <p className="lede mx-auto mt-6 max-w-lg">
+        <p data-arrive-item className="lede mx-auto mt-6 max-w-lg">
           First version: picking a restaurant and a time for a meal. Trips, roommates and chores come next.
         </p>
-        <div className="mt-8 flex justify-center gap-3">
+        <div data-arrive-item className="mt-8 flex justify-center gap-3">
           <Link href="/signup" className="btn btn-lg">
             Start a plan
             <Arrow />
@@ -397,7 +424,7 @@ export function Landing() {
             Log in
           </Link>
         </div>
-      </Reveal>
+      </section>
     </div>
   );
 }

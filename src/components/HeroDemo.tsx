@@ -1,9 +1,10 @@
 import { DemoToggle } from "./DemoToggle";
 
 /**
- * The hero's one idea: a three-day group thread collapses into one line.
- * Pure CSS keyframes (see globals.css .demo-*), so it costs nothing to run
- * and resolves to the final state under prefers-reduced-motion.
+ * The hero's one idea: a three-day group thread collapses into one line. The thread arrives, is
+ * crossed out, the plan lands on it, the thread leaves, and the plan is left alone before the loop
+ * starts again from nothing. Pure CSS keyframes (see globals.css .demo-*), so it costs nothing to
+ * run, and under prefers-reduced-motion it shows the crossed-out thread with the plan on it.
  */
 export const DEMO_THREAD: { who: string; text: string; link?: boolean; pivot?: boolean }[] = [
   { who: "Alex", text: "sooo what's the move saturday" },
@@ -31,7 +32,7 @@ export function HeroDemo() {
           <span className="whitespace-nowrap text-ink-3">the crew · 4</span>
           <span className="demo-count whitespace-nowrap text-seal-ink">day 3 · nothing yet</span>
         </div>
-        <ol className="space-y-2.5 px-5 py-5">
+        <ol className="demo-thread space-y-2.5 px-5 py-5">
           {DEMO_THREAD.map((m, i) => (
             <li
               key={i}

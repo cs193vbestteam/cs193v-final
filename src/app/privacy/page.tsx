@@ -25,7 +25,7 @@ function Outside({ href, children }: { href: string; children: React.ReactNode }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-t border-line pt-8">
+    <section data-arrive className="border-t border-line pt-8">
       <h2 className="font-serif text-2xl leading-tight sm:text-[1.75rem]">{title}</h2>
       <div className="mt-3 space-y-3 text-[0.9375rem] leading-relaxed text-ink-2">{children}</div>
     </section>
@@ -48,6 +48,8 @@ function List({ items }: { items: React.ReactNode[] }) {
 export default function PrivacyPage() {
   return (
     <div className="mx-auto mt-10 max-w-2xl sm:mt-16">
+      {/* How much of the page has been read (PageMotion). It says nothing a screen reader needs. */}
+      <div aria-hidden data-progress className="read-progress" />
       <p className="eyebrow">Privacy</p>
       <h1 className="display mt-3 text-4xl sm:text-5xl">
         What happens to what you <em>tell us</em>.

@@ -251,28 +251,32 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       {/* Once there is a plan it is the first thing on the page. In the side column, below the group,
           a tester did not notice it had arrived (#154). */}
       {result && (
-        <section
-          id="plan"
-          aria-labelledby="plan-heading"
-          className="plan-hero rise sealed-trace mt-6 scroll-mt-24"
-          data-tone={chosen && !stale ? "ink" : "paper"}
-          style={{ "--d": "0.06s" } as React.CSSProperties}
-        >
-          {/* The one dark block on the page: where, when and what it costs, then what to do with it. */}
-          <h2 id="plan-heading" className="plan-hero-label">
-            The plan
-          </h2>
-          <ResultCard
-            result={result}
-            sample={sample}
-            date={event.date}
-            stale={stale}
-            mine={mine}
-            lateJoiner={stale === "joined" && !me.ready}
-            actions={share}
-            rerun={rerun}
-          />
-        </section>
+        // Settles back as the page scrolls on to the chat and the group (PageMotion). Its own wrapper:
+        // the section inside is held by its entrance.
+        <div data-recede="page">
+          <section
+            id="plan"
+            aria-labelledby="plan-heading"
+            className="plan-hero rise sealed-trace mt-6 scroll-mt-24"
+            data-tone={chosen && !stale ? "ink" : "paper"}
+            style={{ "--d": "0.06s" } as React.CSSProperties}
+          >
+            {/* The one dark block on the page: where, when and what it costs, then what to do with it. */}
+            <h2 id="plan-heading" className="plan-hero-label">
+              The plan
+            </h2>
+            <ResultCard
+              result={result}
+              sample={sample}
+              date={event.date}
+              stale={stale}
+              mine={mine}
+              lateJoiner={stale === "joined" && !me.ready}
+              actions={share}
+              rerun={rerun}
+            />
+          </section>
+        </div>
       )}
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -292,7 +296,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           />
         </div>
         <aside className="space-y-5">
-          <section id="group" className="card rise scroll-mt-24" style={{ "--d": "0.18s" } as React.CSSProperties}>
+          <section id="group" data-arrive className="card scroll-mt-24">
             <div className="flex items-baseline justify-between">
               <h2 className="font-serif text-xl">The group</h2>
               <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
@@ -362,7 +366,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           </section>
 
           {!result && (
-            <section id="plan" className="card rise scroll-mt-24" style={{ "--d": "0.26s" } as React.CSSProperties}>
+            <section id="plan" data-arrive className="card scroll-mt-24">
               <h2 className="font-serif text-xl">The plan</h2>
               <p className="mt-3 rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
                 No plan yet. As soon as everyone&apos;s done, the plan is worked out. Nobody has to press anything.
