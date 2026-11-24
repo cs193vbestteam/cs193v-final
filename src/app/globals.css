@@ -2371,7 +2371,7 @@ form:focus-within .plan-ticket {
 }
 .prompt-input::placeholder {
   /* The typed text stays at 16px, which also keeps iOS from zooming in; only the hint is smaller. */
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: var(--color-ink-3);
 }
 .prompt-send {
@@ -2465,11 +2465,11 @@ form:focus-within .plan-ticket {
   bottom: 4rem;
 }
 .quick-chip {
-  min-height: 1.75rem;
+  min-height: 1.5rem;
   border: 1px dashed var(--color-line-control);
   border-radius: 999px;
-  padding: 0 0.75rem;
-  font-size: 0.8125rem;
+  padding: 0 0.625rem;
+  font-size: 0.75rem;
   color: var(--color-ink-2);
   transition:
     transform 0.3s var(--ease-out-expo),
