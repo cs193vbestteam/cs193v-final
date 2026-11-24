@@ -56,6 +56,7 @@ test("the creator sets the size, makes room, removes someone and replaces the li
 
   await test.step("the creator makes room and the third person gets in", async () => {
     await creator.reload();
+    await creator.getByText("More", { exact: true }).click();
     await creator.getByText("Manage people and the invite link").click();
     await creator.getByLabel("How many people can join").selectOption("3");
     await creator.getByRole("button", { name: "Save" }).click();
@@ -67,6 +68,7 @@ test("the creator sets the size, makes room, removes someone and replaces the li
 
   await test.step("removing someone asks first, then takes them out", async () => {
     await creator.reload();
+    await creator.getByText("More", { exact: true }).click();
     await creator.getByText("Manage people and the invite link").click();
     await creator.getByRole("button", { name: "Remove Hana", exact: true }).click();
     await expect(creator.getByText("This cannot be undone.")).toBeVisible();
