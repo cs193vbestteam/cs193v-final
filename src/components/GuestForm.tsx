@@ -44,7 +44,7 @@ export function GuestForm({ code }: { code: string }) {
               describedBy="code-hint"
             />
             <p id="code-hint" className="mt-1.5 text-xs text-ink-3">
-              The letters and numbers at the end of the invite link. You can paste the whole link.
+              The six digits at the end of the invite link. You can paste the whole link.
             </p>
           </div>
           <div>

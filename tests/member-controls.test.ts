@@ -181,17 +181,17 @@ describe("resetInviteCode", () => {
 });
 
 describe("newInviteCode", () => {
-  it("is eight characters from the alphabet without look-alikes", () => {
-    for (let i = 0; i < 200; i++) expect(newInviteCode()).toMatch(/^[a-hjkmnp-z2-9]{6}$/);
+  it("is six digits", () => {
+    for (let i = 0; i < 200; i++) expect(newInviteCode()).toMatch(/^[0-9]{6}$/);
   });
 
-  it("throws away the bytes that would favour the first letters", () => {
-    // 248..255 are past the last whole multiple of 31; taken modulo 31 they would be a..h.
-    const biased = new Uint8Array(12).fill(250);
-    const fair = Uint8Array.from({ length: 12 }, (_, i) => i); // a, b, c, …
+  it("throws away the bytes that would favour the first digits", () => {
+    // 250..255 are past the last whole multiple of 10; taken modulo 10 they would be 0..5.
+    const biased = new Uint8Array(12).fill(252);
+    const fair = Uint8Array.from({ length: 12 }, (_, i) => i); // 0, 1, 2, …
     let call = 0;
     const code = newInviteCode(() => (call++ === 0 ? biased : fair));
-    expect(code).toBe("abcdef");
+    expect(code).toBe("012345");
     expect(call).toBe(2);
   });
 });

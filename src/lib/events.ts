@@ -179,18 +179,19 @@ export const PlanSizeSchema = z.coerce
   .min(MIN_PLAN_SIZE, `A plan needs room for at least ${MIN_PLAN_SIZE} people`)
   .max(MAX_PLAN_SIZE, `A plan can have ${MAX_PLAN_SIZE} people at most`);
 
-const INVITE_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"; // no look-alikes (l/1, o/0)
+const INVITE_ALPHABET = "0123456789";
 /**
- * Six characters: short enough to read out or type from a friend's screen. That is 31^6, about
- * 890 million codes, far fewer than the eight characters codes had before, so a code is checked
- * against the plans that exist before it is used. Plans made earlier keep their longer codes.
+ * Six digits: read out like a phone code and typed on a number pad. That is a million codes, far
+ * fewer than the letters-and-digits codes plans had before, so a code is checked against the plans
+ * that exist before it is used, and every try at joining with one counts against a per-network
+ * limit (guestAction). Plans made earlier keep the codes they have.
  */
 export const INVITE_LENGTH = 6;
-/** The longest code any plan has; older plans have eight characters. */
+/** The longest code any plan has; older plans have eight letters and digits. */
 export const MAX_INVITE_LENGTH = 8;
 /**
- * A byte has 256 values and the alphabet 31 letters, so `byte % 31` would pick the first eight
- * letters slightly more often. Bytes past the last whole multiple of 31 are thrown away instead.
+ * A byte has 256 values and there are 10 digits, so `byte % 10` would pick 0 to 5 slightly more
+ * often. Bytes past the last whole multiple of 10 are thrown away instead.
  */
 export function newInviteCode(random: (n: number) => Uint8Array = (n) => crypto.getRandomValues(new Uint8Array(n))) {
   const usable = 256 - (256 % INVITE_ALPHABET.length);
