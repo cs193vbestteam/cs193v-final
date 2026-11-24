@@ -81,8 +81,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await alex.getByRole("button", { name: "Start a plan" }).click();
     await expect(alex).toHaveURL(/\/e\/[a-z0-9]+$/);
     await expect(alex.getByRole("heading", { name: "Weekend dinner" })).toBeVisible();
-    await expect(alex.getByText("Sample data")).toBeVisible();
-    await expect(alex.getByText("They are not real places.")).toBeVisible();
+    await expect(alex.getByText(/sample places/)).toBeVisible();
   });
   const planPath = new URL(alex.url()).pathname;
 
@@ -97,7 +96,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
   });
 
   await test.step("a plan cannot be found until everyone is done", async () => {
-    await expect(alex.getByRole("button", { name: "Find a plan" })).toBeDisabled();
+    await expect(alex.getByRole("button", { name: "Find a plan" })).toHaveCount(0);
   });
 
   await test.step("Alex finishes first; Blake's page shows none of it", async () => {

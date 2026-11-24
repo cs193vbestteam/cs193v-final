@@ -41,11 +41,9 @@ async function render(readyCount: number, memberCount: number, decided = false) 
 }
 
 describe("group negotiation readiness", () => {
-  it("does not start with two ready members when a third is still chatting", async () => {
-    const button = await render(2, 3);
-    expect(button.disabled).toBe(true);
-    expect(container!.textContent).toContain("2 of 3 people ready");
-    await act(async () => button.click());
+  it("offers nothing to press with two ready members while a third is still chatting", async () => {
+    // The plan page says what is awaited; a button that cannot be pressed is not shown.
+    expect(await render(2, 3)).toBeNull();
     expect(runNegotiationAction).not.toHaveBeenCalled();
   });
 
@@ -59,10 +57,8 @@ describe("group negotiation readiness", () => {
     expect(runNegotiationAction).toHaveBeenCalledWith("event-1", "invite-1");
   });
 
-  it("keeps a one-person plan disabled even when that person is ready", async () => {
-    const button = await render(1, 1);
-    expect(button.disabled).toBe(true);
-    expect(container!.textContent).toContain("at least 2 people");
+  it("offers nothing to press on a one-person plan, even when that person is ready", async () => {
+    expect(await render(1, 1)).toBeNull();
   });
 
   it("disables reruns when a participant is no longer ready", async () => {

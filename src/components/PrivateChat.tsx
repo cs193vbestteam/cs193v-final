@@ -223,16 +223,10 @@ export function PrivateChat({
     >
       <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
         <h2 className="font-serif text-xl">Your private assistant</h2>
-        <span className="pill shrink-0">
-          <LockIcon />
-          <span className="sm:hidden">private</span>
-          <span className="hidden sm:inline">hidden from your group</span>
-        </span>
       </header>
 
-      {/* One line under the title: the step the person is on, and where what they type goes.
-          A tester could not tell where to look or what to do next (#152), and took "hidden from
-          your group" to mean nobody but the AI sees the chat (#159), so both are said here, first. */}
+      {/* One line under the title: the step the person is on. A tester could not tell where to look
+          or what to do next (#152). */}
       <div className="chat-guide">
         <p className="chat-step" aria-live="polite">
           <span aria-hidden className="chat-step-dots" data-step={step.n}>
@@ -246,21 +240,6 @@ export function PrivateChat({
           </span>
           {step.text}
         </p>
-        {/* The words are AI-CONSENT.md's: what leaves, who gets it, and for how long. */}
-        <details className="notice">
-          <summary>
-            <LockIcon />
-            Processed by Anthropic&apos;s Claude. Where your messages go
-          </summary>
-          <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
-            Your messages and meal preferences are sent to Anthropic&apos;s Claude. Anthropic does not use API chats for
-            training by default. Its standard retention policy is up to 30 days, with longer retention for flagged
-            content or legal requirements. Your group sees the plan, not your chat.{" "}
-            <a className="link link-small" href="/privacy" target="_blank" rel="noopener">
-              How your data is used<span className="sr-only"> (opens in a new tab)</span>
-            </a>
-          </p>
-        </details>
       </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col">
@@ -280,10 +259,7 @@ export function PrivateChat({
               <Orb size="clamp(6.5rem, 22vw, 9rem)" busy={pending} />
               <p className="chat-hello">{name ? `Hello, ${name}` : "Hello"}</p>
               <p className="chat-ask">I can help with your plan today.</p>
-              <p className="chat-fineprint">
-                Nobody else in the group sees this chat or your numbers. Settle and Anthropic&apos;s Claude process it
-                to answer you. What are you hoping for with this meal?
-              </p>
+              <p className="chat-fineprint">Private to you. Processed by Anthropic&apos;s Claude.</p>
             </div>
           ) : (
             messages.map((m, i) => (
@@ -417,6 +393,25 @@ export function PrivateChat({
           {MAX_MESSAGE_CHARS - text.length} characters left. Messages are short on purpose.
         </p>
       )}
+      {/* Who processes the chat, under the message box: a quiet title that opens. The greeting names
+          it too, before anything is typed. The words are AI-CONSENT.md's: what leaves, who gets it,
+          and for how long. */}
+      <div className="chat-foot">
+        <details className="notice">
+          <summary>
+            <LockIcon />
+            Processed by Anthropic&apos;s Claude. Where your messages go
+          </summary>
+          <p className="mt-1.5 text-xs leading-relaxed text-ink-3">
+            Your messages and meal preferences are sent to Anthropic&apos;s Claude. Anthropic does not use API chats for
+            training by default. Its standard retention policy is up to 30 days, with longer retention for flagged
+            content or legal requirements. Your group sees the plan, not your chat.{" "}
+            <a className="link link-small" href="/privacy" target="_blank" rel="noopener">
+              How your data is used<span className="sr-only"> (opens in a new tab)</span>
+            </a>
+          </p>
+        </details>
+      </div>
 
       {/* Under the message box: what is still missing, the way to finish, and what happens after. */}
       {!opening && (

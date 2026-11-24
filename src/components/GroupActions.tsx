@@ -27,6 +27,8 @@ export function NegotiateButton({
   const nothingNew = decided && everyoneDone && !canRerun;
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Until everyone is done there is nothing to press, and the card above says what is awaited.
+  if (!decided && !everyoneDone) return null;
   return (
     <div>
       <button
@@ -41,7 +43,6 @@ export function NegotiateButton({
       >
         {pending ? "Finding a plan…" : decided ? "Re-run with latest info" : "Find a plan"}
       </button>
-      {readyCount < 2 && <p className="mt-2 text-center text-xs text-ink-3">Needs at least 2 people marked done.</p>}
       {memberCount >= 2 && readyCount < memberCount && (
         <p className="mt-2 text-center text-xs text-ink-3">
           {readyCount} of {memberCount} people ready. Waiting for everyone to finish.

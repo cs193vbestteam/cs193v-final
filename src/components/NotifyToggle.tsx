@@ -81,12 +81,12 @@ export function NotifyToggle({ eventId }: { eventId: string }) {
           <span data-show={on || undefined}>You&apos;ll be notified</span>
         </span>
       </button>
-      <p className="mt-2 text-xs text-ink-3" role={note ? "alert" : undefined}>
-        {note ??
-          (on
-            ? "Keep this page open in a tab. It can be in the background."
-            : "Works while this page stays open in a tab.")}
-      </p>
+      {/* Said only once it matters: after they turn it on, or when the browser refuses. */}
+      {(note || on) && (
+        <p className="mt-2 text-xs text-ink-3" role={note ? "alert" : undefined}>
+          {note ?? "Keep this page open in a tab. It can be in the background."}
+        </p>
+      )}
     </div>
   );
 }

@@ -46,6 +46,7 @@ test("a member leaves a plan; the creator then deletes it for everyone", async (
 
   await test.step("a member can leave but not delete", async () => {
     await expect(member.getByRole("button", { name: "Delete this plan" })).toHaveCount(0);
+    await member.getByText("More", { exact: true }).click();
     await member.getByRole("button", { name: "Leave this plan" }).click();
     await expect(member.getByText("This cannot be undone.")).toBeVisible();
   });
@@ -67,6 +68,7 @@ test("a member leaves a plan; the creator then deletes it for everyone", async (
 
   await test.step("the creator deletes the plan and the link stops working", async () => {
     await expect(creator.getByRole("button", { name: "Leave this plan" })).toHaveCount(0);
+    await creator.getByText("More", { exact: true }).click();
     await creator.getByRole("button", { name: "Delete this plan" }).click();
     await creator.getByRole("button", { name: "Delete plan", exact: true }).click();
     await expect(creator).toHaveURL(/\/$/);
@@ -83,6 +85,7 @@ test("a creator leaves and the plan passes to the next member", async ({ browser
 
   await test.step("alone, the creator can only delete", async () => {
     await expect(creator.getByRole("button", { name: "Leave this plan" })).toHaveCount(0);
+    await creator.getByText("More", { exact: true }).click();
     await expect(creator.getByRole("button", { name: "Delete this plan" })).toBeVisible();
   });
 
@@ -93,6 +96,7 @@ test("a creator leaves and the plan passes to the next member", async ({ browser
 
   await test.step("with a second member, the creator can leave and is told who takes over", async () => {
     await creator.reload();
+    await creator.getByText("More", { exact: true }).click();
     await creator.getByRole("button", { name: "Leave this plan" }).click();
     await expect(creator.getByText(`passes to ${hal.name}`)).toBeVisible();
     await creator.getByRole("button", { name: "Leave plan", exact: true }).click();
@@ -104,6 +108,7 @@ test("a creator leaves and the plan passes to the next member", async ({ browser
     await expect(member.getByRole("heading", { name: "Handover lunch" })).toBeVisible();
     await expect(member.getByText("1 joined · limit 12")).toBeVisible();
     await expect(member.getByText(gia.name)).toHaveCount(0);
+    await member.getByText("More", { exact: true }).click();
     await expect(member.getByRole("button", { name: "Delete this plan" })).toBeVisible();
   });
 });

@@ -112,7 +112,7 @@ export function PlanCode({ code }: { code: string }) {
           ? "Copied"
           : status === "failed"
             ? `Could not copy. The code is ${code.toUpperCase()}`
-            : "Tap the code to copy it"}
+            : ""}
       </span>
     </span>
   );

@@ -202,12 +202,6 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         <div className="mt-2">
           <PlanCode code={code} />
         </div>
-        <p className="mt-2 text-xs text-ink-3">
-          Friends can join with this code and a name, no account needed, at{" "}
-          <a className="link link-small" href={`/guest?code=${code}`}>
-            {origin.replace(/^https?:\/\//, "")}/guest
-          </a>
-        </p>
       </div>
     </>
   );
@@ -230,13 +224,11 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           <h1 className={`display mt-2 break-words ${result ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl"}`}>
             {event.title}
           </h1>
-          {sample && (
+          {/* Sample places are named in the line above. Only a search that failed gets a sentence:
+              the person asked for real places and is not getting them. */}
+          {sample && event.location && (
             <p className="mt-2 max-w-xl text-sm text-ink-2">
-              <span className="pill pill-amber mr-2">Sample data</span>
-              {event.location
-                ? `Real places near ${event.location} could not be loaded, so this plan`
-                : "This plan"}{" "}
-              picks from {event.poolSize} made-up restaurants. They are not real places.
+              Real places near {event.location} could not be loaded, so this plan uses sample places.
             </p>
           )}
         </div>
@@ -297,12 +289,11 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         </div>
         <aside className="space-y-5">
           <section id="group" data-arrive className="card scroll-mt-24">
-            <div className="flex items-baseline justify-between">
-              <h2 className="font-serif text-xl">The group</h2>
-              <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
-                {members.length} joined · limit {event.maxMembers}
-              </span>
-            </div>
+            <h2 className="font-serif text-xl">The group</h2>
+            {/* The list below shows who is in; the count is read out for those who cannot glance at it. */}
+            <p className="sr-only">
+              {members.length} joined · limit {event.maxMembers}
+            </p>
             <ul className="mt-3 divide-y divide-line">
               {members.map((m) => (
                 <li key={m.userId} className="flex items-center justify-between gap-3 py-2.5 text-sm">
@@ -339,37 +330,43 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
                 <ShareMessage label="Nudge the group" message={nudge} />
               </div>
             )}
-            {event.creatorId === user.id && (
-              <div className="mt-4 border-t border-line pt-3.5">
-                <CreatorControls
-                  eventId={event.id}
-                  inviteCode={code}
-                  others={members
-                    .filter((m) => m.userId !== user.id)
-                    .map((m) => ({ userId: m.userId, displayName: m.displayName }))}
-                  joined={members.length}
-                  maxMembers={event.maxMembers}
-                  minSize={MIN_PLAN_SIZE}
-                  maxSize={MAX_PLAN_SIZE}
-                />
+            {/* What is rarely needed sits behind one word: the creator's controls, leaving, deleting. */}
+            <details className="more mt-4 border-t border-line pt-3">
+              <summary>More</summary>
+              <div className="mt-3 space-y-3">
+                {event.creatorId === user.id && (
+                  <div>
+                    <CreatorControls
+                      eventId={event.id}
+                      inviteCode={code}
+                      others={members
+                        .filter((m) => m.userId !== user.id)
+                        .map((m) => ({ userId: m.userId, displayName: m.displayName }))}
+                      joined={members.length}
+                      maxMembers={event.maxMembers}
+                      minSize={MIN_PLAN_SIZE}
+                      maxSize={MAX_PLAN_SIZE}
+                    />
+                  </div>
+                )}
+                <div>
+                  <PlanDangerZone
+                    eventId={event.id}
+                    inviteCode={code}
+                    isCreator={event.creatorId === user.id}
+                    title={event.title}
+                    nextOwner={members.find((m) => m.userId !== user.id)?.displayName}
+                  />
+                </div>
               </div>
-            )}
-            <div className="mt-4 border-t border-line pt-3.5">
-              <PlanDangerZone
-                eventId={event.id}
-                inviteCode={code}
-                isCreator={event.creatorId === user.id}
-                title={event.title}
-                nextOwner={members.find((m) => m.userId !== user.id)?.displayName}
-              />
-            </div>
+            </details>
           </section>
 
           {!result && (
             <section id="plan" data-arrive className="card scroll-mt-24">
               <h2 className="font-serif text-xl">The plan</h2>
               <p className="mt-3 rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
-                No plan yet. As soon as everyone&apos;s done, the plan is worked out. Nobody has to press anything.
+                {members.length < 2 ? "Invite at least one more person." : "Waiting for everyone to finish."}
               </p>
               <div className="mt-4 text-center">
                 <NotifyToggle eventId={event.id} />
