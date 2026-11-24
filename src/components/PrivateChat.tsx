@@ -256,7 +256,7 @@ export function PrivateChat({
         >
           {opening ? (
             <div className="chat-welcome">
-              <Orb size="clamp(6.5rem, 22vw, 9rem)" busy={pending} />
+              <Orb size="clamp(4.5rem, 14vw, 6rem)" busy={pending} />
               <p className="chat-hello">{name ? `Hello, ${name}` : "Hello"}</p>
               <p className="chat-ask">I can help with your plan today.</p>
               <p className="chat-fineprint">Private to you. Processed by Anthropic&apos;s Claude.</p>
