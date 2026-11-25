@@ -143,14 +143,6 @@ export function PrivateChat({
         ? shown.flatMap((s) => QUICK[s.topic].slice(0, 2))
         : progress.filter((s) => !s.done).map((s) => QUICK[s.topic][0]);
 
-  // The one thing to do now, in three steps: say what works, press done, get the plan.
-  const step = ready
-    ? // The bar under the message box says what the group is waiting for; this line only says what is left to do.
-      { n: 3, text: next?.link ? `Next: ${next.link.toLowerCase()}.` : "Nothing more for you to do for now." }
-    : missing.length === 0 && !welcome
-      ? { n: 2, text: "That is enough. Press \u201cI\u2019m done\u201d when you are." }
-      : { n: 1, text: "Tell your assistant what works for you." };
-
   // The glass is cut to each element's size, so it is recut when messages arrive or the greeting goes.
   useLiquidGlass(chat, `${messages.length}:${welcome}:${pending}`);
 
@@ -224,23 +216,6 @@ export function PrivateChat({
       <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3.5">
         <h2 className="font-serif text-xl">Your private assistant</h2>
       </header>
-
-      {/* One line under the title: the step the person is on. A tester could not tell where to look
-          or what to do next (#152). */}
-      <div className="chat-guide">
-        <p className="chat-step" aria-live="polite">
-          <span aria-hidden className="chat-step-dots" data-step={step.n}>
-            <i />
-            <i />
-            <i />
-          </span>
-          <span className="sr-only">Step {step.n} of 3: </span>
-          <span className="chat-step-n" aria-hidden>
-            {step.n}/3
-          </span>
-          {step.text}
-        </p>
-      </div>
 
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div
