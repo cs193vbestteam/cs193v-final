@@ -115,13 +115,20 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expect(blake.getByRole("button", { name: "Nudge the group" })).toHaveCount(0);
   });
 
-  await test.step("the last person finishes and the plan is found without anyone pressing a button", async () => {
+  await test.step("the last person finishes; nothing is decided until the creator finds the plan", async () => {
     await tellAssistant(blake, BLAKE);
-    await expect(blake.getByText("Everyone can come")).toBeVisible();
+    // Blake is not the creator: no button, and told who the group is waiting for.
+    await expect(blake.getByText(/Waiting for .+ to find the plan/).first()).toBeVisible();
+    await expect(blake.getByRole("button", { name: "Find a plan" })).toHaveCount(0);
+    await expect(blake.getByText("Everyone can come")).toHaveCount(0);
     await alex.reload();
     await expectNoSecrets(alex, BLAKE);
     await expect(alex.getByText("2 of 2 ready")).toBeVisible();
+    await expect(alex.getByText("Everyone can come")).toHaveCount(0);
+    await alex.getByRole("button", { name: "Find a plan" }).click();
     await expect(alex.getByText("Everyone can come")).toBeVisible();
+    await blake.reload();
+    await expect(blake.getByText("Everyone can come")).toBeVisible();
     // The plan is the first thing on the page, above the conversation, and the done note points to it.
     for (const page of [alex, blake]) {
       const plan = await page.getByRole("heading", { name: "The plan" }).boundingBox();

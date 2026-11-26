@@ -113,7 +113,7 @@ describe("who pays", () => {
     await setReady(e.id, a.id, true);
     await setReady(e.id, b.id, true);
     const fetchMock = fakeAnthropic();
-    const result = await runNegotiation(e.id, b.id);
+    const result = await runNegotiation(e.id, a.id);
     expect(result.engine).toBe("optimizer");
     expect(fetchMock.mock.calls).toHaveLength(0);
     expect(await spentThisMonth(a.id)).toBe(0);

@@ -130,13 +130,13 @@ describe("a chat message", () => {
 });
 
 describe("finding the plan", () => {
-  it("runs once when two members press at the same moment; the other is told it is under way", async () => {
+  it("runs once when it is started twice at the same moment; the second is told it is under way", async () => {
     const { a, b, event } = await plan();
     for (const u of [a, b]) {
       await sendMessage(event.id, u.id, ANSWER);
       await setReady(event.id, u.id, true);
     }
-    const both = await Promise.allSettled([runNegotiation(event.id, a.id), runNegotiation(event.id, b.id)]);
+    const both = await Promise.allSettled([runNegotiation(event.id, a.id), runNegotiation(event.id, a.id)]);
     const ok = both.filter((r) => r.status === "fulfilled");
     const refused = both.filter((r) => r.status === "rejected") as PromiseRejectedResult[];
     expect(ok).toHaveLength(1);

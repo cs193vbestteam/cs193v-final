@@ -10,7 +10,8 @@ import {
   joinEvent,
   listMembers,
   listMyEvents,
-  negotiateWhenAllReady,
+  CREATOR_STARTS,
+  negotiateWhenDue,
   runNegotiation,
   sendMessage,
   setReady,
@@ -162,35 +163,64 @@ describe("chat → constraints → negotiation", () => {
     await expect(runNegotiation(event.id, a.id)).rejects.toThrow(/2 people/);
   });
 
-  it("finds the plan by itself once the last person is done, and never re-runs a decided plan", async () => {
+  const LATER = 31 * 60_000;
+  async function timed() {
+    const a = await makeUser("Alice");
+    const b = await makeUser("Bob");
+    const c = await makeUser("Cara");
+    const event = await createEvent(a.id, "Timed", null, undefined, undefined, undefined, 30);
+    await joinEvent(event.inviteCode, b.id);
+    await joinEvent(event.inviteCode, c.id);
+    return { a, b, c, event };
+  }
+
+  it("does not find a plan by itself when the last person is done: the creator starts it", async () => {
     const { a, b, event } = await setup();
-    await sendMessage(event.id, a.id, "Saturday night only, under $40, no spicy, max 20 minutes away");
-    await setReady(event.id, a.id, true);
-    // One of two done: nothing happens yet.
-    expect(await negotiateWhenAllReady(event.id, a.id)).toBe(false);
+    expect(event.decideAt).toBeNull();
+    for (const u of [a, b]) {
+      await sendMessage(event.id, u.id, "Saturday dinner, $40, 20 minutes, no restrictions");
+      await setReady(event.id, u.id, true);
+    }
+    expect(await negotiateWhenDue(event.id, b.id, Date.now() + 365 * 24 * 60 * 60_000)).toBe(false);
     expect(await getResult(event.id, a.id)).toBeNull();
-
-    await sendMessage(event.id, b.id, "free all weekend, $35 max, 15 minutes, vegetarian");
-    await setReady(event.id, b.id, true);
-    expect(await negotiateWhenAllReady(event.id, b.id)).toBe(true);
-    const first = await getResult(event.id, a.id);
-    expect(first?.status).toBe("agreed");
-
-    // Marking done again leaves the decided plan alone: a re-run is always an explicit choice.
-    await setReady(event.id, b.id, false);
-    await setReady(event.id, b.id, true);
-    expect(await negotiateWhenAllReady(event.id, b.id)).toBe(false);
-    expect(await getResult(event.id, a.id)).toEqual(first);
+    // A member cannot start the first plan; the creator can.
+    await expect(runNegotiation(event.id, b.id)).rejects.toThrow(CREATOR_STARTS);
+    expect((await runNegotiation(event.id, a.id)).status).toBe("agreed");
   });
 
-  it("does not start a plan for one person, or for someone outside it", async () => {
-    const a = await makeUser("Alice");
+  it("a timed plan works itself out when the time is up, from the people who are done", async () => {
+    const { a, b, c, event } = await timed();
+    expect(event.decideAt).toBeGreaterThan(Date.now());
+    for (const u of [a, b]) {
+      await sendMessage(event.id, u.id, "Saturday dinner, $40, 20 minutes, no restrictions");
+      await setReady(event.id, u.id, true);
+    }
+    // Before the time: nothing, however many are done.
+    expect(await negotiateWhenDue(event.id, a.id)).toBe(false);
+    expect(await getResult(event.id, a.id)).toBeNull();
+    // After it: decided for the two who are done; Cara, who is not, is left out.
+    expect(await negotiateWhenDue(event.id, c.id, Date.now() + LATER)).toBe(true);
+    const first = await getResult(event.id, a.id);
+    expect(first).toMatchObject({ status: "agreed", participants: 2 });
+    // It never re-runs a decided plan.
+    expect(await negotiateWhenDue(event.id, a.id, Date.now() + LATER)).toBe(false);
+    expect(await getResult(event.id, a.id)).toEqual(first);
+    // When Cara finishes, anyone can run it again and it counts all three.
+    await sendMessage(event.id, c.id, "Saturday dinner, $40, 20 minutes, no restrictions");
+    await setReady(event.id, c.id, true);
+    expect(await runNegotiation(event.id, c.id)).toMatchObject({ participants: 3 });
+  });
+
+  it("a timed plan waits for a second person, and does not run for someone outside it", async () => {
+    const { a, b, event } = await timed();
     const eve = await makeUser("Eve");
-    const event = await createEvent(a.id, "Solo");
     await sendMessage(event.id, a.id, "Saturday dinner, $40, 20 minutes, no restrictions");
     await setReady(event.id, a.id, true);
-    expect(await negotiateWhenAllReady(event.id, a.id)).toBe(false);
-    await expect(negotiateWhenAllReady(event.id, eve.id)).rejects.toThrow(AccessError);
+    expect(await negotiateWhenDue(event.id, a.id, Date.now() + LATER)).toBe(false);
+    await expect(negotiateWhenDue(event.id, eve.id, Date.now() + LATER)).rejects.toThrow(AccessError);
+    await sendMessage(event.id, b.id, "Saturday dinner, $40, 20 minutes, no restrictions");
+    await setReady(event.id, b.id, true);
+    expect(await negotiateWhenDue(event.id, b.id, Date.now() + LATER)).toBe(true);
   });
 
   it("end to end: two people agree on a plan; result has no private data", async () => {
@@ -200,7 +230,7 @@ describe("chat → constraints → negotiation", () => {
     await sendMessage(event.id, b.id, "free all day, $35 max, 15 minutes, vegetarian");
     await setReady(event.id, b.id, true);
 
-    const result = await runNegotiation(event.id, b.id);
+    const result = await runNegotiation(event.id, a.id);
     expect(result.status).toBe("agreed");
     // The one person with a limit on time said the evening.
     expect(["17:00", "18:00", "19:00", "20:00"]).toContain(result.proposal?.slot);
@@ -292,7 +322,10 @@ describe("candidate pool per plan", () => {
 
 describe("the automatic run is claimed by one caller", () => {
   async function allReady() {
-    const { a, b, event } = await setup();
+    const a = await makeUser("Alice");
+    const b = await makeUser("Bob");
+    const event = await createEvent(a.id, "Timed", null, undefined, undefined, undefined, 30);
+    await joinEvent(event.inviteCode, b.id);
     for (const u of [a, b]) {
       await sendMessage(event.id, u.id, "Saturday dinner, $40, 20 minutes, no restrictions");
       await setReady(event.id, u.id, true);
@@ -300,9 +333,12 @@ describe("the automatic run is claimed by one caller", () => {
     return { a, b, event };
   }
 
-  it("two people finishing in the same instant start one negotiation, not two", async () => {
+  it("two pages noticing the time in the same instant start one run, not two", async () => {
     const { a, b, event } = await allReady();
-    const ran = await Promise.all([negotiateWhenAllReady(event.id, a.id), negotiateWhenAllReady(event.id, b.id)]);
+    const ran = await Promise.all([
+      negotiateWhenDue(event.id, a.id, Date.now() + 31 * 60_000),
+      negotiateWhenDue(event.id, b.id, Date.now() + 31 * 60_000),
+    ]);
     expect(ran.filter(Boolean)).toHaveLength(1);
     expect((await getResult(event.id, a.id))?.status).toBe("agreed");
   });
@@ -311,9 +347,9 @@ describe("the automatic run is claimed by one caller", () => {
     const { a, b, event } = await allReady();
     const pool = await import("@/lib/pool");
     const broken = vi.spyOn(pool, "poolForEvent").mockRejectedValueOnce(new Error("pool unavailable"));
-    await expect(negotiateWhenAllReady(event.id, a.id)).rejects.toThrow("pool unavailable");
+    await expect(negotiateWhenDue(event.id, a.id, Date.now() + 31 * 60_000)).rejects.toThrow("pool unavailable");
     expect(await getResult(event.id, a.id)).toBeNull();
     broken.mockRestore();
-    expect(await negotiateWhenAllReady(event.id, b.id)).toBe(true);
+    expect(await negotiateWhenDue(event.id, b.id, Date.now() + 31 * 60_000)).toBe(true);
   });
 });

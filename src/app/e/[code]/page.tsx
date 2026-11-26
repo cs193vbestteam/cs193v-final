@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { PlanDangerZone } from "@/components/DangerActions";
 import { AutoRefresh, CopyInvite, NegotiateButton, ShareMessage } from "@/components/GroupActions";
+import { Countdown } from "@/components/Countdown";
 import { CreatorControls } from "@/components/CreatorControls";
 import { PlanCode } from "@/components/CodeSlots";
 import { DecryptedText } from "@/components/Effects";
@@ -154,6 +155,8 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
 
   // For someone who is done: whether anything is left for them, and what the group is waiting for (#153).
   const waiting = members.length - readyCount;
+  const isCreator = event.creatorId === user.id;
+  const creatorName = members.find((m) => m.userId === event.creatorId)?.displayName ?? "the organizer";
   const others = `${waiting} other ${waiting === 1 ? "person" : "people"}`;
   const next = !me.ready
     ? null
@@ -163,19 +166,19 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         : { text: "The plan is ready.", href: "#plan", link: "See the plan" }
       : members.length < 2
         ? {
-            text: "Now invite the others. The plan is worked out as soon as everyone is done.",
+            text: "Now invite the others.",
             href: "#group",
             link: "Invite people",
           }
         : waiting > 0
           ? {
-              text: result
-                ? `Waiting for ${others} to finish.`
-                : `Waiting for ${others} to finish. The plan will appear on this page by itself.`,
+              text: `Waiting for ${others} to finish.`,
             }
           : result
             ? { text: "Everyone is done. The plan can be updated.", href: "#plan", link: "Re-run it" }
-            : { text: "Everyone is done.", href: "#plan", link: "Find a plan" };
+            : isCreator
+              ? { text: "Everyone is done.", href: "#plan", link: "Find a plan" }
+              : { text: `Waiting for ${creatorName} to find the plan.` };
 
   const share = shareResult && <ShareMessage label="Share with the group" message={shareResult} primary />;
   const rerun = (
@@ -187,6 +190,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       decided={!!result}
       noPlan={result?.status === "no_deal"}
       canRerun={rerunnable}
+      isCreator={isCreator}
     />
   );
   // A settled plan needs no more invitations on show; they stay one click away.
@@ -358,7 +362,18 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             <section id="plan" data-arrive className="card scroll-mt-24">
               <h2 className="font-serif text-xl">The plan</h2>
               <p className="mt-3 rounded-xl border border-dashed border-line-strong px-4 py-5 text-center text-sm text-ink-3">
-                {members.length < 2 ? "Invite at least one more person." : "Waiting for everyone to finish."}
+                {members.length < 2
+                  ? "Invite at least one more person."
+                  : readyCount < members.length
+                    ? "Waiting for everyone to finish."
+                    : isCreator
+                      ? "Everyone is done."
+                      : `Waiting for ${creatorName} to find the plan.`}
+                {event.decideAt !== null && (
+                  <span className="mt-1 block font-mono text-xs uppercase tracking-wider">
+                    <Countdown until={event.decideAt} />
+                  </span>
+                )}
               </p>
               <div className="mt-4 text-center">
                 <NotifyToggle eventId={event.id} />

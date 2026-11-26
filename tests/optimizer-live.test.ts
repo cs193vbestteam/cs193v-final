@@ -10,7 +10,6 @@ import {
   getResult,
   joinEvent,
   listMyEvents,
-  negotiateWhenAllReady,
   runNegotiation,
   sendMessage,
   setReady,
@@ -46,10 +45,10 @@ const card = (result: StoredResult) => renderToStaticMarkup(createElement(Result
 const EASY = "free all day, 30 minutes, no restrictions, up to $60";
 
 describe("a plan made through the app", () => {
-  it("is decided by the optimizer as soon as the last person is done", async () => {
+  it("is decided by the optimizer when the creator starts it", async () => {
     const { event, users } = await plan([EASY, EASY, EASY], false);
     for (const u of users) await setReady(event.id, u.id, true);
-    expect(await negotiateWhenAllReady(event.id, users[2].id)).toBe(true);
+    await runNegotiation(event.id, users[0].id);
     const result = (await getResult(event.id, users[0].id))!;
     expect(result).toMatchObject({ engine: "optimizer", status: "agreed", cannotCome: 0, participants: 3 });
     // Sixteen seed places; every open place-and-time was scored.
