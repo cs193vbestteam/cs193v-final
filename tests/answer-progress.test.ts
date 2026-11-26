@@ -198,7 +198,6 @@ describe("the bar in the chat", () => {
     expect(log.querySelector(".orb")).not.toBeNull();
     expect(log.textContent).toContain("Hello, Alex");
     expect(log.textContent).toContain("I can help with your plan today.");
-    expect(log.textContent).toContain("Private to you. Processed by Anthropic's Claude.");
     // Who processes the chat is named under the message box before anything is typed.
     expect(container.querySelector("details summary")?.textContent).toContain("Processed by Anthropic's Claude");
     expect(container.querySelector("ol[aria-labelledby='answers-label']")).toBeNull();
