@@ -157,11 +157,19 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await alex.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     await alex.evaluate(() => Reflect.deleteProperty(Navigator.prototype, "share"));
     await alex.getByRole("button", { name: "Share with the group" }).click();
+    // The plan opens as a ticket to copy or save as a picture; it names the place and nobody's limits.
+    const ticket = alex.getByRole("img", { name: /Fri|Sat|Sun|Mon|Tue|Wed|Thu/ });
+    await expect(ticket).toBeVisible();
+    for (const secret of [...ALEX.secrets, ...BLAKE.secrets])
+      expect(await ticket.getAttribute("aria-label")).not.toContain(secret);
+    expect(await ticket.evaluate((c: HTMLCanvasElement) => c.toDataURL().length)).toBeGreaterThan(20_000);
+    await alex.getByRole("button", { name: "Copy message" }).click();
     await expect(alex.getByText("Message copied")).toBeVisible();
     const copied = await alex.evaluate(() => navigator.clipboard.readText());
     expect(copied).toContain("Weekend dinner is settled:");
     expect(copied).toContain(planPath);
     for (const secret of [...ALEX.secrets, ...BLAKE.secrets]) expect(copied).not.toContain(secret);
+    await alex.getByRole("dialog", { name: "Share the plan" }).getByRole("button", { name: "Close" }).click();
   });
 
   await test.step("with nothing changed, the plan cannot be run again", async () => {

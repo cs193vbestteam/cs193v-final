@@ -27,7 +27,9 @@ import {
 } from "@/lib/events";
 import { avatarFor, groupAvatars } from "@/lib/avatar";
 import { PlanAvatar } from "@/components/HeaderAvatar";
-import { formatWhen } from "@/lib/plan-date";
+import { formatPlanDate, formatWhen } from "@/lib/plan-date";
+import { clockLabel } from "@/lib/constraints";
+import { ShareTicket } from "@/components/ShareTicket";
 import { getRestaurant } from "@/lib/restaurants";
 import { scenarioFor } from "@/lib/scenario";
 import { nudgeMessage, resultMessage } from "@/lib/share";
@@ -172,7 +174,20 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
               ? { text: "Everyone is done.", href: "#plan", link: "Find a plan" }
               : { text: `Waiting for ${creatorName} to find the plan.` };
 
-  const share = shareResult && <ShareMessage label="Share with the group" message={shareResult} primary />;
+  // What the ticket shows is what the plan card shows to everyone: nothing of anyone's own answers.
+  const share = shareResult && result?.proposal && chosen && (
+    <ShareTicket
+      message={shareResult}
+      ticket={{
+        title: event.title,
+        place: chosen.name,
+        date: event.date ? formatPlanDate(event.date) : "",
+        time: clockLabel(result.proposal.slot),
+        cost: `~$${chosen.pricePerPerson}/person`,
+        kind: ("kind" in chosen && chosen.kind) || chosen.cuisine || "restaurant",
+      }}
+    />
+  );
   const rerun = (
     <NegotiateButton
       eventId={event.id}
