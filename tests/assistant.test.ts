@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyAssistantOutput,
+  isShrug,
   assistantTurn,
   expandTimes,
   matchRestaurant,
@@ -860,6 +861,47 @@ describe('"I don\'t mind"', () => {
     const r = apply(before, out({}, { dontMind: ["time", "budget", "everything"] }));
     expect(r.state.prefs.time).toEqual(before.prefs.time);
     expect(r.state.chat.answered.sort()).toEqual(["budget", "time"]);
+  });
+});
+
+describe('a message that is only "I don\'t care"', () => {
+  it("settles every optional question still open, when the model does not say so", () => {
+    // Time and diet are in; the model replies "you're all set" and lists nothing.
+    const before = state({ budget: { max: 50, strength: "mild" } }, { answered: ["time", "diet", "budget"] });
+    for (const said of [
+      "i dont care",
+      "I don't care",
+      "i don really care",
+      "dont mind",
+      "whatever",
+      "anything is fine",
+      "doesn't matter",
+      "no preference",
+      "up to you",
+    ]) {
+      const r = apply(before, out({}), said);
+      expect([...r.state.chat.answered].sort(), said).toEqual(["budget", "cuisine", "diet", "time", "travel"]);
+      expect(r.state.prefs).toEqual(before.prefs);
+    }
+  });
+
+  it("does nothing while a required question is still open", () => {
+    const r = apply(state({}, { answered: ["time"], lastAsked: "diet" }), out({}), "i dont care");
+    expect(r.state.chat.answered).toEqual(["time"]);
+  });
+
+  it("is not read out of a longer message", () => {
+    for (const said of [
+      "I don't care about price but no seafood",
+      "anything but sushi",
+      "whatever is closest to campus",
+      "thai",
+    ]) {
+      expect(isShrug(said), said).toBe(false);
+    }
+    const before = state({}, { answered: ["time", "diet"] });
+    const after = apply(before, out({}), "I don't care about price but no seafood").state.chat.answered;
+    expect([...after].sort()).toEqual(["diet", "time"]);
   });
 });
 
