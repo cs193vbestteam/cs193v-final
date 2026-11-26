@@ -60,7 +60,7 @@ export function ResultCard({
   const byOptimizer = result.engine === "optimizer";
   const canCome = result.participants - (result.cannotCome ?? 0);
   const headline = stale
-    ? "Out of date"
+    ? "Best so far"
     : result.status === "agreed"
       ? byOptimizer
         ? "Everyone can come"
@@ -140,8 +140,8 @@ export function ResultCard({
             <span aria-hidden className="plan-hero-dot" />
             {headline}
             {stale && (
-              // Why it is out of date, for whoever wants to know; the person who joined is told it is them.
-              <InfoTip label="Why this is out of date">
+              // Why it is only the best so far, for whoever wants to know; the person who joined is told it is them.
+              <InfoTip label="Why this may change">
                 {stale === "joined"
                   ? lateJoiner
                     ? "You joined after this was decided, so it does not count you yet. Tell your assistant what works for you; it is run again once everyone is done."

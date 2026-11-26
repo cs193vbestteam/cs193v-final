@@ -185,9 +185,9 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expect(blake.getByText("1 of 2 ready")).toBeVisible();
     for (const page of [blake, alex]) {
       await page.reload();
-      await expect(page.getByText("Out of date").first()).toBeVisible();
+      await expect(page.getByText("Best so far").first()).toBeVisible();
       // The reason sits behind the "i" beside the verdict.
-      await page.getByRole("button", { name: "Why this is out of date" }).first().hover();
+      await page.getByRole("button", { name: "Why this may change" }).first().hover();
       await expect(page.getByText(/answers have changed since this was decided/).first()).toBeVisible();
       // The plan is still there to read, but it no longer says it works for everyone, and it is not offered for sharing.
       await expect(page.getByText("Everyone can come")).toHaveCount(0);
@@ -200,10 +200,10 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await blake.getByRole("button", { name: "I'm done" }).click();
     await expect(blake.getByText("2 of 2 ready")).toBeVisible();
     // Being done again does not make the old plan current: it stays out of date until the re-run.
-    await expect(blake.getByText(/Everyone is done, but the plan is out of date/)).toBeVisible();
+    await expect(blake.getByText(/Everyone is done. The plan can be updated/)).toBeVisible();
     await expect(blake.getByText("Everyone can come")).toHaveCount(0);
     await blake.getByRole("button", { name: "Re-run with latest info" }).click();
-    await expect(blake.getByText("Out of date")).toHaveCount(0);
+    await expect(blake.getByText("Best so far")).toHaveCount(0);
     await expect(blake.getByRole("button", { name: "Share with the group" })).toBeVisible();
   });
 
@@ -223,9 +223,9 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expect(casey.getByText("3 joined · limit 12")).toBeVisible();
     for (const page of [casey, alex]) {
       await page.reload();
-      await expect(page.getByText("Out of date").first()).toBeVisible();
+      await expect(page.getByText("Best so far").first()).toBeVisible();
       // The person who joined is told it is them; everyone else that someone did.
-      await page.getByRole("button", { name: "Why this is out of date" }).first().hover();
+      await page.getByRole("button", { name: "Why this may change" }).first().hover();
       await expect(
         page
           .getByText(page === casey ? /You joined after this was decided/ : /Someone joined after this was decided/)
