@@ -1179,6 +1179,32 @@ describe("when the model's answer is unusable, the safety net takes the turn", (
   });
 });
 
+describe("a reply in which the model asks nothing", () => {
+  const done = { answered: ["time", "diet"] as const };
+  const say = (text: string, from: MemberState) => assistantTurn([{ role: "user", content: text }], from, RESTAURANTS);
+  it("is followed by one question about the optional things still open, once", async () => {
+    stubModel(() => ({ reply: "Got it, up to $50 per person.", asks: "none", update: { budget: { max: 50 } } }));
+    const first = await say(
+      "up to $50",
+      state({}, { answered: [...done.answered], asked: ["time", "diet", "budget"] }),
+    );
+    expect(first.reply).toBe(
+      "Got it, up to $50 per person. What about how far you'd travel or food you're in the mood for?",
+    );
+    expect(first.state.chat.asked).toEqual(expect.arrayContaining(["travel", "cuisine"]));
+    // Asked once: left unanswered, they are not asked again. The person is told how to finish.
+    stubModel(() => ({ reply: "Sure.", asks: "none", update: {} }));
+    const second = await say("ok", first.state);
+    expect(second.reply).toBe("Sure. You can add anything else, or press \"I'm done\" when you're finished.");
+  });
+
+  it("is left alone when it already says how to finish", async () => {
+    stubModel(() => ({ reply: 'All set. Press "I\'m done" when you are.', asks: "none", update: {} }));
+    const turn = await say("ok", state({}, { answered: [...done.answered] }));
+    expect(turn.reply).toBe('All set. Press "I\'m done" when you are.');
+  });
+});
+
 describe("the line about the private number", () => {
   const ask = (asks: string, reply: string) => {
     stubModel(() => ({ reply, asks, update: {} }));
@@ -1197,7 +1223,7 @@ describe("the line about the private number", () => {
 
   it("is not added to a question about anything else", async () => {
     expect((await ask("diet", "Is there anything you cannot eat?")).reply).toBe("Is there anything you cannot eat?");
-    expect((await ask("none", "Got it.")).reply).toBe("Got it.");
+    expect((await ask("none", "Got it.")).reply).toMatch(/^Got it\. (?!.*private)/);
   });
 });
 
@@ -1360,12 +1386,13 @@ describe("a travel limit needs a starting point", () => {
     stubModel(() => ({ reply: "A 10 minute walk at most, noted.", asks: "none", update: walk }));
     const first = await say("no more than a 10 minute walk");
     expect(first.state.prefs.travel).toEqual({ maxMin: 10, mode: "walk", strength: "must" });
-    expect(first.reply).toBe(`A 10 minute walk at most, noted.${startNote("Palo Alto, CA")}`);
+    expect(first.reply.startsWith(`A 10 minute walk at most, noted.${startNote("Palo Alto, CA")}`)).toBe(true);
     expect(first.state.chat.startTold).toBe(true);
     // Once is enough: the next reply is left alone.
     stubModel(() => ({ reply: "Dinner, noted.", asks: "none", update: { time: { preferred: [{ meal: "dinner" }] } } }));
     const second = await say("dinner would be nice", first.state);
-    expect(second.reply).toBe("Dinner, noted.");
+    // Nothing about the start point again; only the next question, which the model did not ask.
+    expect(second.reply).toBe("Dinner, noted. Is there anything you can't eat?");
   });
 
   it("leaves the reply alone when the model asked where they start, and reads the answer as about travel", async () => {
@@ -1382,7 +1409,7 @@ describe("a travel limit needs a starting point", () => {
       "measuring",
     );
     stubModel(() => ({ reply: "Dinner, noted.", asks: "none", update: { time: { preferred: [{ meal: "dinner" }] } } }));
-    expect((await say("dinner would be nice")).reply).toBe("Dinner, noted.");
+    expect((await say("dinner would be nice")).reply).toBe("Dinner, noted. Is there anything you can't eat?");
   });
 
   it("keeps the way they travel until there is a limit to attach it to, and drops one it does not know", async () => {
@@ -1390,7 +1417,7 @@ describe("a travel limit needs a starting point", () => {
     const first = await say("I'll bike over");
     expect(first.state.prefs.travel).toBeUndefined();
     expect(first.state.travelMode).toBe("bike");
-    expect(first.reply).toBe("Biking, noted.");
+    expect(first.reply).toBe("Biking, noted. What time on the day works for you?");
     stubModel(() => ({ reply: "15 minutes at most.", asks: "none", update: { travel: { maxMin: 15 } } }));
     const second = await say("15 minutes at most", first.state);
     expect(second.state.prefs.travel).toMatchObject({ maxMin: 15, mode: "bike" });
@@ -1416,7 +1443,7 @@ describe("a travel limit needs a starting point", () => {
       update: { time: { only: [{ from: "19:00", to: "19:00" }] } },
     }));
     const seven = await say("7", asked);
-    expect(seven.reply).toBe("7 PM, got it.");
+    expect(seven.reply).toBe("7 PM, got it. Is there anything you can't eat?");
     expect(seven.state.prefs.time).toBeDefined();
     stubModel(() => ({ reply: "$20 a person, got it.", asks: "none", update: { budget: { ideal: 20 } } }));
     // With a unit it is not unclear.
@@ -1434,7 +1461,7 @@ describe("a travel limit needs a starting point", () => {
     );
     // Said when it changes, not on every message after.
     stubModel(() => ({ reply: "Dinner, noted.", asks: "none", update: { time: { preferred: [{ meal: "dinner" }] } } }));
-    expect((await say("dinner would be nice", turn.state)).reply).toBe("Dinner, noted.");
+    expect((await say("dinner would be nice", turn.state)).reply).toMatch(/^Dinner, noted\. /);
     // A limit the nearest place meets is not remarked on.
     stubModel(() => ({ reply: "Ok.", asks: "none", update: { travel: { maxMin: 20, mode: "drive" } } }));
     expect((await say("20 minutes by car", from)).reply).not.toContain("nearest places");

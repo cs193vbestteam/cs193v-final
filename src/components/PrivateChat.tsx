@@ -174,7 +174,8 @@ export function PrivateChat({
       }, ms),
     );
     return () => again.forEach(clearTimeout);
-  }, [messages]);
+    // Also when they press "I'm done": their answers are listed at the end of the conversation.
+  }, [messages, ready]);
 
   function send(e: React.FormEvent) {
     e.preventDefault();
@@ -302,6 +303,32 @@ export function PrivateChat({
               )}
               <span className="shiny">{finding ? "Everyone's done. Finding a plan…" : "Assistant is thinking…"}</span>
             </p>
+          )}
+          {/* What the assistant has, shown once the person has pressed "I'm done": the moment to check
+              it. "Change my answers" under the chat is the way back. */}
+          {ready && summary.length > 0 && (
+            <section className="chat-recap bubble-in" aria-labelledby="recap-label">
+              <h3 id="recap-label" className="eyebrow">
+                Your answers
+              </h3>
+              <ul>
+                {summary.map((line) => {
+                  const cut = line.indexOf(": ");
+                  return (
+                    <li key={line}>
+                      {cut < 0 ? (
+                        line
+                      ) : (
+                        <>
+                          <span>{line.slice(0, cut)}</span>
+                          <strong>{line.slice(cut + 2)}</strong>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
           )}
           <div ref={bottom} className="chat-end" />
         </div>

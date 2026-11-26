@@ -353,36 +353,3 @@ describe("the automatic run is claimed by one caller", () => {
     expect(await negotiateWhenDue(event.id, b.id, Date.now() + 31 * 60_000)).toBe(true);
   });
 });
-
-describe("the assistant reads back what it has before the person is done", () => {
-  it("lists every answer once nothing is left to ask, and says how to change one", async () => {
-    const a = await makeUser("Alice");
-    const event = await createEvent(a.id, "Recap");
-    const first = await sendMessage(event.id, a.id, "dinner");
-    // Something is still missing: a question, not the list.
-    expect(first.messages.at(-1)!.content).not.toContain("Here's what I have");
-    let last = "";
-    for (const text of [
-      "7pm to 9pm",
-      "under $40",
-      "20 minutes",
-      "no restrictions",
-      "thai",
-      "budget matters most",
-      "skip",
-      "skip",
-    ]) {
-      last = (await sendMessage(event.id, a.id, text)).messages.at(-1)!.content;
-      if (last.includes("Here's what I have")) break;
-    }
-    expect(last).toContain("Here's what I have:");
-    expect(last).toContain("• Budget: up to $40/person");
-    expect(last).toMatch(/If that's right, press "I'm done"\. If not, tell me what to change\.$/);
-    // Not before all five: the list came only once food had been answered too.
-    const all = (await getMyMessages(event.id, a.id)).filter((m) => m.role === "assistant").map((m) => m.content);
-    expect(all.filter((m) => m.includes("Here's what I have"))).toHaveLength(1);
-    // A message it takes nothing from does not get the list again.
-    const again = (await sendMessage(event.id, a.id, "hmm")).messages.at(-1)!.content;
-    expect(again).not.toContain("Here's what I have");
-  });
-});
