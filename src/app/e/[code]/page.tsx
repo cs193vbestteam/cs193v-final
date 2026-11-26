@@ -7,7 +7,6 @@ import { AutoRefresh, CopyInvite, NegotiateButton, ShareMessage } from "@/compon
 import { Countdown } from "@/components/Countdown";
 import { CreatorControls } from "@/components/CreatorControls";
 import { PlanCode } from "@/components/CodeSlots";
-import { DecryptedText } from "@/components/Effects";
 import { NotifyToggle, PlanReadyWatcher } from "@/components/NotifyToggle";
 import { PrivateChat } from "@/components/PrivateChat";
 import { ResultCard } from "@/components/ResultCard";
@@ -28,7 +27,7 @@ import {
 } from "@/lib/events";
 import { avatarFor, groupAvatars } from "@/lib/avatar";
 import { PlanAvatar } from "@/components/HeaderAvatar";
-import { formatPlanDate, formatWhen } from "@/lib/plan-date";
+import { formatWhen } from "@/lib/plan-date";
 import { getRestaurant } from "@/lib/restaurants";
 import { scenarioFor } from "@/lib/scenario";
 import { nudgeMessage, resultMessage } from "@/lib/share";
@@ -36,8 +35,6 @@ import { currentUser, requireUser } from "@/lib/session";
 
 // Finding a plan can make a few LLM calls per round (agents + mediator); give it room on Vercel.
 export const maxDuration = 60;
-
-const POOL_LABEL = { places: "real places", yelp: "places from the Yelp Open Dataset", seed: "sample places" } as const;
 
 /** Read once per request: the tab's title and the page both need the plan, and reading it decrypts its pool. */
 const eventByCode = cache(getEventByCode);
@@ -215,20 +212,14 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       <PlanAvatar name={avatars.get(user.id) ?? avatarFor(user.id)} />
       <div className="rise flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-line pb-5">
         <div className="min-w-0">
-          <p className="eyebrow">
-            Plan · <DecryptedText text={code} />
-            {event.date ? ` · ${formatPlanDate(event.date)}` : ""}
-            {event.location ? ` · near ${event.location}` : ""}
-            {/* Real places arrive in two batches: a first search, then the rest once everyone is done.
-                Until the plan is decided the count is only the first batch, so it is left out. */}
-            {` · ${event.poolSource !== "places" || result ? `${event.poolSize} ` : ""}${POOL_LABEL[event.poolSource]}`}
-          </p>
           {/* Once there is a plan, the place is the headline and the plan's own name steps back. */}
-          <h1 className={`display mt-2 break-words ${result ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl"}`}>
+          <h1 className={`display break-words ${result ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl"}`}>
             {event.title}
           </h1>
         </div>
         <div className="flex items-center gap-3">
+          {/* The one place the page says its restaurants are made up, now that the line above the title is gone. */}
+          {sample && <span className="pill pill-amber">Sample data</span>}
           <span className="font-mono text-xs uppercase tracking-wider text-ink-3">
             {readyCount} of {members.length} ready
           </span>

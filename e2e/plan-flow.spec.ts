@@ -59,8 +59,6 @@ async function tellAssistant(page: Page, who: Person) {
   await page.getByLabel("Message your assistant").fill(who.message);
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("All set ✓")).toBeVisible();
-  // The assistant reads their own numbers back to them in the chat.
-  await expect(page.getByText(`Budget: up to ${who.secrets[0]}/person`)).toBeVisible();
   await page.getByRole("button", { name: "I'm done" }).click();
   await expect(page.getByRole("button", { name: "Change my answers" })).toBeVisible();
 }
@@ -81,7 +79,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await alex.getByRole("button", { name: "Start a plan" }).click();
     await expect(alex).toHaveURL(/\/e\/[a-z0-9]+$/);
     await expect(alex.getByRole("heading", { name: "Weekend dinner" })).toBeVisible();
-    await expect(alex.getByText(/sample places/)).toBeVisible();
+    await expect(alex.getByText("Sample data")).toBeVisible();
   });
   const planPath = new URL(alex.url()).pathname;
 

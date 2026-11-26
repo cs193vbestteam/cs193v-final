@@ -558,7 +558,8 @@ function nextStatus(prev: MemberStatus, ready: boolean, changed: boolean, now = 
   };
 }
 
-const endsWithQuestion = (reply: string) => /[?？]\s*["')\]]*$/.test(reply.trim());
+/** A question anywhere in the reply, not only at its end: "Where from? A cross street is enough." still asks. */
+const asksSomething = (reply: string) => /[?？]/.test(reply);
 
 /** The assistant's last word before "I'm done": everything it has, one line each, and how to fix it. */
 export function recap(lines: string[]): string {
@@ -594,9 +595,13 @@ export async function sendMessage(
   // Once nothing is left to ask, the assistant reads back what it has, so the person can check it
   // before pressing "I'm done". Only on a turn that took something in: a message it did not
   // understand does not get the list again.
-  const complete = scenario.missingFields(next).length === 0;
-  const tookSomething = changed || scenario.missingFields(current).length > 0;
-  const reply = complete && tookSomething && !endsWithQuestion(said) ? recap(scenario.describeConstraints(next)) : said;
+  // "Nothing left to ask" is every step the person sees counted (5 of 5), not only the ones
+  // "I'm done" needs: someone who has not been asked about food yet does not get the list.
+  const allAnswered = (c: MemberState) =>
+    scenario.missingFields(c).length === 0 && scenario.answerProgress(c).every((step) => step.done);
+  const complete = allAnswered(next);
+  const tookSomething = changed || !allAnswered(current);
+  const reply = complete && tookSomething && !asksSomething(said) ? recap(scenario.describeConstraints(next)) : said;
   // Their status was read with their constraints at the top; nothing else changes it in between
   // but their own "I'm done", which the page does not offer while a message is being sent.
   await saveConstraints(eventId, userId, next, status.ready && !changed, changed, status);
