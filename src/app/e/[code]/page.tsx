@@ -135,7 +135,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
       ? nudgeMessage({ title: event.title, ready: readyCount, members: members.length, url: planUrl })
       : null;
   const status = stale
-    ? { label: "Out of date", cls: "pill-amber" }
+    ? { label: "Best so far", cls: "pill-amber" }
     : result
       ? result.status === "agreed"
         ? { label: "Decided", cls: "pill-moss" }
@@ -169,11 +169,11 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         : waiting > 0
           ? {
               text: result
-                ? `Waiting for ${others} to finish. The plan is out of date until then.`
+                ? `Waiting for ${others} to finish.`
                 : `Waiting for ${others} to finish. The plan will appear on this page by itself.`,
             }
           : result
-            ? { text: "Everyone is done, but the plan is out of date.", href: "#plan", link: "Re-run it" }
+            ? { text: "Everyone is done. The plan can be updated.", href: "#plan", link: "Re-run it" }
             : { text: "Everyone is done.", href: "#plan", link: "Find a plan" };
 
   const share = shareResult && <ShareMessage label="Share with the group" message={shareResult} primary />;
