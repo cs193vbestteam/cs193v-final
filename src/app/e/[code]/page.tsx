@@ -26,6 +26,7 @@ import {
   planPulse,
 } from "@/lib/events";
 import { avatarFor, groupAvatars } from "@/lib/avatar";
+import { PlanAvatar } from "@/components/HeaderAvatar";
 import { formatPlanDate, formatWhen } from "@/lib/plan-date";
 import { getRestaurant } from "@/lib/restaurants";
 import { scenarioFor } from "@/lib/scenario";
@@ -206,6 +207,8 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
     <div className="mt-6 sm:mt-10">
       <AutoRefresh eventId={event.id} pulse={pulse} />
       <PlanReadyWatcher eventId={event.id} title={event.title} ready={!!result} />
+      {/* The header shows the same animal as the group list does for this person. */}
+      <PlanAvatar name={avatars.get(user.id) ?? avatarFor(user.id)} />
       <div className="rise flex flex-wrap items-end justify-between gap-x-6 gap-y-3 border-b border-line pb-5">
         <div className="min-w-0">
           <p className="eyebrow">

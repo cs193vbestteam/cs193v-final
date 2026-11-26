@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { logoutAction } from "./actions";
 import { AuthNav } from "@/components/AuthNav";
-import { Avatar } from "@/components/Avatar";
+import { HeaderAvatar } from "@/components/HeaderAvatar";
 import { PointerEffects } from "@/components/Effects";
 import { PageMotion } from "@/components/PageMotion";
 import { Wordmark } from "@/components/Wordmark";
@@ -76,7 +76,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <span className="font-medium text-ink">{user.displayName}</span>
                 </span>
                 <Link href="/account" className="flex items-center gap-2 text-sm text-ink-2">
-                  <Avatar name={avatarFor(user.id)} size={24} />
+                  <HeaderAvatar name={avatarFor(user.id)} />
                   <span className="link">Account</span>
                 </Link>
                 {/* A guest has nothing to log back in with, so logging out would strand what they said. */}
