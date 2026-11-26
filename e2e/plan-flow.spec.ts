@@ -63,6 +63,9 @@ async function tellAssistant(page: Page, who: Person) {
   await expect(page.getByRole("button", { name: "Change my answers" })).toBeVisible();
 }
 
+/** The members marked done in "The group": who is done is read there, not from a count in the header. */
+const doneIn = (page: Page) => page.locator("#group").getByText("done", { exact: true });
+
 async function expectNoSecrets(page: Page, of: Person) {
   const text = await page.locator("body").innerText();
   for (const secret of of.secrets) expect(text, `"${secret}" leaked to another person's page`).not.toContain(secret);
@@ -103,7 +106,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expect(alex.getByText(/Waiting for 1 other person to finish/)).toBeVisible();
     await blake.reload();
     await expectNoSecrets(blake, ALEX);
-    await expect(blake.getByText("1 of 2 ready")).toBeVisible();
+    await expect(doneIn(blake)).toHaveCount(1);
   });
 
   await test.step("the creator can nudge the group with a count, never a name or a limit", async () => {
@@ -120,7 +123,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expect(blake.getByText("Everyone can come")).toHaveCount(0);
     await alex.reload();
     await expectNoSecrets(alex, BLAKE);
-    await expect(alex.getByText("2 of 2 ready")).toBeVisible();
+    await expect(doneIn(alex)).toHaveCount(2);
     await expect(alex.getByText("Everyone can come")).toHaveCount(0);
     await alex.getByRole("button", { name: "Find a plan" }).click();
     await expect(alex.getByText("Everyone can come")).toBeVisible();
@@ -186,7 +189,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
   await test.step("when someone changes their answers, the plan is marked out of date until it is re-run", async () => {
     await blake.getByLabel("Message your assistant").fill("Actually make my budget $50");
     await blake.getByRole("button", { name: "Send" }).click();
-    await expect(blake.getByText("1 of 2 ready")).toBeVisible();
+    await expect(doneIn(blake)).toHaveCount(1);
     for (const page of [blake, alex]) {
       await page.reload();
       await expect(page.getByText("Best so far").first()).toBeVisible();
@@ -203,7 +206,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     await expectNoSecrets(alex, BLAKE);
 
     await blake.getByRole("button", { name: "I'm done" }).click();
-    await expect(blake.getByText("2 of 2 ready")).toBeVisible();
+    await expect(doneIn(blake)).toHaveCount(2);
     // Being done again does not make the old plan current: it stays out of date until the re-run.
     await expect(blake.getByText(/Everyone is done. The plan can be updated/)).toBeVisible();
     await expect(blake.getByText("Everyone can come")).toHaveCount(0);
