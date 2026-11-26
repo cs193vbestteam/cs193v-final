@@ -147,9 +147,6 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         ? { label: "Everyone's done", cls: "pill-moss" }
         : { label: "Collecting", cls: "pill-amber" };
 
-  // Plans without real restaurant data say so wherever a place is named.
-  const sample = event.poolSource === "seed";
-
   // For someone who is done: whether anything is left for them, and what the group is waiting for (#153).
   const waiting = members.length - readyCount;
   const isCreator = event.creatorId === user.id;
@@ -218,8 +215,6 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           </h1>
         </div>
         <div className="flex items-center gap-3">
-          {/* The one place the page says its restaurants are made up, now that the line above the title is gone. */}
-          {sample && <span className="pill pill-amber">Sample data</span>}
           <span className="font-mono text-xs uppercase tracking-wider text-ink-3">
             {readyCount} of {members.length} ready
           </span>
@@ -246,7 +241,6 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             </h2>
             <ResultCard
               result={result}
-              sample={sample}
               date={event.date}
               stale={stale}
               mine={mine}

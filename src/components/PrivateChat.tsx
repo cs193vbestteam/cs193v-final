@@ -90,6 +90,16 @@ export function PrivateChat({
     const below = el.scrollHeight - el.clientHeight - el.scrollTop > 48;
     setHidden((was) => (was.above === above && was.below === below ? was : { above, below }));
   }
+  /**
+   * To the very end of the conversation. The log itself is scrolled, so the page does not move
+   * with it and the last message clears the message box whatever sits under the conversation.
+   * "Nearest" on the end marker could stop short of that, and "Latest" then did nothing.
+   */
+  function toEnd() {
+    const el = log.current;
+    if (el && typeof el.scrollTo === "function") el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    else bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
   const input = useRef<HTMLInputElement>(null);
 
   const serverSnapshot: ChatSnapshot = {
@@ -107,6 +117,7 @@ export function PrivateChat({
       : serverSnapshot;
   // A refresh during a send must not erase its optimistic message or draft.
   const { messages, summary, missing, progress } = submission?.eventId === eventId ? submission : latest;
+  const firstUser = messages.findIndex((m) => m.role === "user");
 
   // The assistant has asked them to click "I'm done": draw the eye to it until they do.
   const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant")?.content ?? "";
@@ -152,12 +163,16 @@ export function PrivateChat({
   useEffect(() => {
     // The greeting is read from its top; a conversation is followed at its end.
     if (!messages.some((m) => m.role === "user")) return;
-    const toEnd = () => bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     toEnd();
     // A reply can change what sits under the conversation (the quick answers go, "All set" comes),
     // and that moves the end after the first scroll. A long reply was left half under the message
     // box. So the end is found again once the page has settled.
-    const again = [200, 600, 1100].map((ms) => setTimeout(toEnd, ms));
+    const again = [200, 600, 1100].map((ms) =>
+      setTimeout(() => {
+        toEnd();
+        measure();
+      }, ms),
+    );
     return () => again.forEach(clearTimeout);
   }, [messages]);
 
@@ -241,32 +256,36 @@ export function PrivateChat({
               <p className="chat-fineprint">Private to you. Processed by Anthropic&apos;s Claude.</p>
             </div>
           ) : (
-            messages.map((m, i) => (
-              <div
-                key={i}
-                className={`bubble-in flex items-end gap-2.5 ${m.role === "user" ? "justify-end" : "justify-start"}`}
-              >
-                {/* The assistant's mark, on the first of its messages in a row. */}
-                {m.role === "assistant" && (
-                  <span
-                    aria-hidden
-                    className="chat-mark"
-                    data-quiet={messages[i - 1]?.role === "assistant" || undefined}
-                  >
-                    <LockIcon />
-                  </span>
-                )}
-                <p
-                  className={`whitespace-pre-wrap text-[0.9375rem] leading-relaxed ${
-                    m.role === "user"
-                      ? "bubble-mine liquid max-w-[80%] rounded-[1.25rem] rounded-br-md px-4 py-2.5"
-                      : "bubble-theirs liquid max-w-[85%] rounded-[1.25rem] rounded-bl-md px-4 py-2.5 text-ink"
-                  }`}
+            messages.map((m, i) =>
+              // What the assistant said before the person spoke is the greeting screen's job; once
+              // they have written, the conversation starts with their own first message.
+              i < firstUser ? null : (
+                <div
+                  key={i}
+                  className={`bubble-in flex items-end gap-2.5 ${m.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  {m.role === "assistant" && i >= loadedWith ? <Written text={m.content} /> : m.content}
-                </p>
-              </div>
-            ))
+                  {/* The assistant's mark, on the first of its messages in a row. */}
+                  {m.role === "assistant" && (
+                    <span
+                      aria-hidden
+                      className="chat-mark"
+                      data-quiet={messages[i - 1]?.role === "assistant" || undefined}
+                    >
+                      <LockIcon />
+                    </span>
+                  )}
+                  <p
+                    className={`whitespace-pre-wrap text-[0.9375rem] leading-relaxed ${
+                      m.role === "user"
+                        ? "bubble-mine liquid max-w-[80%] rounded-[1.25rem] rounded-br-md px-4 py-2.5"
+                        : "bubble-theirs liquid max-w-[85%] rounded-[1.25rem] rounded-bl-md px-4 py-2.5 text-ink"
+                    }`}
+                  >
+                    {m.role === "assistant" && i >= loadedWith ? <Written text={m.content} /> : m.content}
+                  </p>
+                </div>
+              ),
+            )
           )}
           {pending && (
             <p className={`flex items-center gap-2.5 text-xs text-ink-3 ${opening ? "justify-center" : "pl-9"}`}>
@@ -287,11 +306,7 @@ export function PrivateChat({
           <div ref={bottom} className="chat-end" />
         </div>
         {hidden.below && !opening && (
-          <button
-            type="button"
-            className="chat-latest"
-            onClick={() => bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })}
-          >
+          <button type="button" className="chat-latest" onClick={toEnd}>
             <svg aria-hidden viewBox="0 0 16 16" width="12" height="12" fill="none">
               <path
                 d="M8 3v10M3.5 8.5 8 13l4.5-4.5"

@@ -24,7 +24,6 @@ function describeDims(t: Tally): string {
 
 export function ResultCard({
   result,
-  sample = false,
   date,
   stale = null,
   mine = [],
@@ -33,7 +32,6 @@ export function ResultCard({
   rerun,
 }: {
   result: StoredResult;
-  sample?: boolean;
   date?: string | null;
   /**
    * Someone is not done (#140): they changed their answers after this was decided ("changed"),
@@ -223,7 +221,7 @@ export function ResultCard({
       {/* What to do with the plan: one filled button, the rest outlined. */}
       <div className="plan-hero-actions">
         {actions}
-        <PlanOptions tiles={tiles} sample={sample} />
+        <PlanOptions tiles={tiles} />
         {rerun && <div className="mt-3">{rerun}</div>}
       </div>
 
