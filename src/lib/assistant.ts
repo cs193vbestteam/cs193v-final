@@ -25,6 +25,7 @@ import { applyLegacyUpdate, toRulesView } from "./legacy-adapter";
 import {
   MAX_ASSISTANT_TURNS,
   REQUIRED,
+  answerProgress,
   VARIABLES,
   allowedToAsk,
   missingRequired,
@@ -482,6 +483,21 @@ export function alsoAskedIn(reply: string, asked: Variable | null, allowed: Vari
   return allowed.filter((v) => v !== asked && TOPIC_WORDS[v].test(questions));
 }
 
+const OPEN_WORDS: Record<Variable, string> = {
+  time: "what time works for you",
+  diet: "anything you can't eat",
+  budget: "a budget",
+  travel: "how far you'd travel",
+  cuisine: "food you're in the mood for",
+};
+
+/** One question about everything still open: "What about how far you'd travel, or food you're in the mood for?" */
+function followUp(open: readonly Variable[]): string {
+  if (open.length === 1) return open[0] === "budget" ? "Is there a budget you'd like to keep to?" : QUESTION[open[0]];
+  const words = open.map((v) => OPEN_WORDS[v]);
+  return `What about ${words.slice(0, -1).join(", ")} or ${words.at(-1)}?`;
+}
+
 /** Count the reply, remember what it asked, and stop the questions once the cap is reached. */
 function finishTurn(
   before: MemberState,
@@ -506,6 +522,34 @@ function finishTurn(
     },
   };
   if (capped) return { state, reply: `${withoutQuestions(reply)} ${closingLine(state)}` };
+  // A reply that asks nothing left the person with no idea what to do next: "Got it, up to $50.
+  // I'll do my best to keep to that." and then silence, with two of five still open. So when the
+  // model asks nothing, code asks about what is still open, or says how to finish.
+  // Not when it already says how to finish (the off-topic reply does), and never past the cap on
+  // a reply's length.
+  if (!/[?？]/.test(reply) && !/I(?:'|’)m done/i.test(reply)) {
+    // One thing at a time: a required question that is still open comes first, by itself. Then
+    // the optional ones together, once (#156): what was already asked and left unanswered is not
+    // asked again, and the person is told how to finish instead.
+    const steps = answerProgress(state).filter((step) => !step.done);
+    const needed = steps.filter((step) => step.required).map((step) => step.topic);
+    const open = needed.length
+      ? needed.slice(0, 1)
+      : steps.filter((step) => !state.chat.asked.includes(step.topic)).map((step) => step.topic);
+    const next = open.length ? followUp(open) : closingLine(state);
+    if (reply.length + 1 + next.length <= MAX_REPLY_CHARS) {
+      const [first, ...rest] = open;
+      return {
+        state: open.length
+          ? {
+              ...state,
+              chat: { ...state.chat, asked: uniq([...state.chat.asked, ...open]), lastAsked: first, alsoAsked: rest },
+            }
+          : state,
+        reply: `${reply} ${next}`,
+      };
+    }
+  }
   // Said by code, and only with a question about money: a model left to say it says it everywhere.
   const privately =
     asked === "budget" && !PRIVATE_ALREADY.test(reply)

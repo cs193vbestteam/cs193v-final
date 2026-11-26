@@ -2183,6 +2183,33 @@ form:focus-within .plan-ticket {
 .chat-latest:hover {
   border-color: var(--color-ink);
 }
+/* What the assistant has, listed at the end of the conversation once the person is done. */
+.chat-recap {
+  margin-inline: auto;
+  width: min(100%, 26rem);
+  border: 1px solid var(--color-line);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  padding: 0.875rem 1rem;
+}
+.chat-recap ul {
+  margin-top: 0.5rem;
+}
+.chat-recap li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--color-line);
+  padding: 0.375rem 0;
+  font-size: 0.875rem;
+  color: var(--color-ink-2);
+}
+.chat-recap li strong {
+  font-weight: 500;
+  text-align: right;
+  color: var(--color-ink);
+}
 /* A reply that has just arrived is written in, a word at a time. */
 @keyframes word-in {
   from {

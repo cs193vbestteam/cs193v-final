@@ -152,7 +152,7 @@ describe("LLM budget per plan", () => {
     const fetchMock = fakeAnthropic();
     const { messages } = await sendMessage(e.id, a.id, "Saturday dinner works");
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(messages.at(-1)?.content).toBe("Got it, Saturday dinner.");
+    expect(messages.at(-1)?.content).toMatch(/^Got it, Saturday dinner\. /);
   });
 
   it("falls back to the rule-based extractor once the budget is used up, instead of failing", async () => {
