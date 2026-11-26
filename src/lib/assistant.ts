@@ -24,6 +24,7 @@ import { ruleTurn } from "./extract-rules";
 import { applyLegacyUpdate, toRulesView } from "./legacy-adapter";
 import {
   MAX_ASSISTANT_TURNS,
+  REQUIRED,
   VARIABLES,
   allowedToAsk,
   missingRequired,
@@ -609,6 +610,15 @@ function confirmNothingOffLimits(reply: string, onlyThat: boolean): string {
  * new state and the reply with any sentences code had to add (a block that could not be
  * recorded, a restaurant that is not a candidate, a note that cannot be checked).
  */
+/**
+ * A whole message that says "no preference": "I don't care", "dont really mind", "whatever",
+ * "anything is fine", "doesn't matter", "up to you", "no preference". A longer message that
+ * happens to contain the words ("I don't care about price, but no seafood") is not one.
+ */
+const SHRUG =
+  /^\W*(?:(?:honestly|really|eh|meh|nah|no|idk)\W+)*(?:i\s+)?(?:(?:really\s+)?(?:do\s?n.?t|don|dont)\s+(?:really\s+)?(?:care|mind)|whatever(?:\s+works)?|any(?:thing)?(?:\s+(?:is\s+fine|works|goes))?|(?:it\s+)?does\s?n.?t\s+matter|up\s+to\s+you|no\s+preference|not\s+picky|either(?:\s+is\s+fine)?)\W*$/i;
+export const isShrug = (message: string) => SHRUG.test(message.trim());
+
 export function applyAssistantOutput(
   state: MemberState,
   output: AssistantOutput,
@@ -859,6 +869,14 @@ export function applyAssistantOutput(
   // "I don't mind" settles a question and changes nothing that is already recorded: a model
   // that lists it too freely ("the rest is fine") must not be able to wipe a rule.
   for (const v of output.dontMind ?? []) if (isVariable(v)) answered.add(v);
+  // The model does not always list it. Someone asked "any food you're in the mood for?" who says
+  // "I don't care" got "you're all set" back, and the question stayed open for good: 4 of 5.
+  // So a message that is nothing but "I don't care" settles every optional question still open.
+  // It does not depend on which one the code thinks was asked: the model's "anything else, like
+  // a cuisine?" is often not recorded as a question about food. Not while a required question is
+  // the one on the table, though: "I don't care" about the time is not an answer to the rest.
+  const requiredOpen = REQUIRED.some((v) => !state.chat.answered.includes(v) && !answered.has(v));
+  if (isShrug(latestMessage) && !requiredOpen) for (const v of VARIABLES) if (!REQUIRED.includes(v)) answered.add(v);
   const DROPS: Partial<Record<Variable, keyof PersonPreferences>> = {
     time: "time",
     budget: "budget",
