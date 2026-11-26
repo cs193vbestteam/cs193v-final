@@ -171,8 +171,8 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           : result
             ? { text: "Everyone is done. The plan can be updated.", href: "#plan", link: "Re-run it" }
             : isCreator
-              ? { text: "Everyone is done.", href: "#plan", link: "Find a plan" }
-              : { text: `Waiting for ${creatorName} to find the plan.` };
+              ? { text: "Everyone is done.", href: "#plan", link: "Settle the plan" }
+              : { text: `Waiting for ${creatorName} to settle the plan.` };
 
   // What the ticket shows is what the plan card shows to everyone: nothing of anyone's own answers.
   const share = shareResult && result?.proposal && chosen && (
@@ -366,7 +366,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
                     ? "Waiting for everyone to finish."
                     : isCreator
                       ? "Everyone is done."
-                      : `Waiting for ${creatorName} to find the plan.`}
+                      : `Waiting for ${creatorName} to settle the plan.`}
                 {event.decideAt !== null && (
                   <span className="mt-1 block font-mono text-xs uppercase tracking-wider">
                     <Countdown until={event.decideAt} />

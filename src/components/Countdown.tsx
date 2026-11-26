@@ -31,5 +31,5 @@ export function Countdown({ until }: { until: number }) {
     if (left !== null && left <= 0) router.refresh();
   }, [left, router]);
   if (left === null) return null;
-  return <span>{left > 0 ? `Plan in ${timeLeft(left)}` : "Time is up"}</span>;
+  return <span>{left > 0 ? `Settles in ${timeLeft(left)}` : "Time is up"}</span>;
 }

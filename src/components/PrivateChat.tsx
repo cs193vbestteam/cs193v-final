@@ -300,7 +300,9 @@ export function PrivateChat({
                   <path d="M1 6 Q 6.25 0 11.5 6 T 22 6 T 32.5 6 T 43 6" pathLength={1} />
                 </svg>
               )}
-              <span className="shiny">{finding ? "Everyone's done. Finding a plan…" : "Assistant is thinking…"}</span>
+              <span className="shiny">
+                {finding ? "Everyone's done. Settling the plan…" : "Assistant is thinking…"}
+              </span>
             </p>
           )}
           {/* What the assistant has, shown once the person has pressed "I'm done": the moment to check
@@ -457,7 +459,7 @@ export function PrivateChat({
               className={ready ? "btn-ghost btn-sm" : `btn btn-sm${askedToFinish ? " btn-attention" : ""}`}
               data-attention={askedToFinish || undefined}
             >
-              {finding ? "Finding a plan…" : ready ? "Change my answers" : "I'm done"}
+              {finding ? "Settling the plan…" : ready ? "Change my answers" : "I'm done"}
             </button>
           </div>
         </div>

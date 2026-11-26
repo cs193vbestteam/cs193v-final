@@ -151,14 +151,14 @@ export function CreateEventForm({
 
         <div>
           <label htmlFor="plan-decide" className="label">
-            Find the plan
+            Settle the plan
           </label>
           <select id="plan-decide" name="decideAfter" defaultValue="0" className="input">
             <option value="0">When I say so</option>
-            <option value="30">By itself in 30 minutes</option>
-            <option value="60">By itself in 1 hour</option>
-            <option value="180">By itself in 3 hours</option>
-            <option value="1440">By itself in 24 hours</option>
+            <option value="30">In 30 minutes</option>
+            <option value="60">In 1 hour</option>
+            <option value="180">In 3 hours</option>
+            <option value="1440">In 24 hours</option>
           </select>
         </div>
 
