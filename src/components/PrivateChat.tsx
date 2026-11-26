@@ -254,7 +254,6 @@ export function PrivateChat({
               <Orb size="clamp(4.5rem, 14vw, 6rem)" busy={pending} />
               <p className="chat-hello">{name ? `Hello, ${name}` : "Hello"}</p>
               <p className="chat-ask">I can help with your plan today.</p>
-              <p className="chat-fineprint">Private to you. Processed by Anthropic&apos;s Claude.</p>
             </div>
           ) : (
             messages.map((m, i) =>
@@ -516,8 +515,8 @@ export function PrivateChat({
           {error}
         </p>
       )}
-      {/* Who processes the chat, at the very bottom of the card: a quiet title that opens. The greeting names
-          it too, before anything is typed. The words are AI-CONSENT.md's: what leaves, who gets it,
+      {/* Who processes the chat, at the very bottom of the card: a quiet title that opens. It is on the page
+          before anything is typed. The words are AI-CONSENT.md's: what leaves, who gets it,
           and for how long. */}
       <div className="chat-foot">
         <details className="notice">
