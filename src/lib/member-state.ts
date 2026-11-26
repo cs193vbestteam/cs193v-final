@@ -1,8 +1,17 @@
 import { TRAVEL_MODES, type TravelMode } from "./geo";
 import { z } from "zod";
-import { PENDING, PROBES, StartPointSchema, describeSlots, type MissingField, type Slot } from "./constraints";
+import {
+  PENDING,
+  PROBES,
+  StartPointSchema,
+  clockLabel,
+  describeSlots,
+  type MissingField,
+  type Slot,
+} from "./constraints";
 import { describeTypes } from "./cuisine-table";
 import {
+  MEAL_RANGES,
   PersonPreferencesSchema,
   START_TIMES,
   startTimesIn,
@@ -250,6 +259,35 @@ export const FEATURE_PHRASES: Record<Feature, string> = {
 const STRENGTH_WORDS: Record<Strength, string> = { must: " (a must)", strong: " (matters a lot)", mild: "" };
 /** For a number with "up to" in front of it: the words already say it is a limit. */
 const LIMIT_WORDS: Record<Strength, string> = { ...STRENGTH_WORDS, must: "" };
+const MEAL_WORDS: Record<keyof typeof MEAL_RANGES, string> = {
+  brunch: "brunch",
+  lunch: "lunch",
+  afternoon_tea: "afternoon tea",
+  dinner: "dinner",
+  late_night: "late night",
+};
+
+/**
+ * The times a meal can start, in the person's own terms. These are start times on the hour, and
+ * "Free: 5:00 PM to 7:00 PM" read as "must be over by 7" to someone who had said "dinner before
+ * 8". So an open end is said as one: "from 7:00 PM", "before 8:00 PM", "dinner before 8:00 PM".
+ */
+export function describeStarts(times: readonly StartTime[]): string {
+  if (times.length === START_TIMES.length) return "any time";
+  const ranges = toRanges(times);
+  if (ranges.length !== 1) return describeSlots(times as Slot[]);
+  const { from, to } = ranges[0];
+  const after = START_TIMES[START_TIMES.indexOf(to) + 1];
+  if (!after) return `from ${clockLabel(from)}`;
+  if (from === START_TIMES[0]) return `before ${clockLabel(after)}`;
+  // The first hours of a meal: "dinner before 8:00 PM".
+  const meal = (Object.keys(MEAL_RANGES) as (keyof typeof MEAL_RANGES)[]).find(
+    (m) => MEAL_RANGES[m].from === from && to < MEAL_RANGES[m].to,
+  );
+  if (meal) return `${MEAL_WORDS[meal]} before ${clockLabel(after)}`;
+  return from === to ? clockLabel(from) : `${clockLabel(from)} to ${clockLabel(to)}`;
+}
+
 const PRIORITY_WORDS: Record<string, string> = {
   time: "the time",
   budget: "the budget",
@@ -273,12 +311,12 @@ export function describeState(state: MemberState): string[] {
   const lines: string[] = [];
 
   if (prefs.time) {
-    lines.push(`Free: ${describeSlots(availableTimes(prefs) as Slot[])}`);
+    lines.push(`Can start: ${describeStarts(availableTimes(prefs))}`);
     if (prefs.time.strength !== "must" && prefs.time.preferred?.length)
       lines.push(
         `Best time: ${describeSlots(timesIn(prefs.time.preferred) as Slot[])}${STRENGTH_WORDS[prefs.time.strength]}`,
       );
-  } else if (settled("time")) lines.push("Free: any time");
+  } else if (settled("time")) lines.push("Can start: any time");
 
   if (prefs.budget) {
     const { ideal, max, strength } = prefs.budget;
