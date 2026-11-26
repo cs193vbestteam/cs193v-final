@@ -220,13 +220,6 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           <h1 className={`display mt-2 break-words ${result ? "text-3xl sm:text-4xl" : "text-4xl sm:text-5xl"}`}>
             {event.title}
           </h1>
-          {/* Sample places are named in the line above. Only a search that failed gets a sentence:
-              the person asked for real places and is not getting them. */}
-          {sample && event.location && (
-            <p className="mt-2 max-w-xl text-sm text-ink-2">
-              Real places near {event.location} could not be loaded, so this plan uses sample places.
-            </p>
-          )}
         </div>
         <div className="flex items-center gap-3">
           <span className="font-mono text-xs uppercase tracking-wider text-ink-3">

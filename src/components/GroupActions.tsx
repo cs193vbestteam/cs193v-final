@@ -34,6 +34,7 @@ export function NegotiateButton({
       <button
         className={`${decided ? "btn-ghost" : "btn"} w-full`}
         disabled={pending || !everyoneDone || nothingNew}
+        aria-describedby="rerun-why"
         onClick={() =>
           start(async () => {
             const res = await runNegotiationAction(eventId, inviteCode);
@@ -44,12 +45,12 @@ export function NegotiateButton({
         {pending ? "Finding a plan…" : decided ? "Re-run with latest info" : "Find a plan"}
       </button>
       {memberCount >= 2 && readyCount < memberCount && (
-        <p className="mt-2 text-center text-xs text-ink-3">
+        <p id="rerun-why" className="sr-only">
           {readyCount} of {memberCount} people ready. Waiting for everyone to finish.
         </p>
       )}
       {nothingNew && (
-        <p className="mt-2 text-center text-xs text-ink-3">
+        <p id="rerun-why" className="sr-only">
           {noPlan
             ? "Nothing has changed since the last try. It can be run again once someone changes an answer."
             : "This is the plan for everyone\u2019s current answers. It can be run again once someone changes theirs."}
