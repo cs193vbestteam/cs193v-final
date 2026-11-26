@@ -35,15 +35,11 @@ export function AuthForm({ mode, action, next, guestName }: Props) {
             </>
           )}
         </h1>
-        <p className="lede mt-5">
-          {upgrading
-            ? "Add an email and a password. The plans you joined as a guest and your private chats stay with you, and you can open them from any device."
-            : joining
-              ? "You've been invited to a plan. Sign in and you'll get a private assistant. Tell it what actually works for you; nobody else will see it."
-              : signup
-                ? "One account, one private assistant per plan. What you tell it is encrypted and never shown to the group."
-                : "Pick up where you left off. Your plans and private chats are waiting."}
-        </p>
+        {(upgrading || joining) && (
+          <p className="lede mt-5">
+            {upgrading ? "Your plans and private chats stay with you." : "You’ve been invited to a plan."}
+          </p>
+        )}
       </div>
 
       <div className="card rise" style={{ "--d": "0.12s" } as React.CSSProperties}>
@@ -84,7 +80,7 @@ export function AuthForm({ mode, action, next, guestName }: Props) {
               minLength={signup ? 8 : undefined}
               autoComplete={signup ? "new-password" : "current-password"}
             />
-            {signup && <p className="mt-1.5 text-xs text-ink-3">At least 8 characters. Stored salted and hashed.</p>}
+            {signup && <p className="mt-1.5 text-xs text-ink-3">At least 8 characters.</p>}
           </div>
           {state.error && (
             <p role="alert" className="rounded-lg border border-seal/30 bg-seal-soft px-3 py-2 text-sm text-seal-ink">
