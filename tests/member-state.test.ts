@@ -7,6 +7,7 @@ import {
   MemberStateSchema,
   allowedToAsk,
   availableTimes,
+  describeStarts,
   describeState,
   emptyMemberState,
   missingRequired,
@@ -147,7 +148,7 @@ describe("the summary shown to its owner", () => {
     );
     const lines = describeState({ ...s, startPoint: { label: "Mountain View", lat: 37.39, lng: -122.08 } });
     expect(lines).toEqual([
-      "Free: 6:00 PM to 11:00 PM",
+      "Can start: from 6:00 PM",
       "Best time: 6:00 PM to 7:00 PM (matters a lot)",
       "Budget: ideally $30, up to $50/person",
       "Travel: ideally 15 min, up to 30 min",
@@ -166,10 +167,19 @@ describe("the summary shown to its owner", () => {
     expect(lines.join(" ")).not.toMatch(/\d{2}:\d{2}(?! [AP]M)|_restaurant|maxMin|unavailable/);
   });
 
+  it("says an open end of the day as one, and the first hours of a meal by the meal", () => {
+    expect(describeStarts(["19:00", "20:00", "21:00", "22:00", "23:00"])).toBe("from 7:00 PM"); // "dinner after 7"
+    expect(describeStarts(["17:00", "18:00", "19:00"])).toBe("dinner before 8:00 PM"); // "dinner before 8"
+    expect(describeStarts(["10:00", "11:00", "12:00"])).toBe("before 1:00 PM");
+    expect(describeStarts(["18:00", "19:00"])).toBe("6:00 PM to 7:00 PM");
+    expect(describeStarts(["18:00"])).toBe("6:00 PM");
+    expect(describeStarts(["11:00", "12:00", "18:00", "19:00"])).toBe("11:00 AM to 12:00 PM, 6:00 PM to 7:00 PM");
+  });
+
   it('says what "I don\'t mind" settled', () => {
     const s = withPrefs({}, { answered: ["time", "budget", "travel", "diet", "cuisine"] });
     expect(describeState(s)).toEqual([
-      "Free: any time",
+      "Can start: any time",
       "Budget: no limit",
       "Travel: any distance",
       "Diet: no restrictions",
