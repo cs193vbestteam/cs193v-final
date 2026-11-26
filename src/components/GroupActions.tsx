@@ -12,6 +12,7 @@ export function NegotiateButton({
   decided,
   noPlan = false,
   canRerun = true,
+  isCreator = true,
 }: {
   eventId: string;
   inviteCode: string;
@@ -22,13 +23,16 @@ export function NegotiateButton({
   noPlan?: boolean;
   /** For a decided plan: whether anyone has changed an answer or joined since. Without that a run gives the same plan (#118). */
   canRerun?: boolean;
+  /** The first plan is the creator's to start; anyone can re-run a plan that has changed. */
+  isCreator?: boolean;
 }) {
   const everyoneDone = readyCount >= 2 && readyCount === memberCount;
   const nothingNew = decided && everyoneDone && !canRerun;
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   // Until everyone is done there is nothing to press, and the card above says what is awaited.
-  if (!decided && !everyoneDone) return null;
+  // The first plan is started by the creator alone, so nobody else is shown a button for it.
+  if (!decided && (!everyoneDone || !isCreator)) return null;
   return (
     <div>
       <button

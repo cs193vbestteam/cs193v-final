@@ -58,6 +58,8 @@ export type EventSummary = {
   poolSize: number;
   /** How many people the creator lets into the plan, themselves included. */
   maxMembers: number;
+  /** When the plan works itself out from whoever is done, in ms. Null: only when the creator says so. */
+  decideAt: number | null;
 };
 export type Member = { userId: string; displayName: string; ready: boolean };
 /**
@@ -205,7 +207,13 @@ export function newInviteCode(random: (n: number) => Uint8Array = (n) => crypto.
 }
 
 /** A plan's bookkeeping, encrypted in events.meta_enc. */
-type PlanMeta = { createdAt: number; maxMembers: number };
+type PlanMeta = { createdAt: number; maxMembers: number; decideAt?: number | null };
+
+/** How long after it is made a plan can work itself out, in minutes. 0: only when the creator says so. */
+export const DECIDE_AFTER_MINUTES = [0, 30, 60, 180, 1440] as const;
+export const DecideAfterSchema = z.coerce
+  .number()
+  .refine((n) => (DECIDE_AFTER_MINUTES as readonly number[]).includes(n), "Choose one of the listed times");
 
 function readMeta(row: Record<string, unknown>): PlanMeta {
   const id = String(row.id);
@@ -248,6 +256,7 @@ function rowToEvent(row: Record<string, unknown>): EventSummary {
     poolSource: pool?.length ? ((row.pool_source as PoolSource) ?? "places") : "seed",
     poolSize: pool?.length ?? scenarioFor(scenario).seedPool.length,
     maxMembers: meta.maxMembers,
+    decideAt: meta.decideAt ?? null,
   };
 }
 
@@ -296,6 +305,8 @@ export async function createEvent(
   date: string = todayPacific(),
   /** How many people can join, the creator included. */
   maxMembers: number = DEFAULT_PLAN_SIZE,
+  /** Minutes until the plan works itself out from whoever is done. 0: the creator starts it. */
+  decideAfterMinutes: number = 0,
 ): Promise<EventSummary> {
   const client = await db();
   const scenario = scenarioFor(ScenarioIdSchema.parse(scenarioId));
@@ -303,6 +314,7 @@ export async function createEvent(
   const day = planDateSchema().parse(date);
   const name = TitleSchema.parse(title);
   const size = PlanSizeSchema.parse(maxMembers);
+  const wait = DecideAfterSchema.parse(decideAfterMinutes);
   // Counted after the input checks, so a typo in the form doesn't use up one of the day's plans.
   const quota = await hit(rateKey.createPlan(userId), LIMITS.createPlanPerUser);
   if (!quota.allowed) {
@@ -325,6 +337,7 @@ export async function createEvent(
     poolSource: pool.source,
     poolSize: restaurants?.filter((r) => r.cuisine !== null).length ?? scenario.seedPool.length,
     maxMembers: size,
+    decideAt: wait > 0 ? now + wait * 60_000 : null,
   };
   if (pool.source === "seed" && where) console.info(`Plan ${event.id}: using seed pool (${pool.reason})`);
   await client.execute({
@@ -336,7 +349,10 @@ export async function createEvent(
       encrypt(event.inviteCode, scope.plan(event.id, "invite")),
       userId,
       dayOf(now),
-      encryptJson({ createdAt: now, maxMembers: size } satisfies PlanMeta, scope.plan(event.id, "meta")),
+      encryptJson(
+        { createdAt: now, maxMembers: size, decideAt: event.decideAt } satisfies PlanMeta,
+        scope.plan(event.id, "meta"),
+      ),
       where ? encrypt(where, scope.plan(event.id, "location")) : null,
       restaurants ? encryptJson(restaurants, scope.plan(event.id, "pool")) : null,
       pool.source,
@@ -599,7 +615,7 @@ export const NOTHING_CHANGED =
 async function runState(eventId: string) {
   const client = await db();
   const event = await client.execute({
-    sql: "SELECT result_json, decided_at FROM events WHERE id = ?",
+    sql: "SELECT id, result_json, decided_at, creator_id, meta_enc, created_at, max_members FROM events WHERE id = ?",
     args: [eventId],
   });
   const row = event.rows[0];
@@ -622,6 +638,8 @@ async function runState(eventId: string) {
   const lastChange = Math.max(0, ...statuses.map((st) => Math.max(st.changedAt ?? 0, st.joinedAt)));
   return {
     decided,
+    creatorId: String(row.creator_id),
+    decideAt: readMeta(row as Record<string, unknown>).decideAt ?? null,
     members: statuses.length,
     ready: statuses.filter((st) => st.ready).length,
     changedSince: decided && lastChange > decidedAt,
@@ -669,6 +687,8 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
     throw new AccessError("Everyone who joined must be ready before finding a plan");
   }
   if (state.decided && !state.changedSince) throw new AccessError(NOTHING_CHANGED);
+  // The first plan is the creator's call: they know whether everyone who is coming has joined.
+  if (!state.decided && state.creatorId !== userId) throw new AccessError(CREATOR_STARTS);
   // One run at a time per plan. Two people pressing the button together would otherwise both
   // search Google and both write the pool, the later write undoing the earlier one's count.
   const lock = rateKey.running(eventId);
@@ -680,17 +700,20 @@ export async function runNegotiation(eventId: string, userId: string): Promise<S
   }
 }
 
+/** Shown to a member who asks for the first plan; the page does not offer them the button. */
+export const CREATOR_STARTS = "The person who started this plan finds the first plan.";
+
 /** Shown to someone who presses the button while another member's run is still going. */
 export const ALREADY_RUNNING = "The plan is being worked out right now. It will show up here in a moment.";
 
-async function countedRun(eventId: string): Promise<StoredResult> {
+async function countedRun(eventId: string, readyOnly = false): Promise<StoredResult> {
   const quota = await hit(rateKey.runs(eventId), LIMITS.runsPerPlan);
   if (!quota.allowed) {
     throw new RateLimitError(
       `This plan has been worked out ${LIMITS.runsPerPlan.max} times today, which is the most allowed. You can run it again ${waitText(quota.retryAfterMs)}.`,
     );
   }
-  return decideAndStore(eventId);
+  return decideAndStore(eventId, readyOnly);
 }
 
 /**
@@ -704,15 +727,15 @@ async function countedRun(eventId: string): Promise<StoredResult> {
  * The function and `runNegotiation` keep the names the page and its actions already use; the
  * negotiation engine they are named after no longer decides plans (#130 removes it).
  */
-async function decideAndStore(eventId: string): Promise<StoredResult> {
-  const first = await loadOptimizerInput(eventId);
+async function decideAndStore(eventId: string, readyOnly = false): Promise<StoredResult> {
+  const first = await loadOptimizerInput(eventId, readyOnly);
   if (first.ready < 2) throw new AccessError("At least 2 people need to be ready first");
-  if (first.ready !== first.members) {
+  if (!readyOnly && first.ready !== first.members) {
     throw new AccessError("Everyone who joined must be ready before finding a plan");
   }
   // Everyone is done, so what the group wants is known: fetch the places for it before deciding (#101).
   const grew = await refreshPool(eventId);
-  const { input } = grew ? await loadOptimizerInput(eventId) : first;
+  const { input } = grew ? await loadOptimizerInput(eventId, readyOnly) : first;
 
   const picked = optimize(input);
   const problems = checkResult(input, picked);
@@ -760,22 +783,30 @@ async function decideAndStore(eventId: string): Promise<StoredResult> {
 }
 
 /**
- * Finds the first plan as soon as the last member is done, so nobody has to keep watch
- * and press the button. It never re-runs a plan that already has a result: after that,
- * a new run is always somebody's explicit choice. Returns whether this call ran it.
+ * Works the first plan out by itself once the plan's time is up, from whoever is done by then.
+ *
+ * A plan made with no time never runs here: its creator presses the button. Nothing runs before
+ * two people are done, so a plan whose time passed with one person waits for the second. It never
+ * re-runs a plan that already has a result. Returns whether this call ran it.
  */
-export async function negotiateWhenAllReady(eventId: string, userId: string): Promise<boolean> {
-  const [members, existing] = await Promise.all([listMembers(eventId, userId), getResult(eventId, userId)]);
-  if (existing || members.length < 2 || !members.every((m) => m.ready)) return false;
-  // Two people who finish in the same instant both get this far. Counting is one atomic statement,
-  // so exactly one of them takes the claim and runs; the other's page shows the plan when it lands.
+export async function negotiateWhenDue(eventId: string, userId: string, now = Date.now()): Promise<boolean> {
+  await requireMember(eventId, userId);
+  const state = await runState(eventId);
+  if (state.decided || state.decideAt === null || now < state.decideAt || state.ready < 2) return false;
+  // Several open pages notice the time at once. Counting is one atomic statement, so exactly one
+  // of them takes the claim and runs; the others show the plan when it lands.
   const claim = rateKey.autoNegotiate(eventId);
   if (!(await hit(claim, LIMITS.autoNegotiate)).allowed) return false;
+  const lock = rateKey.running(eventId);
+  if (!(await hit(lock, LIMITS.running)).allowed) return false;
   try {
-    await runNegotiation(eventId, userId);
+    // People who are not done are left out; when they finish, the plan can be run again.
+    await countedRun(eventId, true);
   } catch (err) {
-    await clearRateKey(claim); // a failed run must not block the next "I'm done" from trying
+    await clearRateKey(claim); // a failed run must not block the next try
     throw err;
+  } finally {
+    await clearRateKey(lock);
   }
   return true;
 }

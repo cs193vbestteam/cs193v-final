@@ -162,6 +162,19 @@ export function CreateEventForm({
           </div>
         </div>
 
+        <div>
+          <label htmlFor="plan-decide" className="label">
+            Find the plan
+          </label>
+          <select id="plan-decide" name="decideAfter" defaultValue="0" className="input">
+            <option value="0">When I say so</option>
+            <option value="30">By itself in 30 minutes</option>
+            <option value="60">By itself in 1 hour</option>
+            <option value="180">By itself in 3 hours</option>
+            <option value="1440">By itself in 24 hours</option>
+          </select>
+        </div>
+
         {state.error && (
           <p role="alert" className="text-sm text-seal-ink">
             {state.error}

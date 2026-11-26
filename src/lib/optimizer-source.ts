@@ -19,6 +19,8 @@ import { scenarioFor } from "./scenario";
  */
 export async function loadOptimizerInput(
   eventId: string,
+  /** Leave out people who are not done: a plan whose time is up is decided from the rest. */
+  readyOnly = false,
 ): Promise<{ input: OptimizerInput; members: number; ready: number }> {
   const client = await db();
   const event = await client.execute({
@@ -32,9 +34,10 @@ export async function loadOptimizerInput(
   });
   if (rows.length === 0) throw new Error("The plan has no members");
   // In the order they joined, which is encrypted with each member's status (member-status.ts).
-  const ordered = byJoinOrder(
+  const everyone = byJoinOrder(
     rows.map((row) => ({ row, userId: String(row.user_id), status: readStatus(row, eventId, String(row.user_id)) })),
   );
+  const ordered = readyOnly ? everyone.filter((m) => m.status.ready) : everyone;
   const { places: restaurants, scenario, center } = await poolForEvent(eventId);
   const parse = scenarioFor(scenario).parseConstraints;
   const members = ordered.map(({ row, userId, status }) => {
@@ -53,5 +56,5 @@ export async function loadOptimizerInput(
     members,
     center,
   });
-  return { input, members: ordered.length, ready: ordered.filter((m) => m.status.ready).length };
+  return { input, members: everyone.length, ready: everyone.filter((m) => m.status.ready).length };
 }

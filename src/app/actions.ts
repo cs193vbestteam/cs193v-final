@@ -11,6 +11,7 @@ import type { ChatTurn } from "@/lib/extract";
 import {
   AccessError,
   DEFAULT_PLAN_SIZE,
+  DecideAfterSchema,
   PlanSizeSchema,
   createEvent,
   deleteAccount,
@@ -18,7 +19,7 @@ import {
   getEventByCode,
   joinEvent,
   leavePlan,
-  negotiateWhenAllReady,
+  negotiateWhenDue,
   removeMember,
   resetInviteCode,
   runNegotiation,
@@ -136,6 +137,7 @@ export async function createEventAction(_: FormState, form: FormData): Promise<F
         scenario,
         date,
         PlanSizeSchema.parse(form.get("maxMembers") ?? DEFAULT_PLAN_SIZE),
+        DecideAfterSchema.parse(form.get("decideAfter") ?? 0),
       )
     ).inviteCode;
   } catch (err) {
@@ -184,9 +186,8 @@ export async function sendMessageAction(
   }
 }
 
-/** Shown to the person whose "I'm done" should have started the negotiation, when it could not. */
-const AUTO_FAILED =
-  "You're marked done, but the plan couldn't be found automatically. Press \"Find a plan\" to try again.";
+/** Shown to the person whose "I'm done" should have started a plan whose time was up, when it could not. */
+const AUTO_FAILED = "You're marked done, but the plan couldn't be worked out just now. It will be tried again.";
 
 export async function setReadyAction(
   eventId: string,
@@ -201,12 +202,12 @@ export async function setReadyAction(
   } catch (err) {
     return { error: friendly(err) };
   }
-  // The last person to finish starts the negotiation. If that fails, being done still
-  // stands, and the person is told to use the "Find a plan" button.
+  // A plan whose time is already up is worked out as soon as a second person is done. If that
+  // fails, being done still stands.
   let notice: string | undefined;
   if (ready) {
     try {
-      await negotiateWhenAllReady(eventId, user.id);
+      await negotiateWhenDue(eventId, user.id);
     } catch (err) {
       console.error("Automatic negotiation failed:", (err as Error).message);
       notice = AUTO_FAILED;
@@ -320,5 +321,12 @@ export async function deleteAccountAction(_: FormState, form: FormData): Promise
 export async function planPulseAction(eventId: string): Promise<string | null> {
   const user = await currentUser();
   if (!user || typeof eventId !== "string") return null;
+  // Open pages ask this every few seconds, so this is also where a plan whose time is up gets
+  // worked out: nothing else is running to notice the time.
+  try {
+    await negotiateWhenDue(eventId, user.id);
+  } catch (err) {
+    if (!(err instanceof AccessError)) console.error("Timed plan failed:", (err as Error).message);
+  }
   return planPulse(eventId, user.id);
 }
