@@ -119,8 +119,6 @@ export function PrivateChat({
   const welcome = !ready && missing.length > 0 && messages.length > 0 && messages.every((m) => m.role === "assistant");
   const opening = welcome;
 
-  const quiet = !!opening && summary.length === 0;
-
   /** The orb leans toward the pointer anywhere over the chat. */
   function lean(e: React.PointerEvent<HTMLElement>) {
     if (e.pointerType !== "mouse") return;
@@ -465,46 +463,10 @@ export function PrivateChat({
         </div>
       )}
 
-      {/* On the greeting there is nothing known yet, so the summary waits for the first message. */}
-      {(!quiet || error) && (
-        <div className="chat-knows border-t border-line bg-paper-2/40 px-5 py-2">
-          {/* One short line under the chat: the conversation above is what the room is for. */}
-          {quiet ? null : (
-            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-xs text-ink-2">
-              <span className="font-mono text-[0.75rem] uppercase tracking-wider text-ink-3">
-                What your assistant knows
-              </span>
-              {summary.length ? (
-                <ul className="flex min-w-0 flex-wrap gap-x-3 gap-y-0.5">
-                  {summary.map((s) => {
-                    // "Budget: no limit": what it is about stands out, the answer reads after it.
-                    const cut = s.indexOf(": ");
-                    return (
-                      <li key={s} className="flex gap-1.5">
-                        <span aria-hidden className="mt-[0.6em] h-1 w-1 shrink-0 rounded-full bg-line-strong" />
-                        {cut < 0 ? (
-                          <span>{s}</span>
-                        ) : (
-                          <span>
-                            <strong className="font-semibold text-ink">{s.slice(0, cut + 1)}</strong>
-                            {s.slice(cut + 1)}
-                          </span>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <span className="text-ink-3">Nothing yet.</span>
-              )}
-            </div>
-          )}
-          {error && (
-            <p role="alert" className="mt-1.5 text-sm text-seal-ink">
-              {error}
-            </p>
-          )}
-        </div>
+      {error && (
+        <p role="alert" className="border-t border-line px-5 py-2 text-sm text-seal-ink">
+          {error}
+        </p>
       )}
       {/* Who processes the chat, at the very bottom of the card: a quiet title that opens. The greeting names
           it too, before anything is typed. The words are AI-CONSENT.md's: what leaves, who gets it,

@@ -269,7 +269,10 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         {/* Beside the group and the plan, the chat is exactly as tall as the two of them together. */}
-        <div className="rise lg:relative lg:min-h-[34rem]" style={{ "--d": "0.1s" } as React.CSSProperties}>
+        <div
+          className="rise lg:relative lg:min-h-[max(34rem,min(46rem,calc(100dvh-16rem)))]"
+          style={{ "--d": "0.1s" } as React.CSSProperties}
+        >
           <PrivateChat
             eventId={event.id}
             inviteCode={code}

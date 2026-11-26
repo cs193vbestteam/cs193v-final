@@ -558,6 +558,13 @@ function nextStatus(prev: MemberStatus, ready: boolean, changed: boolean, now = 
   };
 }
 
+const endsWithQuestion = (reply: string) => /[?？]\s*["')\]]*$/.test(reply.trim());
+
+/** The assistant's last word before "I'm done": everything it has, one line each, and how to fix it. */
+export function recap(lines: string[]): string {
+  return `Here's what I have:\n${lines.map((l) => `• ${l}`).join("\n")}\n\nIf that's right, press "I'm done". If not, tell me what to change.`;
+}
+
 export async function sendMessage(
   eventId: string,
   userId: string,
@@ -580,10 +587,16 @@ export async function sendMessage(
   // Changing what you want un-readies you, so the group re-checks with fresh info. A reply that
   // only moves the conversation along (a question asked, a turn counted) does not.
   const {
-    reply,
+    reply: said,
     constraints: next,
     changed,
   } = await withPayer(userId, () => scenario.chatTurn(history, current, restaurants, { allowLLM, plan }));
+  // Once nothing is left to ask, the assistant reads back what it has, so the person can check it
+  // before pressing "I'm done". Only on a turn that took something in: a message it did not
+  // understand does not get the list again.
+  const complete = scenario.missingFields(next).length === 0;
+  const tookSomething = changed || scenario.missingFields(current).length > 0;
+  const reply = complete && tookSomething && !endsWithQuestion(said) ? recap(scenario.describeConstraints(next)) : said;
   // Their status was read with their constraints at the top; nothing else changes it in between
   // but their own "I'm done", which the page does not offer while a message is being sent.
   await saveConstraints(eventId, userId, next, status.ready && !changed, changed, status);

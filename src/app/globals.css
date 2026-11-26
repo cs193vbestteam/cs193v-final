@@ -1588,14 +1588,12 @@ form:focus-within .plan-ticket {
 }
 
 /* On a phone the chat is one screen tall and the conversation has to keep most of it: the dial goes
-   (the count is still written out), and the answer chips and what the assistant knows each take
-   one line that scrolls sideways. */
+   (the count is still written out), and the answer chips take one line that scrolls sideways. */
 @media (max-width: 639px) {
   .chat-progress .answer-dial {
     display: none;
   }
-  .chat-progress ol,
-  .chat-knows ul {
+  .chat-progress ol {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
@@ -1603,17 +1601,12 @@ form:focus-within .plan-ticket {
     width: 0;
     min-width: 100%;
   }
-  .chat-progress ol::-webkit-scrollbar,
-  .chat-knows ul::-webkit-scrollbar {
+  .chat-progress ol::-webkit-scrollbar {
     display: none;
   }
-  .chat-progress li,
-  .chat-knows li {
+  .chat-progress li {
     flex: none;
     white-space: nowrap;
-  }
-  .chat-knows > div {
-    display: block;
   }
 }
 
