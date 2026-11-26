@@ -65,14 +65,13 @@ async function submit() {
 }
 function expectUpdated() {
   expect(container.textContent).toContain("Budget saved privately");
-  expect(container.textContent).toContain("Budget: up to $40/person");
   // Nothing is missing any more: "All set" for someone still chatting, the done note for someone who is done.
   expect(container.textContent).toMatch(/All set ✓|Your part is done\./);
   expect(container.textContent).not.toContain("Still needs: budget");
 }
 
 describe("PrivateChat server refresh", () => {
-  it("updates messages, summary and missing fields together with readiness", async () => {
+  it("updates messages and missing fields together with readiness", async () => {
     await render(initial);
     await render(updated);
     expectUpdated();
@@ -135,8 +134,6 @@ describe("PrivateChat server refresh", () => {
     await render(newer);
     await act(async () => resolve(response));
     expect(container.textContent).toContain("Budget reduced");
-    expect(container.textContent).toContain("Budget: up to $30/person");
-    expect(container.textContent).not.toContain("Budget: up to $40/person");
   });
 
   it("accepts later server updates after a completed local send", async () => {
@@ -156,7 +153,6 @@ describe("PrivateChat server refresh", () => {
       initialSummary: [...response.summary, "Saturday dinner only"],
     });
     expect(container.textContent).toContain("Saturday saved");
-    expect(container.textContent).toContain("Saturday dinner only");
     expect(container.textContent).toContain("I'm done");
   });
 

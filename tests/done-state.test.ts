@@ -59,16 +59,16 @@ const button = (el: HTMLElement, name: string) =>
   [...el.querySelectorAll("button")].find((b) => b.textContent === name);
 
 describe("finishing, and what comes after", () => {
-  it("puts the way to finish right under the message box, above the progress and the summary", async () => {
+  it("puts the way to finish right under the message box", async () => {
     const el = await render({ ready: false });
     const done = button(el, "I'm done")!;
     const log = el.querySelector('[role="log"]')!;
     const message = el.querySelector('input[aria-label="Message your assistant"]')!;
-    const summary = [...el.querySelectorAll("span")].find((d) => d.textContent === "What your assistant knows")!;
+    // What the assistant knows is read back in the chat itself; there is no bar for it.
+    expect(el.textContent).not.toContain("What your assistant knows");
     const after = (a: Node, b: Node) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
     expect(after(log, done)).toBe(true);
     expect(after(message, done)).toBe(true);
-    expect(after(done, summary)).toBe(true);
   });
 
   it("says what is still missing next to the button it holds back", async () => {
