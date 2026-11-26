@@ -22,13 +22,9 @@ export default async function Home() {
         <h1 className="display mt-3 text-5xl sm:text-6xl">
           What are we <em>actually</em> doing?
         </h1>
-        <p className="lede mt-4 max-w-xl">
-          Name the plan, drop the invite link in the group chat, and let everyone tell their own assistant the truth.
-        </p>
       </div>
 
       <section className="card rise mt-8" style={{ "--d": "0.15s" } as React.CSSProperties}>
-        <p className="eyebrow mb-3">New plan</p>
         {user.guest ? (
           <p className="text-sm text-ink-2">
             You are here as a guest, and guests can join plans but not start them.{" "}

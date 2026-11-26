@@ -19,14 +19,7 @@ export function GuestForm({ code }: { code: string }) {
         <h1 className="display mt-4 text-5xl sm:text-6xl">
           Just the <em>code.</em>
         </h1>
-        <p className="lede mt-5">
-          Enter the plan code and a name, and you&apos;re in. You get the same private assistant as everyone else;
-          nobody in the group sees what you tell it.
-        </p>
-        <p className="mt-4 text-sm text-ink-2">
-          As a guest you stay in this plan on this browser only. To open it on another device, or to start a plan of
-          your own, add an email and password later from the Account page.
-        </p>
+        <p className="mt-5 text-sm text-ink-2">Guests stay signed in on this browser only.</p>
       </div>
 
       <div className="card rise" style={{ "--d": "0.12s" } as React.CSSProperties}>
@@ -44,7 +37,7 @@ export function GuestForm({ code }: { code: string }) {
               describedBy="code-hint"
             />
             <p id="code-hint" className="mt-1.5 text-xs text-ink-3">
-              The six digits at the end of the invite link. You can paste the whole link.
+              You can paste the whole invite link.
             </p>
           </div>
           <div>

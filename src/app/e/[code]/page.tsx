@@ -61,10 +61,6 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         <h1 className="display rise mt-4 text-5xl sm:text-6xl" style={{ "--d": "0.08s" } as React.CSSProperties}>
           {event.title}
         </h1>
-        <p className="lede rise mx-auto mt-5 max-w-md" style={{ "--d": "0.16s" } as React.CSSProperties}>
-          You&apos;ll get a private assistant. Tell it what actually works for you. Nobody else in the group will see
-          it, only the final plan.
-        </p>
         {full ? (
           <p
             role="status"

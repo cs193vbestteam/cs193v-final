@@ -1,5 +1,6 @@
 "use client";
 
+import { InfoTip } from "@/components/InfoTip";
 import { useActionState, useState } from "react";
 import { createEventAction } from "@/app/actions";
 import { formatPlanDate } from "@/lib/plan-date";
@@ -86,24 +87,28 @@ export function CreateEventForm({
             aria-describedby="plan-source"
           />
           {/* Which restaurants this plan will choose from, said before the plan is made. */}
-          <p id="plan-source" className="mt-2 flex items-start gap-2 text-xs text-ink-2">
+          <p id="plan-source" className="mt-2 flex items-center gap-1 text-xs text-ink-2">
             <span className={`pill shrink-0 ${real ? "pill-moss" : "pill-amber"}`}>
               {real ? "Real places" : "Sample data"}
             </span>
-            <span className="pt-0.5">
-              {real
-                ? "The plan will choose from real restaurants near there."
-                : realPlaces
+            {!real && (
+              <InfoTip label="About sample data">
+                {realPlaces
                   ? "Add a place to choose from real restaurants nearby. Left blank, the plan uses made-up sample restaurants."
                   : "Plans in this version pick from made-up sample restaurants, not real places."}
-            </span>
+              </InfoTip>
+            )}
           </p>
         </div>
 
         <div>
-          <label htmlFor="plan-size" className="label">
-            Maximum group size
-          </label>
+          <div className="flex items-center gap-1">
+            <label htmlFor="plan-size" className="label !mb-0">
+              Maximum group size
+            </label>
+            {/* A tester read the size as the number of people a plan needs, and doubted two could finish one (#155). */}
+            <InfoTip label="About group size">A limit, not a target. Two people are enough for a plan.</InfoTip>
+          </div>
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -149,17 +154,12 @@ export function CreateEventForm({
               step={1}
               value={size}
               onChange={(e) => setSize(Number(e.target.value))}
-              aria-describedby="plan-size-hint"
               aria-valuetext={`${size} people`}
               style={
                 { "--fill": `${((size - smallest) / Math.max(1, largest - smallest)) * 100}%` } as React.CSSProperties
               }
             />
           </div>
-          {/* A tester read the size as the number of people a plan needs, and doubted two could finish one (#155). */}
-          <p id="plan-size-hint" className="mt-2.5 text-xs text-ink-3">
-            The group size is a limit, not a target. Two people are enough for a plan.
-          </p>
         </div>
 
         {state.error && (
@@ -201,7 +201,6 @@ export function CreateEventForm({
           {pending ? "Creating…" : "Start a plan"}
           {!pending && <Arrow />}
         </button>
-        <p className="-mt-2 text-center text-xs text-ink-3">The plan code is made when you start.</p>
       </div>
     </form>
   );

@@ -495,7 +495,7 @@ export function PrivateChat({
                   })}
                 </ul>
               ) : (
-                <span className="text-ink-3">Nothing yet. Just talk to it like a friend who keeps secrets.</span>
+                <span className="text-ink-3">Nothing yet.</span>
               )}
             </div>
           )}
