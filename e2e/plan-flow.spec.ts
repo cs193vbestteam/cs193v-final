@@ -193,8 +193,9 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     for (const page of [blake, alex]) {
       await page.reload();
       await expect(page.getByText("Best so far").first()).toBeVisible();
-      // The reason sits behind the "i" beside the verdict.
-      await page.getByRole("button", { name: "Why this may change" }).first().hover();
+      // The reason sits behind the "i" beside the verdict. Focus opens it as hover does, and does not
+      // depend on where the pointer lands while the card is still arriving.
+      await page.getByRole("button", { name: "Why this may change" }).first().focus();
       await expect(page.getByText(/answers have changed since this was decided/).first()).toBeVisible();
       // The plan is still there to read, but it no longer says it works for everyone, and it is not offered for sharing.
       await expect(page.getByText("Everyone can come")).toHaveCount(0);
@@ -232,7 +233,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
       await page.reload();
       await expect(page.getByText("Best so far").first()).toBeVisible();
       // The person who joined is told it is them; everyone else that someone did.
-      await page.getByRole("button", { name: "Why this may change" }).first().hover();
+      await page.getByRole("button", { name: "Why this may change" }).first().focus();
       await expect(
         page
           .getByText(page === casey ? /You joined after this was decided/ : /Someone joined after this was decided/)
