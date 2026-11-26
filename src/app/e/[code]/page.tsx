@@ -144,7 +144,8 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
             ? { label: "Not everyone", cls: "pill-amber" }
             : { label: "Stuck", cls: "pill-seal" }
       : readyCount === members.length && members.length >= 2
-        ? { label: "Everyone's done", cls: "pill-moss" }
+        ? // Not "everyone": more people can still join, up to the plan's size. Only those here are counted.
+          { label: `${readyCount} done`, cls: "pill-moss" }
         : { label: "Collecting", cls: "pill-amber" };
 
   // For someone who is done: whether anything is left for them, and what the group is waiting for (#153).
@@ -212,9 +213,6 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
           </h1>
         </div>
         <div className="flex items-center gap-3">
-          <span className="font-mono text-xs uppercase tracking-wider text-ink-3">
-            {readyCount} of {members.length} ready
-          </span>
           <span className={`pill ${status.cls}`}>{status.label}</span>
         </div>
       </div>
