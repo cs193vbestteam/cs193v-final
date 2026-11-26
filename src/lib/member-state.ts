@@ -243,7 +243,13 @@ export const FEATURE_PHRASES: Record<Feature, string> = {
   well_rated: "are well reviewed",
 };
 
-const STRENGTH_WORDS: Record<Strength, string> = { must: " (matters most)", strong: " (matters a lot)", mild: "" };
+// "must" is a limit the person stated ("up to $50", "has to be Thai"), not a ranking. It used to
+// read "(matters most)", the words of the separate "Matters most:" line, and a person who had only
+// named a budget was told it was what mattered most to them. That line is the only place those
+// words appear now, and it is there only when the person said so.
+const STRENGTH_WORDS: Record<Strength, string> = { must: " (a must)", strong: " (matters a lot)", mild: "" };
+/** For a number with "up to" in front of it: the words already say it is a limit. */
+const LIMIT_WORDS: Record<Strength, string> = { ...STRENGTH_WORDS, must: "" };
 const PRIORITY_WORDS: Record<string, string> = {
   time: "the time",
   budget: "the budget",
@@ -282,7 +288,7 @@ export function describeState(state: MemberState): string[] {
         : max !== undefined
           ? `up to $${max}/person`
           : `around $${ideal}/person`;
-    lines.push(`Budget: ${text}${STRENGTH_WORDS[strength]}`);
+    lines.push(`Budget: ${text}${LIMIT_WORDS[strength]}`);
   } else if (settled("budget")) lines.push("Budget: no limit");
 
   if (prefs.travel) {
@@ -294,7 +300,7 @@ export function describeState(state: MemberState): string[] {
           ? `up to ${maxMin} min`
           : `around ${idealMin} min`;
     const how = prefs.travel.mode ? ` ${MODE_WORDS[prefs.travel.mode]}` : "";
-    lines.push(`Travel: ${text}${how}${STRENGTH_WORDS[strength]}`);
+    lines.push(`Travel: ${text}${how}${LIMIT_WORDS[strength]}`);
   } else if (state.travelMode) lines.push(`Travel: ${MODE_WORDS[state.travelMode]}, no limit given`);
   else if (settled("travel")) lines.push("Travel: any distance");
   if (state.startPoint) lines.push(`Coming from: ${state.startPoint.label}`);

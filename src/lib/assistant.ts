@@ -901,8 +901,12 @@ export function applyAssistantOutput(
       if (note.type === "allergy") allergyNoted = true;
       else otherNoted = true;
     }
+    // The model often writes its own note for the same wish ("Wants a place with good ambiance").
+    // One note per wish: the code's "Would like: good ambiance" is added only when no note
+    // already has those words.
+    const worded = (text: string) => text.slice(text.indexOf(": ") + 2).toLowerCase();
     for (const note of unknownNotes)
-      if (!notes.some((n) => n.text.toLowerCase() === note.text.toLowerCase())) notes.push(note);
+      if (!notes.some((n) => n.text.toLowerCase().includes(worded(note.text)))) notes.push(note);
     put("notes", notes.slice(-LIMITS.notes));
   }
   // An allergy answers "anything you can't eat?". So does a note or an excluded food given in reply to it.

@@ -846,6 +846,24 @@ describe("wishes about what the food is like are understood, not turned away (#1
   });
 });
 
+describe("a wish the table does not have", () => {
+  it("is kept as one note when the model also writes a note for it", () => {
+    const r = apply(
+      state(),
+      out({
+        cuisine: { liked: ["good ambiance"] },
+        notes: [{ type: "other", text: "Wants a place with good ambiance" }],
+      }),
+    );
+    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Wants a place with good ambiance" }]);
+  });
+
+  it("gets the code's note when the model wrote none", () => {
+    const r = apply(state(), out({ cuisine: { liked: ["good ambiance"] } }));
+    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would like: good ambiance" }]);
+  });
+});
+
 describe('"I don\'t mind"', () => {
   it("settles the question and records nothing", () => {
     const r = apply(state({}, { lastAsked: "travel" }), out({}, { dontMind: ["travel"] }));
@@ -1057,7 +1075,7 @@ describe("what is sent to the model", () => {
     expect(stateBlock(s)).toBe(stateBlock(JSON.parse(JSON.stringify(s))));
     expect(stateBlock(s).split("\n")).toEqual([
       "# STATE (this request)",
-      "Recorded so far, in words: Budget: up to $40/person (matters most)",
+      "Recorded so far, in words: Budget: up to $40/person",
       `Recorded so far, as stored (JSON): ${JSON.stringify(s.prefs)}`,
       "Question you asked last: travel (minutes one way)",
       "Topics that have not come up, which you may raise: time, diet. A follow-up on something they said is always allowed.",
