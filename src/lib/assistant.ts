@@ -614,7 +614,8 @@ function offTopicTurn(state: MemberState): AssistantTurn {
 export const PRIVATE_NUMBER = " (Your number stays private.)";
 export const PRIVATE_NUMBER_ZH = "（这个数字只有你自己能看到。）";
 const PRIVATE_ALREADY = /stays? private|is private|只有你|保密/i;
-const CANNOT_CHECK = /can(?:no|')t (?:be )?check|cannot (?:be )?check|not (?:be )?checked|unable to check/i;
+const CANNOT_CHECK =
+  /can(?:no|')t (?:be )?check|cannot (?:be )?check|not (?:be )?checked|unable to check|check with the (?:place|restaurant)|don'?t list allergens/i;
 
 /**
  * How "there is nothing I can't eat" is confirmed (#157). Written by code: in a user test the
@@ -631,6 +632,34 @@ const CJK = /[\u3400-\u9fff]/;
  * message said, the confirmation is code's sentence and only the model's question is kept.
  * Otherwise only a sentence that could be read the wrong way round is replaced.
  */
+/**
+ * "Tasty" and "nice ambience" are not kinds of food. A model that files them under cuisine used
+ * to get them back as words the table does not know, and the person was told they could not be
+ * looked for, one message after being told they would be. They are read as what they are.
+ */
+const QUALITY_WORDS: readonly [RegExp, Feature][] = [
+  [
+    /^(?:(?:something|somewhere|some ?place|food that(?: is|'s)|a place that(?: is|'s))\s+)?(?:really |very )?(?:good|great|nice|tasty|delicious|yummy|well[- ]?(?:rated|reviewed)|high(?:ly)?[- ]rated|popular)(?:\s+(?:food|place|places|restaurant|stuff|meal))?$|\b(?:tast(?:y|es? good)|delicious|yummy|good food|great food)\b|好吃|美味/i,
+    "well_rated",
+  ],
+  [
+    /\b(?:ambian\w*|ambien\w*|atmospher\w*|vibes?|cozy|cosy|aesthetic|pretty|beautiful|romantic|decor|interior|nice (?:place|setting|environment)|good environment)\b|环境|氛围/i,
+    "atmosphere",
+  ],
+];
+const qualityOf = (word: string): Feature | null => QUALITY_WORDS.find(([re]) => re.test(word.trim()))?.[1] ?? null;
+/** Whether a note says nothing beyond such a wish ("Wants a place with good ambiance"), so the wish alone is kept. */
+const FILLER =
+  /\b(?:wants?|would like|likes?|prefers?|looking for|somewhere|some ?place|places?|restaurants?|food|with|that|is|has|have|an?|the|and|really|very|good|nice|great)\b/gi;
+const onlyQuality = (text: string): boolean =>
+  !/[a-z\u4e00-\u9fff]/i.test(
+    QUALITY_WORDS.reduce((t, [re]) => t.replace(new RegExp(re.source, "gi"), " "), text).replace(FILLER, " "),
+  );
+
+/** "No allergies", written by the model as an allergy note. It is the answer "nothing", not a note. */
+const NO_ALLERGY =
+  /^(?:(?:no|none|not any|without(?: any)?|(?:i )?(?:do not|don'?t) have(?: any)?)\s*(?:known\s+)?(?:food\s+)?(?:allerg\w*|restrictions?|intolerances?)?|nothing|n\/a)[.!]?$/i;
+
 function confirmNothingOffLimits(reply: string, onlyThat: boolean): string {
   if (CJK.test(reply)) return reply;
   const sentences = reply.split(SENTENCE_BREAK).filter((x) => x.trim());
@@ -769,6 +798,12 @@ export function applyAssistantOutput(
   // Food and kind-of-place words are looked up before diet, because a diet is sometimes said as
   // a cuisine ("vegetarian food") and then belongs with the diets.
   const words = readFoodWords(blocks.cuisine, blocks.style);
+  const isQualityNote = (n: { type: string; text: string }) => n.type === "other" && qualityOf(n.text) !== null;
+  const qualities = uniq([
+    ...words.unknown.flatMap((u) => (u.wanted && qualityOf(u.word) ? [qualityOf(u.word)!] : [])),
+    ...(blocks.notes ?? []).filter(isQualityNote).map((n) => qualityOf(n.text)!),
+  ]);
+  words.unknown = words.unknown.filter((u) => !(u.wanted && qualityOf(u.word)));
   const diets = uniq([...(blocks.dietary ?? []), ...words.dietary]);
   // Diets add up ("vegetarian", later "and halal"), unless this message takes the old ones back.
   const keptDiets = (output.forget ?? []).includes("dietary") ? [] : (prefs.dietary ?? []);
@@ -850,16 +885,16 @@ export function applyAssistantOutput(
   // What the place should offer. Needing something outranks wanting it; neither is ever taken
   // back by a later message that only adds to the list.
   let featuresAdded: Feature[] = [];
-  if (blocks.features?.needed?.length || blocks.features?.wanted?.length) {
-    const needed = uniq([...(prefs.features?.needed ?? []), ...(blocks.features.needed ?? [])]);
-    const wanted = uniq([...(prefs.features?.wanted ?? []), ...(blocks.features.wanted ?? [])]).filter(
+  if (blocks.features?.needed?.length || blocks.features?.wanted?.length || qualities.length) {
+    const needed = uniq([...(prefs.features?.needed ?? []), ...(blocks.features?.needed ?? [])]);
+    const wanted = uniq([...(prefs.features?.wanted ?? []), ...(blocks.features?.wanted ?? []), ...qualities]).filter(
       (f) => !needed.includes(f),
     );
     const had = new Set([...(prefs.features?.needed ?? []), ...(prefs.features?.wanted ?? [])]);
     const ok = put("features", {
       ...(needed.length ? { needed } : {}),
       ...(wanted.length ? { wanted } : {}),
-      strength: blocks.features.strength ?? prefs.features?.strength ?? "mild",
+      strength: blocks.features?.strength ?? prefs.features?.strength ?? "mild",
     });
     if (ok) featuresAdded = [...needed, ...wanted].filter((f) => !had.has(f));
   }
@@ -907,10 +942,16 @@ export function applyAssistantOutput(
   if (blocks.notes?.length || unknownNotes.length) {
     const notes = [...(prefs.notes ?? [])];
     for (const note of blocks.notes ?? []) {
+      if (note.type === "allergy" && NO_ALLERGY.test(note.text.trim())) {
+        answered.add("diet");
+        continue;
+      }
+      // Recorded above as something to look for. Words that add to it ("quiet and romantic") stay as a note.
+      if (isQualityNote(note) && onlyQuality(note.text)) continue;
       if (notes.some((n) => n.text.toLowerCase() === note.text.toLowerCase())) continue;
       notes.push(note);
       if (note.type === "allergy") allergyNoted = true;
-      else otherNoted = true;
+      else if (!isQualityNote(note)) otherNoted = true;
     }
     // The model often writes its own note for the same wish ("Wants a place with good ambiance").
     // One note per wish: the code's "Would like: good ambiance" is added only when no note
@@ -918,7 +959,7 @@ export function applyAssistantOutput(
     const worded = (text: string) => text.slice(text.indexOf(": ") + 2).toLowerCase();
     for (const note of unknownNotes)
       if (!notes.some((n) => n.text.toLowerCase().includes(worded(note.text)))) notes.push(note);
-    put("notes", notes.slice(-LIMITS.notes));
+    if (notes.length || prefs.notes) put("notes", notes.slice(-LIMITS.notes));
   }
   // An allergy answers "anything you can't eat?". So does a note or an excluded food given in reply to it.
   const saidWhatTheyAvoid =
@@ -988,33 +1029,36 @@ export function applyAssistantOutput(
   }
   // Not a refusal: say what the wish was turned into, so the person can correct it.
   if (leanings.length)
-    reply += ` (Restaurants aren't listed by ${leanings.map((l) => l.leaning).join(" or ")}, so I'll lean toward food known for it: ${leanings.map((l) => l.meant).join("; ")}.)`;
+    reply += ` (Going by ${leanings.map((l) => l.leaning).join(" and ")}, I'll lean toward ${leanings.map((l) => l.meant).join("; ")}.)`;
   // "Nothing too spicy": the same guess, the other way round, and said as plainly.
   const away = uniq(words.avoided.filter((m) => leaningOf(m)).map((m) => m.id)).map((id) =>
     words.avoided.find((m) => m.id === id)!,
   );
   if (away.length)
-    reply += ` (Restaurants aren't listed by ${away.map((m) => leaningOf(m)).join(" or ")}, so I'll lean away from food known for it: ${away.map(describeMatch).join("; ")}. It won't rule those places out.)`;
+    reply += ` (Going by ${away.map((m) => leaningOf(m)).join(" and ")}, I'll lean away from ${away.map(describeMatch).join("; ")}, without ruling those places out.)`;
   for (const s of words.suggested)
-    reply += ` (Restaurants aren't listed by "${s.word}", so I'll lean toward ${s.like.map((m) => m.label).join(", ")}. Tell me if that's off.)`;
+    reply += ` (For "${s.word}" I'll lean toward ${s.like.map((m) => m.label).join(", ")}. Tell me if that's off.)`;
   const quoted = (wanted: boolean) =>
     uniq(words.unknown.filter((u) => u.wanted === wanted).map((u) => `"${u.word}"`)).join(" or ");
   // A wish that leads nowhere is said once, with what the person can do next (#158).
   if (quoted(true))
-    reply += ` (I can't look for ${quoted(true)} directly, so I've kept it as a note. Name a kind of food close to it and I'll look for that.)`;
-  if (quoted(false))
-    reply += ` (Restaurants aren't listed by that, so ${quoted(false)} stays a note for you and won't rule places out.)`;
+    reply += ` (I've noted ${quoted(true)}. If a kind of food comes close to it, name it and I'll look for that too.)`;
+  if (quoted(false)) reply += ` (I've noted ${quoted(false)}; it won't rule places out.)`;
   for (const line of uniq(placeNotes)) reply += ` ${line}`;
-  // Said once, when something about the place itself is first recorded: Google answers this for
-  // most places, not all, and the person should know what an unanswered one counts as.
-  if (featuresAdded.length)
-    reply += ` (I'll look for places that ${featuresAdded.map((f) => FEATURE_PHRASES[f]).join(" and ")}. Google doesn't say for every place; one it says nothing about counts as a maybe.)`;
-  if ((allergyNoted || otherNoted) && !CANNOT_CHECK.test(reply))
-    // Still honest that it cannot steer the choice (the tests hold that), but said as something
-    // done for the person and, for an allergy, with what they should do about it (#158).
+  // Said once, when something about the place itself is first recorded, as what will be done.
+  // Only something they need comes with advice: Google does not answer it for every place, and
+  // a place it says nothing about is not ruled out, so the one picked is worth a check.
+  if (featuresAdded.length) {
+    const needs = featuresAdded.some((f) => prefs.features?.needed?.includes(f));
+    reply += ` (I'll look for places that ${featuresAdded.map((f) => FEATURE_PHRASES[f]).join(" and ")}.${needs ? " Google doesn't list this for every place, so it's worth confirming with the one we pick." : ""})`;
+  }
+  // A note beside a wish that was just taken up ("quiet and romantic") needs no second aside.
+  if ((allergyNoted || (otherNoted && !featuresAdded.length)) && !CANNOT_CHECK.test(reply))
+    // Still honest that it does not steer the choice (the tests hold that). The reason given is
+    // the true one, that restaurants do not publish it, and an allergy comes with what to do.
     reply += allergyNoted
-      ? " (I've noted that for you. I can't check restaurants for it, so please check with the place before you order.)"
-      : " (I've noted that for you. I can't check restaurants for it yet, so it won't steer which places are picked.)";
+      ? " (Noted. Restaurants don't list allergens, so do check with the place before you order.)"
+      : " (Noted for you. It won't change which places come up.)";
   if (dropped.length)
     reply += ` (I couldn't record what you said about ${uniq(dropped)
       .map((d) => (d === "dietary" ? "diet" : d))

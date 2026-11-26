@@ -47,6 +47,8 @@ export type PlaceResult = {
   allowsDogs?: boolean;
   accessibilityOptions?: { wheelchairAccessibleEntrance?: boolean };
   parkingOptions?: Record<string, boolean | undefined>;
+  /** Google's own sentence about the place: "Elegant venue serving Cal-Indian fare & cocktails." */
+  editorialSummary?: { text?: string };
   rating?: number;
   userRatingCount?: number;
   /** OPERATIONAL, CLOSED_TEMPORARILY or CLOSED_PERMANENTLY. */
@@ -83,6 +85,7 @@ export const PLACE_FIELDS = [
   "places.allowsDogs",
   "places.accessibilityOptions",
   "places.parkingOptions",
+  "places.editorialSummary",
   "places.regularOpeningHours",
   // Rating fields are in the same billing tier as price level and hours, which we already ask for;
   // status, address and the Maps link are in a lower one.
@@ -185,6 +188,21 @@ export function cleanPlaceName(raw: string | undefined): string | null {
 export const WELL_RATED = 4.4;
 
 /**
+ * Google has no yes-or-no answer for "is it a nice place to sit". Its one-sentence description
+ * of a place often says so in a word, and that word is all that is read here: about half the
+ * restaurants in a search have one. No description, or one that says nothing of the room, is null.
+ */
+const NICE_ROOM =
+  /\b(?:cozy|cosy|elegant|stylish|chic|romantic|intimate|charming|upscale|upmarket|refined|sleek|swanky|sophisticated|classy|polished|artful|airy|inviting|welcoming|quaint|homey|rustic|trendy|hip|atmospheric|scenic|views?)\b/i;
+const PLAIN_ROOM =
+  /\b(?:no-frills|bare-bones|modest|simple space|counter-serve|counter service|self-serve|fast-food|hole-in-the-wall)\b/i;
+export function atmosphereOf(summary: string | undefined): boolean | null {
+  if (!summary) return null;
+  if (PLAIN_ROOM.test(summary)) return false;
+  return NICE_ROOM.test(summary) ? true : null;
+}
+
+/**
  * What Google says about the place itself, as yes, no or null (it does not say). Nothing is
  * guessed: a place with no answer about dogs is not a place that refuses them.
  */
@@ -206,6 +224,7 @@ export function featuresOf(p: PlaceResult): Partial<Record<Feature, boolean | nu
     dogs: said(p.allowsDogs),
     live_music: said(p.liveMusic),
     well_rated: p.rating !== undefined && reviews >= MIN_REVIEWS ? p.rating >= WELL_RATED : null,
+    atmosphere: atmosphereOf(p.editorialSummary?.text),
   };
 }
 

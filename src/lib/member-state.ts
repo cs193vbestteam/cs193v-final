@@ -236,6 +236,7 @@ export const FEATURE_WORDS: Record<Feature, string> = {
   dogs: "dogs allowed",
   live_music: "live music",
   well_rated: "well reviewed",
+  atmosphere: "a nice atmosphere",
 };
 
 /** The same, as the end of "places that …", for a reply. */
@@ -249,7 +250,8 @@ export const FEATURE_PHRASES: Record<Feature, string> = {
   parking: "have parking",
   dogs: "allow dogs",
   live_music: "have live music",
-  well_rated: "are well reviewed",
+  well_rated: "are well reviewed on Google",
+  atmosphere: "are known for a nice atmosphere",
 };
 
 // "must" is a limit the person stated ("up to $50", "has to be Thai"), not a ranking. It used to

@@ -254,7 +254,7 @@
         "prefs.dietary"
       ],
       "replyMustMatch": [
-        "can'?t (be )?check|cannot (be )?check"
+        "can'?t (be )?check|cannot (be )?check|check with the place"
       ]
     },
     {
@@ -572,7 +572,7 @@
         "prefs.cuisine"
       ],
       "replyMustMatch": [
-        "can't look for \"Nepalese"
+        "noted \"Nepalese"
       ]
     },
     {
@@ -876,7 +876,7 @@
         "prefs.cuisine.scores.salad_shop": 1
       },
       "replyMustMatch": [
-        "lean toward food known for it"
+        "I'll lean toward"
       ],
       "replyMustNotMatch": [
         "can't look for|cannot (?:match|look|search)|can't match|won't change which"
@@ -959,7 +959,7 @@
         "prefs.cuisine.excluded"
       ],
       "replyMustMatch": [
-        "lean away from food known for it"
+        "I'll lean away from"
       ]
     },
     {
@@ -1170,7 +1170,7 @@
     {
       "id": "feature-03",
       "about": "what the place offers",
-      "note": "Something about the place that Google has no answer for is kept as a note, not forced onto the list.",
+      "note": "A wish about the room is looked for through Google's description of each place; the words that go beyond it (\"quiet\") stay as a note.",
       "turns": [
         {
           "user": "Somewhere quiet and a bit romantic would be lovely",
@@ -1192,11 +1192,9 @@
       "expected": {
         "prefs.notes": {
           "$includes": "quiet"
-        }
-      },
-      "absent": [
-        "prefs.features"
-      ]
+        },
+        "prefs.features.wanted": ["atmosphere"]
+      }
     },
     {
       "id": "user-test-01",
