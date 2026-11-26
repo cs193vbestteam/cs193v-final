@@ -151,8 +151,14 @@ export function PrivateChat({
 
   useEffect(() => {
     // The greeting is read from its top; a conversation is followed at its end.
-    if (messages.some((m) => m.role === "user"))
-      bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (!messages.some((m) => m.role === "user")) return;
+    const toEnd = () => bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    toEnd();
+    // A reply can change what sits under the conversation (the quick answers go, "All set" comes),
+    // and that moves the end after the first scroll. A long reply was left half under the message
+    // box. So the end is found again once the page has settled.
+    const again = [200, 600, 1100].map((ms) => setTimeout(toEnd, ms));
+    return () => again.forEach(clearTimeout);
   }, [messages]);
 
   function send(e: React.FormEvent) {
