@@ -882,6 +882,37 @@ describe('"I don\'t mind"', () => {
   });
 });
 
+describe('"no limit" as an answer', () => {
+  it("settles the thing it names, whatever was asked last and even with a required question open", () => {
+    for (const [said, topic] of [
+      ["Any distance", "travel"],
+      ["anywhere", "travel"],
+      ["distance doesn't matter", "travel"],
+      ["any budget", "budget"],
+      ["money is no object", "budget"],
+      ["any food", "cuisine"],
+    ] as const) {
+      const r = apply(state({}, { answered: ["time"] }), out({}), said);
+      expect([...r.state.chat.answered].sort(), said).toEqual([topic, "time"].sort());
+      expect(r.state.prefs).toEqual({ version: 1 });
+    }
+  });
+
+  it("settles the optional question just asked when it names nothing", () => {
+    for (const said of ["any", "no limit", "i dont care"]) {
+      const r = apply(state({}, { answered: ["time"], lastAsked: "travel" }), out({}), said);
+      expect([...r.state.chat.answered].sort(), said).toEqual(["time", "travel"]);
+    }
+  });
+
+  it("does not settle a required question, and is not read out of a longer message", () => {
+    expect(apply(state({}, { lastAsked: "diet" }), out({}), "any").state.chat.answered).toEqual([]);
+    expect(
+      apply(state({}, { lastAsked: "travel" }), out({}), "any distance under 20 minutes").state.chat.answered,
+    ).toEqual([]);
+  });
+});
+
 describe('a message that is only "I don\'t care"', () => {
   it("settles every optional question still open, when the model does not say so", () => {
     // Time and diet are in; the model replies "you're all set" and lists nothing.
