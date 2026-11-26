@@ -186,7 +186,9 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
     for (const page of [blake, alex]) {
       await page.reload();
       await expect(page.getByText("Out of date").first()).toBeVisible();
-      await expect(page.getByText(/answers have changed since this was decided/)).toBeVisible();
+      // The reason sits behind the "i" beside the verdict.
+      await page.getByRole("button", { name: "Why this is out of date" }).first().hover();
+      await expect(page.getByText(/answers have changed since this was decided/).first()).toBeVisible();
       // The plan is still there to read, but it no longer says it works for everyone, and it is not offered for sharing.
       await expect(page.getByText("Everyone can come")).toHaveCount(0);
       await expect(page.getByText(/~\$\d+\/person/).first()).toBeVisible();
@@ -223,8 +225,11 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
       await page.reload();
       await expect(page.getByText("Out of date").first()).toBeVisible();
       // The person who joined is told it is them; everyone else that someone did.
+      await page.getByRole("button", { name: "Why this is out of date" }).first().hover();
       await expect(
-        page.getByText(page === casey ? /You joined after this was decided/ : /Someone joined after this was decided/),
+        page
+          .getByText(page === casey ? /You joined after this was decided/ : /Someone joined after this was decided/)
+          .first(),
       ).toBeVisible();
       await expect(page.getByText(/answers have changed/)).toHaveCount(0);
     }

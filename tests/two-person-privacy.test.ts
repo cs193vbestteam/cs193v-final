@@ -224,7 +224,6 @@ describe("plans of three or more", () => {
     expect(result.options![0].proposal).toEqual(result.proposal);
     expect(result.options!.length).toBeGreaterThan(1);
     expect(new Set(result.options!.map((o) => o.proposal.restaurantId)).size).toBe(result.options!.length);
-    expect(html).toMatch(/Best fit of \d places that as many people can come to/);
     expect(html).toMatch(/See all \d options/);
     // The pop-out holds one tile per option, the best fit first.
     expect(html.match(/<li class="rounded-xl border p-4/g)).toHaveLength(result.options!.length);
@@ -242,7 +241,6 @@ describe("plans of three or more", () => {
     expect(result).toMatchObject({ detail: "full", status: "agreed", cannotCome: 0 });
     const html = card(result);
     expect(html).toContain("Everyone can come");
-    expect(html).toMatch(/Best fit of \d places that work for the group/);
     expect(html).not.toMatch(/Works for \d of/);
   });
 });

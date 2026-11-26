@@ -1,4 +1,5 @@
 import type { Dim, Proposal } from "@/lib/evaluate";
+import { InfoTip } from "./InfoTip";
 import { PlanOptions, type OptionTile } from "./PlanOptions";
 import type { StoredResult } from "@/lib/events";
 import type { Tally } from "@/lib/mediator";
@@ -138,6 +139,16 @@ export function ResultCard({
           <div className={`plan-hero-verdict ${tone.text}`}>
             <span aria-hidden className="plan-hero-dot" />
             {headline}
+            {stale && (
+              // Why it is out of date, for whoever wants to know; the person who joined is told it is them.
+              <InfoTip label="Why this is out of date">
+                {stale === "joined"
+                  ? lateJoiner
+                    ? "You joined after this was decided, so it does not count you yet. Tell your assistant what works for you; it is run again once everyone is done."
+                    : "Someone joined after this was decided, so it does not count them yet. Re-run it once everyone is done."
+                  : "Someone's answers have changed since this was decided, so it may no longer fit. Re-run it once everyone is done."}
+              </InfoTip>
+            )}
           </div>
           {result.status === "agreed" && !stale && (
             <div
@@ -148,15 +159,6 @@ export function ResultCard({
             </div>
           )}
         </div>
-        {stale && (
-          <p role="status" className="mt-3 max-w-2xl text-sm text-ink-2">
-            {stale === "joined"
-              ? lateJoiner
-                ? "You joined after this was decided, so it does not count you yet. Tell your assistant what works for you; it is run again once everyone is done."
-                : "Someone joined after this was decided, so it does not count them yet. Re-run it once everyone is done."
-              : "Someone's answers have changed since this was decided, so it may no longer fit. Re-run it once everyone is done."}
-          </p>
-        )}
         {showPlan ? (
           <>
             <div className="plan-hero-name">{r.name}</div>
@@ -188,18 +190,6 @@ export function ResultCard({
               </p>
             )}
             {result.explanation && <p className="mt-4 max-w-2xl text-sm italic text-ink-2">{result.explanation}</p>}
-            {(sample || tiles.length > 1) && (
-              <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-3">
-                {tiles.length > 1 && (
-                  <span>
-                    {result.status === "partial"
-                      ? `Best fit of ${tiles.length} places that as many people can come to.`
-                      : `Best fit of ${tiles.length} places that work for the group.`}
-                  </span>
-                )}
-                {sample && <span className="text-amber-ink">Sample place, not a real restaurant.</span>}
-              </p>
-            )}
           </>
         ) : (
           <p className="plan-hero-none">
