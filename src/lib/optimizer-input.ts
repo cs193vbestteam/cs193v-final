@@ -218,7 +218,8 @@ const StyleSchema = z
 /**
  * Things about a place itself that Google Places says yes or no to, and that people ask for:
  * room for a group, somewhere a child or a wheelchair can go, a table outside, a drink.
- * `well_rated` is worked out from Google's rating (places.ts).
+ * `well_rated` is worked out from Google's rating, and `atmosphere` from the words of Google's
+ * own short description of the place (places.ts).
  */
 export const FEATURES = [
   "groups",
@@ -231,6 +232,7 @@ export const FEATURES = [
   "dogs",
   "live_music",
   "well_rated",
+  "atmosphere",
 ] as const;
 export type Feature = (typeof FEATURES)[number];
 

@@ -359,7 +359,7 @@ describe("diet, allergies and other things that cannot be checked", () => {
       state(),
       out({ notes: [{ type: "allergy", text: "peanuts" }] }, { reply: "Noted the peanut allergy." }),
     );
-    expect(silent.reply).toMatch(/I can't check restaurants for it/);
+    expect(silent.reply).toMatch(/Restaurants don't list allergens, so do check with the place/);
     const honest = apply(
       state(),
       out(
@@ -532,10 +532,10 @@ describe("cuisines: the model passes the words on, the table in code says what t
     expect(scoresOf(r).japanese_restaurant).toBe(1);
     expect(scoresOf(r).nepalese_restaurant).toBeUndefined();
     expect(r.state.prefs.budget?.max).toBe(40);
-    expect(r.reply).toContain("I can't look for \"Nepalese\" directly, so I've kept it as a note");
-    // Not a dead end: the reply says what to do next (#158).
-    expect(r.reply).toContain("Name a kind of food close to it");
-    expect(r.reply).toContain("kept it as a note");
+    expect(r.reply).toContain('I\'ve noted "Nepalese".');
+    // Not a dead end: the reply says what to do next (#158), and does not open with what it cannot do.
+    expect(r.reply).toContain("name it and I'll look for that too");
+    expect(r.reply).not.toMatch(/can't|cannot/);
     expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would like: Nepalese" }]);
     // The note is not an answer to "anything you can't eat?", and it is said only once.
     expect(r.state.chat.answered).toEqual(["budget", "cuisine"]);
@@ -607,7 +607,7 @@ describe("kinds of place: words in, the fixed list out", () => {
     expect(r.state.prefs.style).toBeUndefined();
     expect(r.state.prefs.budget).toEqual(before.prefs.budget);
     expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would like: rooftop" }]);
-    expect(r.reply).toContain('I can\'t look for "rooftop"');
+    expect(r.reply).toContain('I\'ve noted "rooftop"');
     expect(r.dropped).toEqual([]);
   });
 });
@@ -654,11 +654,36 @@ describe("restaurants named by the person", () => {
 });
 
 describe("what the place should offer", () => {
-  it("records a need and a wish, and says once what an unanswered place counts as", () => {
+  it('reads "tasty" and "nice ambience" as wishes about the place, also when the model files them as food', () => {
+    const r = apply(state(), out({ cuisine: { liked: ["tasty", "good ambiance", "Thai"] } }, { reply: "Got it." }));
+    expect(r.state.prefs.features).toEqual({ wanted: ["well_rated", "atmosphere"], strength: "mild" });
+    expect(r.state.prefs.cuisine?.scores?.thai_restaurant).toBe(1);
+    expect(r.state.prefs.notes).toBeUndefined();
+    expect(r.reply).toBe(
+      "Got it. (I'll look for places that are well reviewed on Google and are known for a nice atmosphere.)",
+    );
+    // Said again in a later message, it is neither announced again nor called something it cannot do.
+    const again = apply(r.state, out({ cuisine: { liked: ["tasty"] } }, { reply: "Sure." }));
+    expect(again.reply).toBe("Sure.");
+    expect(again.state.prefs.notes).toBeUndefined();
+  });
+
+  it('takes "no allergies" as the answer nothing, not as an allergy to warn about', () => {
+    const r = apply(state(), out({ notes: [{ type: "allergy", text: "No allergies" }] }, { reply: "Got it." }));
+    expect(r.state.prefs.notes).toBeUndefined();
+    expect(r.state.chat.answered).toContain("diet");
+    expect(r.reply).toBe("Got it.");
+    // A real one is still kept and still comes with the advice.
+    const real = apply(state(), out({ notes: [{ type: "allergy", text: "no peanuts" }] }, { reply: "Got it." }));
+    expect(real.state.prefs.notes).toEqual([{ type: "allergy", text: "no peanuts" }]);
+    expect(real.reply).toContain("do check with the place before you order");
+  });
+
+  it("records a need and a wish, and says once what it will do", () => {
     const r = apply(state(), out({ features: { needed: ["wheelchair"], wanted: ["outdoor"] } }, { reply: "Got it." }));
     expect(r.state.prefs.features).toEqual({ needed: ["wheelchair"], wanted: ["outdoor"], strength: "mild" });
     expect(r.reply).toBe(
-      "Got it. (I'll look for places that have a step-free entrance and have outdoor seating. Google doesn't say for every place; one it says nothing about counts as a maybe.)",
+      "Got it. (I'll look for places that have a step-free entrance and have outdoor seating. Google doesn't list this for every place, so it's worth confirming with the one we pick.)",
     );
     // Said again later, nothing new is announced.
     const again = apply(r.state, out({ features: { wanted: ["outdoor"] } }, { reply: "Sure." }));
@@ -689,7 +714,7 @@ describe("wishes about what the food is like are understood, not turned away (#1
       hot_pot_restaurant: 1,
     });
     expect(r.reply).toBe(
-      "Got it. (Restaurants aren't listed by how spicy the food is, so I'll lean toward food known for it: Thai, Indian, Korean, Mexican, hot pot.)",
+      "Got it. (Going by how spicy the food is, I'll lean toward Thai, Indian, Korean, Mexican, hot pot.)",
     );
     expect(r.reply).not.toMatch(/can't look for|cannot|won't change/i);
     expect(r.state.prefs.notes).toBeUndefined();
@@ -723,7 +748,7 @@ describe("wishes about what the food is like are understood, not turned away (#1
         "hot_pot_restaurant",
       ]);
       expect(r.reply).toBe(
-        "Got it. (Restaurants aren't listed by how spicy the food is, so I'll lean away from food known for it: Thai, Indian, Korean, Mexican, hot pot. It won't rule those places out.)",
+        "Got it. (Going by how spicy the food is, I'll lean away from Thai, Indian, Korean, Mexican, hot pot, without ruling those places out.)",
       );
     }
   });
@@ -771,7 +796,7 @@ describe("wishes about what the food is like are understood, not turned away (#1
       ramen_restaurant: 0.5,
     });
     expect(r.reply).toBe(
-      `Got it. (Restaurants aren't listed by "comfort food", so I'll lean toward American, Italian, ramen. Tell me if that's off.)`,
+      `Got it. (For "comfort food" I'll lean toward American, Italian, ramen. Tell me if that's off.)`,
     );
     // Their own words are kept where they can see them.
     expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would like: comfort food" }]);
@@ -802,8 +827,8 @@ describe("wishes about what the food is like are understood, not turned away (#1
       out({ cuisine: { liked: ["zorgon"], closest: [{ wish: "zorgon", like: ["Blarg"] }] } }, { reply: "Got it." }),
     );
     expect(r.state.prefs.cuisine).toBeUndefined();
-    expect(r.reply).toContain(`I can't look for "zorgon" directly`);
-    expect(r.reply).toContain("Name a kind of food close to it");
+    expect(r.reply).toContain(`I've noted "zorgon"`);
+    expect(r.reply).toContain("name it and I'll look for that too");
   });
 
   it("a wish the table knows is never overridden by the model's guess", () => {
@@ -851,16 +876,29 @@ describe("a wish the table does not have", () => {
     const r = apply(
       state(),
       out({
+        cuisine: { liked: ["farm to table"] },
+        notes: [{ type: "other", text: "Wants a place that is farm to table" }],
+      }),
+    );
+    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Wants a place that is farm to table" }]);
+  });
+
+  it("gets the code's note when the model wrote none", () => {
+    const r = apply(state(), out({ cuisine: { liked: ["farm to table"] } }));
+    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would like: farm to table" }]);
+  });
+
+  it("is not a note at all when it is something that can be looked for", () => {
+    const r = apply(
+      state(),
+      out({
         cuisine: { liked: ["good ambiance"] },
         notes: [{ type: "other", text: "Wants a place with good ambiance" }],
       }),
     );
-    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Wants a place with good ambiance" }]);
-  });
-
-  it("gets the code's note when the model wrote none", () => {
-    const r = apply(state(), out({ cuisine: { liked: ["good ambiance"] } }));
-    expect(r.state.prefs.notes).toEqual([{ type: "other", text: "Would like: good ambiance" }]);
+    expect(r.state.prefs.notes).toBeUndefined();
+    expect(r.state.prefs.features?.wanted).toEqual(["atmosphere"]);
+    expect(r.reply).not.toMatch(/It won't change which places come up/);
   });
 });
 

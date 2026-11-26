@@ -61,6 +61,13 @@ describe("what Google says about a place", () => {
     expect(featuresOf(google({ rating: 4.0, userRatingCount: 500 })).well_rated).toBe(false);
     expect(featuresOf(google({ rating: 5, userRatingCount: 3 })).well_rated).toBeNull();
     expect(featuresOf(google({})).well_rated).toBeNull();
+    // The room, from Google's own sentence about the place; nothing is read into silence.
+    const said = (text: string) => featuresOf(google({ editorialSummary: { text } })).atmosphere;
+    expect(said("A soaring skylight tops this elegant, expansive venue that serves Cal-Indian fare.")).toBe(true);
+    expect(said("This no-frills taqueria serves Mexican eats.")).toBe(false);
+    expect(said("Sleek, counter-serve chain known for its grilled cheese.")).toBe(false);
+    expect(said("Creative gourmet sandwiches, soups & salads.")).toBeNull();
+    expect(featuresOf(google({})).atmosphere).toBeNull();
   });
 
   it("travels from the Google result to the optimizer's candidate", () => {

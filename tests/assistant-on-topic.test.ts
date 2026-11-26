@@ -138,7 +138,7 @@ describe("the reply cap", () => {
       { reply: ESSAY, onTopic: true, asks: "none", update: { notes: [{ type: "allergy", text: "peanuts" }] } },
       RESTAURANTS,
     );
-    expect(applied.reply).toMatch(/can't check restaurants for it/);
+    expect(applied.reply).toMatch(/do check with the place before you order/);
     expect(applied.reply.startsWith(capReply(ESSAY))).toBe(true);
   });
 
