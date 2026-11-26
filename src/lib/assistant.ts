@@ -663,6 +663,17 @@ const SHRUG =
   /^\W*(?:(?:honestly|really|eh|meh|nah|no|idk)\W+)*(?:i\s+)?(?:(?:really\s+)?(?:do\s?n.?t|don|dont)\s+(?:really\s+)?(?:care|mind)|whatever(?:\s+works)?|any(?:thing)?(?:\s+(?:is\s+fine|works|goes))?|(?:it\s+)?does\s?n.?t\s+matter|up\s+to\s+you|no\s+preference|not\s+picky|either(?:\s+is\s+fine)?)\W*$/i;
 export const isShrug = (message: string) => SHRUG.test(message.trim());
 
+/** "No limit", said of whatever was just asked: "any", "anywhere", "no limit", "unlimited". */
+const NO_LIMIT = /^\W*(?:any|anywhere|no\s+(?:limit|max(?:imum)?|cap)|unlimited|none)\W*$/i;
+/** The same, naming what it is about, so it does not matter which question the code thinks was asked. */
+const NO_LIMIT_ON: Partial<Record<Variable, RegExp>> = {
+  travel:
+    /^\W*(?:any\s+distance|anywhere(?:\s+is\s+fine)?|(?:the\s+)?distance\s+(?:does\s?n.?t|is\s?n.?t)\s+(?:matter|an?\s+(?:issue|problem))|however\s+far|no\s+(?:distance\s+limit|limit\s+on\s+distance))\W*$/i,
+  budget:
+    /^\W*(?:any\s+(?:budget|price|amount)|no\s+budget|(?:the\s+)?(?:price|budget|money|cost)\s+(?:does\s?n.?t|is\s?n.?t)\s+(?:matter|an?\s+(?:issue|problem|object))|money\s+is\s+no\s+object)\W*$/i,
+  cuisine: /^\W*(?:any\s+(?:food|cuisine|kind)(?:\s+is\s+fine)?|any\s+kind\s+of\s+food)\W*$/i,
+};
+
 export function applyAssistantOutput(
   state: MemberState,
   output: AssistantOutput,
@@ -923,6 +934,14 @@ export function applyAssistantOutput(
   // It does not depend on which one the code thinks was asked: the model's "anything else, like
   // a cuisine?" is often not recorded as a question about food. Not while a required question is
   // the one on the table, though: "I don't care" about the time is not an answer to the rest.
+  // "Any distance" to "how long a trip would you make?" is an answer: no limit. The model said
+  // "got it, distance doesn't matter" and listed nothing, so travel stayed open and "15 minutes at
+  // most" was still offered under the chat. A message that names the thing settles that thing; a
+  // bare "any" or "I don't care" settles the optional question that was just asked.
+  for (const v of VARIABLES) if (NO_LIMIT_ON[v]?.test(latestMessage.trim())) answered.add(v);
+  const justAsked = state.chat.lastAsked;
+  if (justAsked && !REQUIRED.includes(justAsked) && (isShrug(latestMessage) || NO_LIMIT.test(latestMessage.trim())))
+    answered.add(justAsked);
   const requiredOpen = REQUIRED.some((v) => !state.chat.answered.includes(v) && !answered.has(v));
   if (isShrug(latestMessage) && !requiredOpen) for (const v of VARIABLES) if (!REQUIRED.includes(v)) answered.add(v);
   const DROPS: Partial<Record<Variable, keyof PersonPreferences>> = {
