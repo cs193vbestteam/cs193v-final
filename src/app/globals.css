@@ -2202,15 +2202,15 @@ form:focus-within .plan-ticket {
   color: var(--color-ink);
 }
 /* A reply that has just arrived is written in, a word at a time. */
+/* No blur: one filter per word, each inside a bubble that blurs what is behind it, left a word
+   here and there stuck out of focus on phones after the animation had ended. */
 @keyframes word-in {
   from {
     opacity: 0;
-    filter: blur(4px);
     transform: translateY(3px);
   }
   to {
     opacity: 1;
-    filter: none;
     transform: none;
   }
 }
