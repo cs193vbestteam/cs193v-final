@@ -36,7 +36,7 @@ export function NegotiateButton({
   return (
     <div>
       <button
-        className={`${decided ? "btn-ghost" : "btn"} w-full`}
+        className={`${decided ? "btn-ghost btn-sm" : "btn"} w-full`}
         disabled={pending || !everyoneDone || nothingNew}
         aria-describedby="rerun-why"
         onClick={() =>
@@ -69,7 +69,14 @@ export function NegotiateButton({
   );
 }
 
-export function CopyInvite({ url }: { url: string }) {
+export function CopyInvite({
+  url,
+  primary = false,
+}: {
+  url: string;
+  /** Inviting is the one next step while the creator is alone, so the button is the filled one. */
+  primary?: boolean;
+}) {
   const [feedback, setFeedback] = useState<{ url: string; status: "copying" | "copied" | "failed" } | null>(null);
   const request = useRef(0);
   const status = feedback?.url === url ? feedback.status : null;
@@ -104,7 +111,7 @@ export function CopyInvite({ url }: { url: string }) {
     <div className="space-y-2">
       <button
         type="button"
-        className={`${status === "copied" ? "btn" : "btn-ghost"} btn-sm w-full`}
+        className={`${primary || status === "copied" ? "btn" : "btn-ghost"} btn-sm w-full`}
         disabled={status === "copying"}
         onClick={copy}
       >

@@ -204,7 +204,7 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
   const settled = !!result && !stale;
   const invite = (
     <>
-      <CopyInvite url={planUrl} />
+      <CopyInvite url={planUrl} primary={members.length < 2} />
       <div className="mt-3 text-center">
         <p className="eyebrow">Plan code</p>
         <div className="mt-2">
