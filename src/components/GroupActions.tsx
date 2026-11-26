@@ -46,7 +46,7 @@ export function NegotiateButton({
           })
         }
       >
-        {pending ? "Finding a plan…" : decided ? "Re-run with latest info" : "Find a plan"}
+        {pending ? "Settling the plan…" : decided ? "Re-run with latest info" : "Settle the plan"}
       </button>
       {memberCount >= 2 && readyCount < memberCount && (
         <p id="rerun-why" className="sr-only">

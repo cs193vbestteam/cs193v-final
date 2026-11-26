@@ -96,7 +96,7 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
   });
 
   await test.step("a plan cannot be found until everyone is done", async () => {
-    await expect(alex.getByRole("button", { name: "Find a plan" })).toHaveCount(0);
+    await expect(alex.getByRole("button", { name: "Settle the plan" })).toHaveCount(0);
   });
 
   await test.step("Alex finishes first; Blake's page shows none of it", async () => {
@@ -118,14 +118,14 @@ test("two people plan a meal without seeing each other's limits", async ({ brows
   await test.step("the last person finishes; nothing is decided until the creator finds the plan", async () => {
     await tellAssistant(blake, BLAKE);
     // Blake is not the creator: no button, and told who the group is waiting for.
-    await expect(blake.getByText(/Waiting for .+ to find the plan/).first()).toBeVisible();
-    await expect(blake.getByRole("button", { name: "Find a plan" })).toHaveCount(0);
+    await expect(blake.getByText(/Waiting for .+ to settle the plan/).first()).toBeVisible();
+    await expect(blake.getByRole("button", { name: "Settle the plan" })).toHaveCount(0);
     await expect(blake.getByText("Everyone can come")).toHaveCount(0);
     await alex.reload();
     await expectNoSecrets(alex, BLAKE);
     await expect(doneIn(alex)).toHaveCount(2);
     await expect(alex.getByText("Everyone can come")).toHaveCount(0);
-    await alex.getByRole("button", { name: "Find a plan" }).click();
+    await alex.getByRole("button", { name: "Settle the plan" }).click();
     await expect(alex.getByText("Everyone can come")).toBeVisible();
     await blake.reload();
     await expect(blake.getByText("Everyone can come")).toBeVisible();
