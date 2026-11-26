@@ -2163,6 +2163,8 @@ form:focus-within .plan-ticket {
   position: absolute;
   bottom: 4rem;
   left: 50%;
+  /* Above the message box's layer, which reaches up over this spot and took the clicks. */
+  z-index: 2;
   display: inline-flex;
   min-height: 1.75rem;
   align-items: center;

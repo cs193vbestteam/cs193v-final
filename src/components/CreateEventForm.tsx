@@ -31,7 +31,6 @@ export function CreateEventForm({
 
   const smallest = sizes[0];
   const largest = sizes[sizes.length - 1];
-  const real = realPlaces && location.trim().length > 0;
   const validDate = /^\d{4}-\d{2}-\d{2}$/.test(date);
 
   return (
@@ -73,7 +72,7 @@ export function CreateEventForm({
 
         <div>
           <label htmlFor="plan-location" className="label">
-            Near where (optional)
+            Near where{realPlaces ? "" : " (optional)"}
           </label>
           <input
             id="plan-location"
@@ -84,21 +83,9 @@ export function CreateEventForm({
             autoComplete="off"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
-            aria-describedby="plan-source"
+            // With real places switched on, a plan without a place would quietly use made-up ones.
+            required={realPlaces}
           />
-          {/* Which restaurants this plan will choose from, said before the plan is made. */}
-          <p id="plan-source" className="mt-2 flex items-center gap-1 text-xs text-ink-2">
-            <span className={`pill shrink-0 ${real ? "pill-moss" : "pill-amber"}`}>
-              {real ? "Real places" : "Sample data"}
-            </span>
-            {!real && (
-              <InfoTip label="About sample data">
-                {realPlaces
-                  ? "Add a place to choose from real restaurants nearby. Left blank, the plan uses made-up sample restaurants."
-                  : "Plans in this version pick from made-up sample restaurants, not real places."}
-              </InfoTip>
-            )}
-          </p>
         </div>
 
         <div>
@@ -195,7 +182,7 @@ export function CreateEventForm({
               </div>
               <div>
                 <dt>Where</dt>
-                <dd>{location.trim() || "Sample places"}</dd>
+                <dd>{location.trim() || "Add a place…"}</dd>
               </div>
             </dl>
           </div>

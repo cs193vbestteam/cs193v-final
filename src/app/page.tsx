@@ -71,7 +71,7 @@ export default async function Home() {
                       {e.date ? ` · ${formatPlanDate(e.date)}` : ""}
                     </span>
                     <span className="plan-stub-title">{e.title}</span>
-                    <span className="plan-stub-where">{e.location ?? "Sample places"}</span>
+                    {e.location && <span className="plan-stub-where">{e.location}</span>}
                   </span>
                   <span className="plan-stub-end">
                     <span className={`pill ${e.stuck ? "pill-seal" : e.decided ? "pill-moss" : "pill-amber"}`}>
