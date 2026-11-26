@@ -159,11 +159,8 @@ export default async function EventPage({ params }: { params: Promise<{ code: st
         ? { text: "No plan works yet. Change an answer to try again.", href: "#plan", link: "See why" }
         : { text: "The plan is ready.", href: "#plan", link: "See the plan" }
       : members.length < 2
-        ? {
-            text: "Now invite the others.",
-            href: "#group",
-            link: "Invite people",
-          }
+        ? // Alone in the plan: the invite link sits right beside the chat, and "The plan" says one more person is needed.
+          null
         : waiting > 0
           ? {
               text: `Waiting for ${others} to finish.`,
