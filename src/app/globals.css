@@ -1494,6 +1494,156 @@ form:focus-within .plan-ticket {
 }
 
 /* ── Motion ─────────────────────────────────────────────────── */
+
+/* Opening (Opening.tsx): a paper sheet over the first page. Four lines are drawn into one, and the
+   one ends in the seal: the mark from the foot of the page. The lines then run out into the seal
+   and the word is written where they were, so the seal is left as its full stop. The script then
+   sends the wordmark to the header and lifts the sheet; if the script never comes, the whole thing
+   fades a little later. It never takes a click. Not shown where less motion is asked for. */
+.opening {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  animation: opening-leave-anyway 0.5s ease-in-out 3.6s forwards;
+}
+.opening-sheet {
+  position: absolute;
+  inset: 0;
+  background: var(--color-paper);
+}
+.opening-mark {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.076em;
+  font-family: var(--font-serif);
+  font-size: clamp(4rem, 15vw, 7.5rem);
+  font-style: italic;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  color: var(--color-ink);
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.opening-word {
+  animation: opening-word 0.6s var(--ease-out-expo) 1.48s both;
+}
+/* The full stop's place: the lines are hung from it, so they end exactly where it sits. */
+.opening-stop {
+  position: relative;
+  width: 0.255em;
+  height: 0.255em;
+  margin-bottom: 0.04em;
+}
+.opening-dot {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--color-seal);
+  animation: opening-dot 0.3s cubic-bezier(0.3, 1.5, 0.5, 1) 0.8s both;
+}
+.opening-lines {
+  position: absolute;
+  top: 50%;
+  right: calc(100% + 0.07em);
+  height: 1.25em;
+  width: auto;
+  transform: translateY(-50%);
+  overflow: visible;
+  color: var(--color-ink);
+}
+.opening-lines path {
+  stroke-dasharray: 1;
+  animation:
+    opening-draw 0.55s cubic-bezier(0.5, 0, 0.3, 1) 0.15s both,
+    opening-run-out 0.4s cubic-bezier(0.6, 0, 0.4, 1) 1.1s forwards;
+}
+.opening-lines path:last-of-type {
+  animation:
+    opening-draw 0.2s linear 0.65s both,
+    opening-run-out 0.25s cubic-bezier(0.6, 0, 0.4, 1) 1.38s forwards;
+}
+.opening-lines circle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation:
+    opening-start 0.25s var(--ease-out-expo) calc(0.04s * var(--i)) both,
+    opening-start-out 0.2s ease-in 1.1s forwards;
+}
+@keyframes opening-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+/* The round end of a line would stay behind as a speck where the lines meet, so it is put out last. */
+@keyframes opening-run-out {
+  from {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  to {
+    stroke-dashoffset: -1;
+    opacity: 0;
+  }
+}
+@keyframes opening-start {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes opening-start-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes opening-word {
+  from {
+    clip-path: inset(-0.3em 100% -0.3em 0);
+    transform: translateX(0.18em);
+  }
+  to {
+    clip-path: inset(-0.3em -0.2em -0.3em 0);
+    transform: none;
+  }
+}
+@keyframes opening-dot {
+  from {
+    transform: scale(0);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes opening-leave-anyway {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+/* What is under the sheet waits for it: the page's own entrance starts as the sheet lifts. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  #main:has(> .opening:not([data-leaving])) :not(.opening, .opening *) {
+    animation-play-state: paused !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .opening {
+    display: none;
+  }
+}
+
 @keyframes rise {
   from {
     opacity: 0;
