@@ -1,14 +1,28 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { CreateEventForm } from "@/components/CreateEventForm";
 import { Landing } from "@/components/Landing";
+import { Opening } from "@/components/Opening";
 import { DEFAULT_PLAN_SIZE, MAX_PLAN_SIZE, MIN_PLAN_SIZE, listMyEvents } from "@/lib/events";
+import { OPENING_COOKIE } from "@/lib/opening";
 import { formatPlanDate, latestPlanDate, todayPacific } from "@/lib/plan-date";
 import { currentUser } from "@/lib/session";
 import { yelpDatasetDir } from "@/lib/yelp-pool";
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ opening?: string }> }) {
   const user = await currentUser();
-  if (!user) return <Landing />;
+  if (!user) {
+    // The opening plays once per browser session: after that the cookie is there and it is left out.
+    // `/?opening` plays it again, for showing it to someone.
+    const again = (await searchParams).opening !== undefined;
+    const seen = !again && (await cookies()).has(OPENING_COOKIE);
+    return (
+      <>
+        {!seen && <Opening />}
+        <Landing />
+      </>
+    );
+  }
   const events = await listMyEvents(user.id);
   const open = events.filter((e) => !e.decided || e.stuck).length;
   // Whether a plan can get real restaurants here decides what the form promises.
