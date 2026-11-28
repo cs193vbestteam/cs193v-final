@@ -149,17 +149,14 @@ const KEPT_SAFE = [
   [
     "Your chat is stored scrambled",
     "What you tell your assistant, and the limits it notes, are encrypted in our database. They cannot be read from a copy of the database alone.",
-    "AES-256-GCM",
   ],
   [
     "We never keep your password",
     "Only a one-way fingerprint of it, enough to check that you typed it right. Nobody can read your password back, us included.",
-    "bcrypt, cost 12",
   ],
   [
     "Your email is not kept readable",
     "It is encrypted too. We can tell that it is you when you log in without storing it in a form anyone could read.",
-    "HMAC blind index",
   ],
 ];
 
@@ -395,10 +392,9 @@ export function Landing() {
           ))}
         </div>
         <div data-arrive className="mt-8 grid gap-x-8 sm:grid-cols-3">
-          {KEPT_SAFE.map(([title, body, how]) => (
+          {KEPT_SAFE.map(([title, body]) => (
             <div key={title} data-arrive-item className="border-t border-line-strong py-5">
-              <p className="font-mono text-xs uppercase tracking-[0.12em] text-ink-3">{how}</p>
-              <div className="mt-2 font-serif text-2xl leading-tight text-ink">{title}</div>
+              <div className="font-serif text-2xl leading-tight text-ink">{title}</div>
               <p className="mt-2 text-sm leading-relaxed text-ink-2">{body}</p>
             </div>
           ))}
